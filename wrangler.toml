@@ -11,5 +11,5 @@ US = ""
 
 [[d1_databases]]
 binding = "DB"
-database_name = "rp"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_name = "re-play"
+database_id = "269494cb-1be0-4292-adbb-15c32c29255f"
