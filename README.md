@@ -25,16 +25,14 @@ npm run dev
 
 The default administrator password is `masteradmin`. Open `/admin` manually to sign in. Set `P` to change the password.
 
-The synchronized local copy is stored in `S:\pr-local`. Run `npm run sync:local` after changes; it also creates `run-local-preview.cmd` and `一键启动.cmd` in that folder.
-
 ## Cloudflare D1
 
-Create a D1 database and replace the placeholder `database_id` in `wrangler.toml`:
+The current project already has an active D1 binding in `wrangler.toml`. When deploying to another Cloudflare account, create a D1 database and replace `database_name` and `database_id` with that database's values:
 
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "rp"
+database_name = "your-database-name"
 database_id = "your-cloudflare-d1-database-id"
 ```
 

@@ -25,16 +25,14 @@ npm run dev
 
 默认管理员密码为 `masteradmin`。手动打开 `/admin` 登录；通过变量 `P` 修改密码。
 
-本地同步副本位于 `S:\pr-local`。每次修改后运行 `npm run sync:local`，脚本会同时创建 `run-local-preview.cmd` 和 `一键启动.cmd`。
-
 ## Cloudflare D1
 
-创建 D1 数据库，并替换 `wrangler.toml` 中的 `database_id`：
+当前项目已在 `wrangler.toml` 中启用 D1 绑定。部署到其他 Cloudflare 账户时，需要创建 D1 数据库，并将 `database_name` 和 `database_id` 替换为新数据库的值：
 
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "rp"
+database_name = "你的数据库名称"
 database_id = "你的-cloudflare-d1-database-id"
 ```
 

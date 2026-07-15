@@ -9,8 +9,7 @@
     "build": "astro check && astro build",
     "preview": "wrangler dev --config dist/server/wrangler.json --ip 127.0.0.1",
     "cf:dev": "npm run build && wrangler dev --config dist/server/wrangler.json --ip 127.0.0.1",
-    "cf:deploy": "npm run build && wrangler deploy --config dist/server/wrangler.json",
-    "sync:local": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-local.ps1"
+    "cf:deploy": "npm run build && wrangler deploy --config dist/server/wrangler.json"
   },
   "dependencies": {
     "@astrojs/check": "latest",
