@@ -1,0 +1,400 @@
+---
+import {
+  FileImage,
+  Film,
+  FolderRoot,
+  Languages,
+  LogOut,
+  Music2,
+  Plus,
+  RefreshCw,
+  Trash2,
+  X
+} from "@lucide/astro";
+import SiteShell from "../layouts/SiteShell.astro";
+import { getEnv } from "@lib/cloudflare";
+import { isAdmin } from "@lib/admin";
+
+const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
+---
+
+<SiteShell title="Admin - Re Player">
+  {
+    !loggedIn ? (
+      <main class="login-screen">
+        <label class="language-box login-language">
+          <Languages size={18} aria-hidden="true" />
+          <span class="sr-only" data-i18n="language">Language</span>
+          <select class="language-select" aria-label="Language">
+            <option value="en">English</option>
+            <option value="zh">简体中文</option>
+            <option value="ja">日本語</option>
+          </select>
+        </label>
+
+        <section class="login-panel">
+          <a class="login-brand" href="/" aria-label="Re Player">
+            <span class="app-brand-mark">RP</span>
+            <span>
+              <strong>Re Player</strong>
+              <small data-i18n="console">Admin console</small>
+            </span>
+          </a>
+          <h1 data-i18n="signIn">Sign in</h1>
+          <p data-i18n="signInCopy">Enter the administrator password to continue.</p>
+          <form id="loginForm" class="login-form">
+            <label class="field">
+              <span data-i18n="password">Password</span>
+              <input name="password" type="password" autocomplete="current-password" required autofocus />
+            </label>
+            <button class="primary-button" type="submit" data-i18n="signIn">Sign in</button>
+            <div id="loginStatus" class="form-status" role="status"></div>
+          </form>
+        </section>
+      </main>
+    ) : (
+      <div class="admin-app">
+        <header class="admin-topbar">
+          <a class="app-brand" href="/" aria-label="Re Player">
+            <span class="app-brand-mark">RP</span>
+            <span>
+              <strong>Re Player</strong>
+              <small data-i18n="console">Admin console</small>
+            </span>
+          </a>
+          <div class="admin-topbar-actions">
+            <label class="language-box">
+              <Languages size={18} aria-hidden="true" />
+              <span class="sr-only" data-i18n="language">Language</span>
+              <select class="language-select" aria-label="Language">
+                <option value="en">English</option>
+                <option value="zh">简体中文</option>
+                <option value="ja">日本語</option>
+              </select>
+            </label>
+            <button id="logoutBtn" class="icon-button" type="button" title="Sign out" data-i18n-title="signOut">
+              <LogOut size={18} />
+              <span class="sr-only" data-i18n="signOut">Sign out</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="admin-shell">
+          <aside class="admin-sidebar">
+            <p class="admin-nav-label" data-i18n="storage">Storage</p>
+            <div class="admin-nav-item">
+              <FolderRoot size={18} />
+              <span>/root</span>
+            </div>
+          </aside>
+
+          <main class="admin-main">
+            <div class="admin-page-heading">
+              <div>
+                <p class="section-kicker" data-i18n="pseudoMounts">Pseudo mounts</p>
+                <h1>/root</h1>
+                <p data-i18n="pageCopy">Manage public media links and optional ASS subtitles.</p>
+              </div>
+              <button id="addBtn" class="primary-button" type="button">
+                <Plus size={17} />
+                <span data-i18n="addFile">Add file</span>
+              </button>
+            </div>
+
+            <section class="table-surface">
+              <div class="table-toolbar">
+                <strong id="mountCount">0 items</strong>
+                <div class="toolbar-actions">
+                  <span id="adminStatus" class="form-status" role="status"></span>
+                  <button id="refreshLinks" class="icon-button" type="button" title="Refresh" data-i18n-title="refresh">
+                    <RefreshCw size={18} />
+                    <span class="sr-only" data-i18n="refresh">Refresh</span>
+                  </button>
+                </div>
+              </div>
+              <div class="table-scroll">
+                <table class="mount-table">
+                  <thead>
+                    <tr>
+                      <th data-i18n="name">Name</th>
+                      <th data-i18n="path">Path</th>
+                      <th data-i18n="type">Type</th>
+                      <th data-i18n="subtitle">Subtitle</th>
+                      <th data-i18n="source">Source</th>
+                      <th><span class="sr-only" data-i18n="actions">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="linkRows">
+                    <tr><td class="empty-row" colspan="6" data-i18n="loading">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </main>
+        </div>
+
+        <dialog id="mountDialog" class="form-dialog">
+          <div class="dialog-heading">
+            <h2 data-i18n="addMount">Add pseudo mount</h2>
+            <button class="icon-button" type="button" data-close title="Close" data-i18n-title="close">
+              <X size={19} />
+              <span class="sr-only" data-i18n="close">Close</span>
+            </button>
+          </div>
+          <form id="linkForm" class="mount-form">
+            <div class="form-row">
+              <label class="field">
+                <span data-i18n="folder">Folder</span>
+                <input name="folder" type="text" value="/root" autocomplete="off" required />
+              </label>
+              <label class="field">
+                <span data-i18n="name">Name</span>
+                <input name="name" type="text" placeholder="movie.mp4" autocomplete="off" required />
+              </label>
+            </div>
+            <div class="form-row">
+              <label class="field">
+                <span data-i18n="type">Type</span>
+                <select id="kindSelect" name="kind">
+                  <option value="video" data-i18n="video">Video</option>
+                  <option value="audio" data-i18n="audio">Audio</option>
+                  <option value="image" data-i18n="image">Image</option>
+                </select>
+              </label>
+              <label class="field">
+                <span data-i18n="posterUrl">Poster URL</span>
+                <input name="poster" type="url" placeholder="https://example.com/poster.jpg" autocomplete="off" />
+              </label>
+            </div>
+            <label class="field">
+              <span data-i18n="mediaUrl">Media URL</span>
+              <textarea name="url" required placeholder="https://example.com/video.mp4"></textarea>
+            </label>
+            <label id="subField" class="field">
+              <span data-i18n="assUrl">ASS subtitle URL</span>
+              <input name="sub" type="url" placeholder="https://example.com/subtitle.ass" autocomplete="off" />
+            </label>
+            <div id="formStatus" class="form-status" role="status"></div>
+            <div class="dialog-actions">
+              <button class="secondary-button" type="button" data-close data-i18n="cancel">Cancel</button>
+              <button class="primary-button" type="submit" data-i18n="create">Create</button>
+            </div>
+          </form>
+        </dialog>
+
+        <template id="tableVideo"><Film size={18} /></template>
+        <template id="tableAudio"><Music2 size={18} /></template>
+        <template id="tableImage"><FileImage size={18} /></template>
+        <template id="tableTrash"><Trash2 size={16} /></template>
+      </div>
+    )
+  }
+
+  <script>
+    const c = {
+      en: {
+        language: "Language", console: "Admin console", signIn: "Sign in", signInCopy: "Enter the administrator password to continue.",
+        password: "Password", signOut: "Sign out", storage: "Storage", pseudoMounts: "Pseudo mounts",
+        pageCopy: "Manage public media links and optional ASS subtitles.", addFile: "Add file", refresh: "Refresh",
+        name: "Name", path: "Path", type: "Type", subtitle: "Subtitle", source: "Source", actions: "Actions",
+        loading: "Loading...", addMount: "Add pseudo mount", close: "Close", folder: "Folder", video: "Video",
+        audio: "Audio", image: "Image", posterUrl: "Poster URL", mediaUrl: "Media URL", assUrl: "ASS subtitle URL",
+        cancel: "Cancel", create: "Create", empty: "No pseudo mounts yet", item: "item", items: "items",
+        wrongPassword: "Incorrect password.", signingIn: "Signing in...", loadFailed: "Could not load pseudo mounts.",
+        createFailed: "Could not create the pseudo mount.", created: "Pseudo mount created.", delete: "Delete",
+        deleteConfirm: "Delete this pseudo mount?", deleteFailed: "Could not delete the pseudo mount."
+      },
+      zh: {
+        language: "语言", console: "管理后台", signIn: "登录", signInCopy: "请输入管理员密码以继续。", password: "密码",
+        signOut: "退出登录", storage: "存储", pseudoMounts: "伪挂载", pageCopy: "管理公开媒体链接及可选的 ASS 字幕。",
+        addFile: "添加文件", refresh: "刷新", name: "文件名", path: "路径", type: "类型", subtitle: "字幕",
+        source: "源链接", actions: "操作", loading: "正在加载...", addMount: "添加伪挂载", close: "关闭",
+        folder: "目录", video: "视频", audio: "音频", image: "图片", posterUrl: "封面链接", mediaUrl: "媒体链接",
+        assUrl: "ASS 字幕链接", cancel: "取消", create: "创建", empty: "暂无伪挂载", item: "项", items: "项",
+        wrongPassword: "密码错误。", signingIn: "正在登录...", loadFailed: "无法读取伪挂载。",
+        createFailed: "无法创建伪挂载。", created: "伪挂载已创建。", delete: "删除", deleteConfirm: "删除此伪挂载？",
+        deleteFailed: "无法删除此伪挂载。"
+      },
+      ja: {
+        language: "言語", console: "管理コンソール", signIn: "ログイン", signInCopy: "管理者パスワードを入力してください。",
+        password: "パスワード", signOut: "ログアウト", storage: "ストレージ", pseudoMounts: "疑似マウント",
+        pageCopy: "公開メディアリンクと任意のASS字幕を管理します。", addFile: "ファイルを追加", refresh: "更新",
+        name: "名前", path: "パス", type: "種類", subtitle: "字幕", source: "元リンク", actions: "操作",
+        loading: "読み込み中...", addMount: "疑似マウントを追加", close: "閉じる", folder: "フォルダー",
+        video: "動画", audio: "音声", image: "画像", posterUrl: "ポスターURL", mediaUrl: "メディアURL",
+        assUrl: "ASS字幕URL", cancel: "キャンセル", create: "作成", empty: "疑似マウントはありません", item: "件",
+        items: "件", wrongPassword: "パスワードが正しくありません。", signingIn: "ログイン中...",
+        loadFailed: "疑似マウントを読み込めませんでした。", createFailed: "疑似マウントを作成できませんでした。",
+        created: "疑似マウントを作成しました。", delete: "削除", deleteConfirm: "この疑似マウントを削除しますか？",
+        deleteFailed: "疑似マウントを削除できませんでした。"
+      }
+    } as const;
+
+    type Lang = keyof typeof c;
+    type Item = { id: string; name: string; path: string; url: string; kind: "video" | "audio" | "image"; poster?: string; sub?: string };
+    let lang: Lang = "en";
+    let items: Item[] = [];
+    const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+    const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
+    const t = (k: keyof (typeof c)["en"]) => c[lang][k];
+    const set = (el: HTMLElement | null, message = "", tone = "") => {
+      if (!el) return;
+      el.textContent = message;
+      tone ? (el.dataset.tone = tone) : delete el.dataset.tone;
+    };
+
+    function applyLanguage() {
+      document.documentElement.lang = lang === "zh" ? "zh-CN" : lang === "ja" ? "ja" : "en";
+      document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
+        const key = el.dataset.i18n as keyof (typeof c)["en"];
+        if (key && c[lang][key]) el.textContent = t(key);
+      });
+      document.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach((el) => {
+        const key = el.dataset.i18nTitle as keyof (typeof c)["en"];
+        if (key && c[lang][key]) el.title = t(key);
+      });
+      document.querySelectorAll(".language-select").forEach((el) => ((el as unknown as HTMLSelectElement).value = lang));
+      renderRows();
+    }
+
+    function typeIcon(kind: Item["kind"]) {
+      const id = kind === "audio" ? "tableAudio" : kind === "image" ? "tableImage" : "tableVideo";
+      return document.querySelector<HTMLTemplateElement>(`#${id}`)?.innerHTML || "";
+    }
+
+    function renderRows() {
+      const rows = document.querySelector<HTMLElement>("#linkRows");
+      const count = document.querySelector<HTMLElement>("#mountCount");
+      if (!rows || !count) return;
+      count.textContent = `${items.length} ${items.length === 1 ? t("item") : t("items")}`;
+      if (!items.length) {
+        rows.innerHTML = `<tr><td class="empty-row" colspan="6">${esc(t("empty"))}</td></tr>`;
+        return;
+      }
+      const trash = document.querySelector<HTMLTemplateElement>("#tableTrash")?.innerHTML || "";
+      rows.innerHTML = items.map((item) => `
+        <tr>
+          <td><span class="table-file">${typeIcon(item.kind)}<span>${esc(item.name)}</span></span></td>
+          <td><span class="url-cell" title="${esc(item.path)}">${esc(item.path)}</span></td>
+          <td><span class="type-chip">${esc(t(item.kind))}</span></td>
+          <td>${item.sub ? '<span class="type-chip">ASS</span>' : '<span class="url-cell">-</span>'}</td>
+          <td><a class="url-cell" href="${esc(item.url)}" title="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.url)}</a></td>
+          <td><span class="row-actions"><button class="icon-button danger-button" type="button" data-delete="${esc(item.id)}" title="${esc(t("delete"))}">${trash}<span class="sr-only">${esc(t("delete"))}</span></button></span></td>
+        </tr>
+      `).join("");
+    }
+
+    async function loadLinks() {
+      const status = document.querySelector<HTMLElement>("#adminStatus");
+      set(status, t("loading"));
+      const response = await fetch("/api/admin/links");
+      if (response.status === 401) return location.reload();
+      const data = (await response.json()) as any;
+      if (!data.ok) throw new Error(data.error || t("loadFailed"));
+      items = data.items || [];
+      set(status);
+      renderRows();
+    }
+
+    document.querySelectorAll(".language-select").forEach((element) => {
+      const select = element as unknown as HTMLSelectElement;
+      select.addEventListener("change", () => {
+        lang = select.value as Lang;
+        localStorage.setItem("rp_l", lang);
+        applyLanguage();
+      });
+    });
+
+    const saved = localStorage.getItem("rp_l");
+    if (saved === "en" || saved === "zh" || saved === "ja") lang = saved;
+    applyLanguage();
+
+    async function detectLanguage() {
+      try {
+        const response = await fetch("/api/public/geo");
+        const data = (await response.json()) as { ok?: boolean; lang?: Lang };
+        if (!data.ok || (data.lang !== "en" && data.lang !== "zh" && data.lang !== "ja")) return;
+        if (localStorage.getItem("rp_l")) return;
+        lang = data.lang;
+        applyLanguage();
+      } catch {
+        // English remains the default when location detection is unavailable.
+      }
+    }
+
+    if (!saved) detectLanguage();
+
+    const loginForm = document.querySelector<HTMLFormElement>("#loginForm");
+    loginForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const status = document.querySelector<HTMLElement>("#loginStatus");
+      set(status, t("signingIn"));
+      const password = new FormData(loginForm).get("password");
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      const data = (await response.json()) as any;
+      if (!data.ok) return set(status, t("wrongPassword"), "error");
+      location.reload();
+    });
+
+    const dialog = document.querySelector<HTMLDialogElement>("#mountDialog");
+    const form = document.querySelector<HTMLFormElement>("#linkForm");
+    const kind = document.querySelector("#kindSelect") as HTMLSelectElement | null;
+    const subField = document.querySelector<HTMLElement>("#subField");
+    const toggleSub = () => {
+      if (!kind || !subField) return;
+      subField.hidden = kind.value !== "video";
+      const input = subField.querySelector<HTMLInputElement>("input");
+      if (input && kind.value !== "video") input.value = "";
+    };
+
+    document.querySelector("#addBtn")?.addEventListener("click", () => dialog?.showModal());
+    document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => dialog?.close()));
+    kind?.addEventListener("change", toggleSub);
+    toggleSub();
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const status = document.querySelector<HTMLElement>("#formStatus");
+      set(status, t("loading"));
+      const response = await fetch("/api/admin/links", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))
+      });
+      const data = (await response.json()) as any;
+      if (!data.ok) return set(status, data.details || data.error || t("createFailed"), "error");
+      form.reset();
+      const folder = form.querySelector<HTMLInputElement>('[name="folder"]');
+      if (folder) folder.value = "/root";
+      toggleSub();
+      set(status, t("created"), "ok");
+      await loadLinks();
+      setTimeout(() => dialog?.close(), 350);
+    });
+
+    document.querySelector("#linkRows")?.addEventListener("click", async (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLElement>("[data-delete]");
+      if (!button?.dataset.delete || !confirm(t("deleteConfirm"))) return;
+      const response = await fetch("/api/admin/links/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: button.dataset.delete })
+      });
+      const data = (await response.json()) as any;
+      if (!data.ok) return set(document.querySelector("#adminStatus") as HTMLElement | null, t("deleteFailed"), "error");
+      await loadLinks();
+    });
+
+    document.querySelector("#refreshLinks")?.addEventListener("click", () => loadLinks().catch((error) => set(document.querySelector("#adminStatus") as HTMLElement | null, error.message, "error")));
+    document.querySelector("#logoutBtn")?.addEventListener("click", async () => {
+      await fetch("/api/admin/logout", { method: "POST" });
+      location.reload();
+    });
+
+    if (document.querySelector("#linkRows")) loadLinks().catch((error) => set(document.querySelector("#adminStatus"), error.message, "error"));
+  </script>
+</SiteShell>

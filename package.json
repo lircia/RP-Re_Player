@@ -1,0 +1,27 @@
+{
+  "name": "rp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run cf:dev",
+    "astro:dev": "astro dev --host 0.0.0.0",
+    "build": "astro check && astro build",
+    "preview": "wrangler dev --config dist/server/wrangler.json --ip 127.0.0.1",
+    "cf:dev": "npm run build && wrangler dev --config dist/server/wrangler.json --ip 127.0.0.1",
+    "cf:deploy": "npm run build && wrangler deploy --config dist/server/wrangler.json",
+    "sync:local": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-local.ps1"
+  },
+  "dependencies": {
+    "@astrojs/check": "latest",
+    "@astrojs/cloudflare": "latest",
+    "@lucide/astro": "^1.24.0",
+    "astro": "latest",
+    "jassub": "^2.5.7",
+    "typescript": "latest"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "wrangler": "latest"
+  }
+}

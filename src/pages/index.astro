@@ -1,0 +1,437 @@
+---
+import {
+  ArrowLeft,
+  Captions,
+  ExternalLink,
+  FileImage,
+  Film,
+  Folder,
+  Languages,
+  Music2,
+  Play,
+  RefreshCw,
+  Search
+} from "@lucide/astro";
+import SiteShell from "../layouts/SiteShell.astro";
+---
+
+<SiteShell title="Re Player">
+  <div class="media-app">
+    <header class="app-topbar">
+      <a class="app-brand" href="/" aria-label="Re Player">
+        <span class="app-brand-mark"><Play size={20} fill="currentColor" /></span>
+        <span>
+          <strong>Re Player</strong>
+          <small>RP</small>
+        </span>
+      </a>
+
+      <label class="search-box">
+        <Search size={18} aria-hidden="true" />
+        <span class="sr-only" data-i18n="search">Search library</span>
+        <input id="searchInput" type="search" placeholder="Search library" data-i18n-placeholder="search" autocomplete="off" />
+      </label>
+
+      <label class="language-box">
+        <Languages size={18} aria-hidden="true" />
+        <span class="sr-only" data-i18n="language">Language</span>
+        <select id="languageSelect" aria-label="Language">
+          <option value="en">English</option>
+          <option value="zh">简体中文</option>
+          <option value="ja">日本語</option>
+        </select>
+      </label>
+    </header>
+
+    <div class="media-workspace">
+      <aside class="library-pane" aria-label="Media library">
+        <div class="library-heading">
+          <div>
+            <p class="section-kicker" data-i18n="library">Library</p>
+            <h1 id="pathTitle">/root</h1>
+          </div>
+          <div class="icon-actions">
+            <button id="parentBtn" class="icon-button" type="button" title="Parent folder" data-i18n-title="parent">
+              <ArrowLeft size={19} />
+              <span class="sr-only" data-i18n="parent">Parent folder</span>
+            </button>
+            <button id="refreshBtn" class="icon-button" type="button" title="Refresh" data-i18n-title="refresh">
+              <RefreshCw size={18} />
+              <span class="sr-only" data-i18n="refresh">Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <nav id="fileList" class="file-list" aria-live="polite">
+          <div class="list-state" data-i18n="loading">Loading...</div>
+        </nav>
+
+        <div class="library-footer">
+          <span id="itemCount">0 items</span>
+          <span id="libraryStatus" class="status-text" role="status"></span>
+        </div>
+      </aside>
+
+      <main class="player-pane">
+        <section id="playerStage" class="player-stage">
+          <div id="emptyPlayer" class="player-empty">
+            <span class="player-empty-mark"><Play size={34} fill="currentColor" /></span>
+            <strong data-i18n="nothingPlaying">Nothing playing</strong>
+            <span>Re Player</span>
+          </div>
+
+          <div id="videoFrame" class="video-frame" hidden>
+            <video id="videoPlayer" controls playsinline preload="metadata"></video>
+          </div>
+
+          <div id="imageFrame" class="image-frame" hidden>
+            <img id="imageViewer" alt="" />
+          </div>
+
+          <div id="audioFrame" class="audio-frame" hidden>
+            <img id="audioPoster" src="/poster.svg" alt="" />
+            <div class="audio-copy">
+              <Music2 size={30} />
+              <strong id="audioTitle">Re Player</strong>
+              <span id="audioPath">/root</span>
+              <audio id="audioPlayer" controls preload="metadata"></audio>
+            </div>
+          </div>
+        </section>
+
+        <section class="now-playing">
+          <div class="now-playing-copy">
+            <div class="media-labels">
+              <span id="kindBadge" class="media-badge" data-i18n="ready">Ready</span>
+              <span id="subtitleBadge" class="media-badge subtitle-badge" hidden>
+                <Captions size={14} /> ASS
+              </span>
+            </div>
+            <h2 id="mediaTitle" data-i18n="nothingSelected">Nothing selected</h2>
+            <p id="mediaPath">/root</p>
+          </div>
+          <a id="sourceLink" class="command-button" href="#" target="_blank" rel="noreferrer" hidden>
+            <ExternalLink size={17} />
+            <span data-i18n="openSource">Open source</span>
+          </a>
+        </section>
+
+        <div id="playerStatus" class="player-status" role="status"></div>
+      </main>
+    </div>
+  </div>
+
+  <template id="iconFolder"><Folder size={20} /></template>
+  <template id="iconVideo"><Film size={20} /></template>
+  <template id="iconAudio"><Music2 size={20} /></template>
+  <template id="iconImage"><FileImage size={20} /></template>
+
+  <script>
+    import JASSUB from "jassub";
+
+    const c = {
+      en: {
+        search: "Search library",
+        language: "Language",
+        library: "Library",
+        parent: "Parent folder",
+        refresh: "Refresh",
+        loading: "Loading...",
+        empty: "This folder is empty",
+        nothingPlaying: "Nothing playing",
+        nothingSelected: "Nothing selected",
+        ready: "Ready",
+        openSource: "Open source",
+        folder: "Folder",
+        video: "Video",
+        audio: "Audio",
+        image: "Image",
+        item: "item",
+        items: "items",
+        loadFailed: "Could not load this folder.",
+        itemFailed: "Could not open this media.",
+        subFailed: "The ASS subtitle could not be loaded.",
+        playing: "Now playing"
+      },
+      zh: {
+        search: "搜索媒体库",
+        language: "语言",
+        library: "媒体库",
+        parent: "上级目录",
+        refresh: "刷新",
+        loading: "正在加载...",
+        empty: "此目录为空",
+        nothingPlaying: "暂无播放内容",
+        nothingSelected: "尚未选择媒体",
+        ready: "就绪",
+        openSource: "打开源链接",
+        folder: "目录",
+        video: "视频",
+        audio: "音频",
+        image: "图片",
+        item: "项",
+        items: "项",
+        loadFailed: "无法读取此目录。",
+        itemFailed: "无法打开此媒体。",
+        subFailed: "ASS 字幕加载失败。",
+        playing: "正在播放"
+      },
+      ja: {
+        search: "ライブラリを検索",
+        language: "言語",
+        library: "ライブラリ",
+        parent: "親フォルダー",
+        refresh: "更新",
+        loading: "読み込み中...",
+        empty: "このフォルダーは空です",
+        nothingPlaying: "再生中のメディアはありません",
+        nothingSelected: "メディアが選択されていません",
+        ready: "準備完了",
+        openSource: "元リンクを開く",
+        folder: "フォルダー",
+        video: "動画",
+        audio: "音声",
+        image: "画像",
+        item: "件",
+        items: "件",
+        loadFailed: "フォルダーを読み込めませんでした。",
+        itemFailed: "メディアを開けませんでした。",
+        subFailed: "ASS字幕を読み込めませんでした。",
+        playing: "再生中"
+      }
+    } as const;
+
+    type Lang = keyof typeof c;
+    type MediaItem = {
+      id?: string;
+      name: string;
+      path: string;
+      url?: string;
+      kind?: "video" | "audio" | "image";
+      poster?: string;
+      sub?: string;
+      isDir?: boolean;
+    };
+
+    const s: { path: string; items: MediaItem[]; current: MediaItem | null; lang: Lang; ass: JASSUB | null } = {
+      path: "/root",
+      items: [],
+      current: null,
+      lang: "en",
+      ass: null
+    };
+
+    const d = {
+      search: document.querySelector<HTMLInputElement>("#searchInput")!,
+      language: document.querySelector("#languageSelect") as unknown as HTMLSelectElement,
+      path: document.querySelector<HTMLElement>("#pathTitle")!,
+      list: document.querySelector<HTMLElement>("#fileList")!,
+      count: document.querySelector<HTMLElement>("#itemCount")!,
+      libraryStatus: document.querySelector<HTMLElement>("#libraryStatus")!,
+      parent: document.querySelector<HTMLButtonElement>("#parentBtn")!,
+      refresh: document.querySelector<HTMLButtonElement>("#refreshBtn")!,
+      empty: document.querySelector<HTMLElement>("#emptyPlayer")!,
+      videoFrame: document.querySelector<HTMLElement>("#videoFrame")!,
+      video: document.querySelector<HTMLVideoElement>("#videoPlayer")!,
+      imageFrame: document.querySelector<HTMLElement>("#imageFrame")!,
+      image: document.querySelector<HTMLImageElement>("#imageViewer")!,
+      audioFrame: document.querySelector<HTMLElement>("#audioFrame")!,
+      audio: document.querySelector<HTMLAudioElement>("#audioPlayer")!,
+      audioPoster: document.querySelector<HTMLImageElement>("#audioPoster")!,
+      audioTitle: document.querySelector<HTMLElement>("#audioTitle")!,
+      audioPath: document.querySelector<HTMLElement>("#audioPath")!,
+      kind: document.querySelector<HTMLElement>("#kindBadge")!,
+      subtitle: document.querySelector<HTMLElement>("#subtitleBadge")!,
+      title: document.querySelector<HTMLElement>("#mediaTitle")!,
+      mediaPath: document.querySelector<HTMLElement>("#mediaPath")!,
+      source: document.querySelector<HTMLAnchorElement>("#sourceLink")!,
+      playerStatus: document.querySelector<HTMLElement>("#playerStatus")!
+    };
+
+    const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+    const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
+    const t = (k: keyof (typeof c)["en"]) => c[s.lang][k];
+    const icon = (item: MediaItem) => {
+      const id = item.isDir ? "iconFolder" : item.kind === "audio" ? "iconAudio" : item.kind === "image" ? "iconImage" : "iconVideo";
+      return document.querySelector<HTMLTemplateElement>(`#${id}`)?.innerHTML ?? "";
+    };
+    const type = (item: MediaItem) => item.isDir ? "folder" : item.kind || "video";
+
+    function setStatus(el: HTMLElement, message = "", tone = "") {
+      el.textContent = message;
+      tone ? (el.dataset.tone = tone) : delete el.dataset.tone;
+    }
+
+    function applyLanguage() {
+      document.documentElement.lang = s.lang === "zh" ? "zh-CN" : s.lang === "ja" ? "ja" : "en";
+      document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
+        const key = el.dataset.i18n as keyof (typeof c)["en"];
+        if (key && c[s.lang][key]) el.textContent = t(key);
+      });
+      document.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach((el) => {
+        const key = el.dataset.i18nTitle as keyof (typeof c)["en"];
+        if (key && c[s.lang][key]) el.title = t(key);
+      });
+      document.querySelectorAll<HTMLInputElement>("[data-i18n-placeholder]").forEach((el) => {
+        const key = el.dataset.i18nPlaceholder as keyof (typeof c)["en"];
+        if (key && c[s.lang][key]) el.placeholder = t(key);
+      });
+      render();
+      renderCurrent();
+    }
+
+    function render() {
+      d.path.textContent = s.path;
+      d.parent.disabled = s.path === "/root";
+      const q = d.search.value.trim().toLocaleLowerCase(s.lang);
+      const items = s.items.filter((item) => !q || `${item.name} ${item.path}`.toLocaleLowerCase(s.lang).includes(q));
+      d.count.textContent = `${items.length} ${items.length === 1 ? t("item") : t("items")}`;
+      if (!items.length) {
+        d.list.innerHTML = `<div class="list-state">${esc(t("empty"))}</div>`;
+        return;
+      }
+      d.list.innerHTML = items.map((item) => `
+        <button class="file-row${s.current?.path === item.path ? " is-active" : ""}" type="button" data-path="${esc(item.path)}" data-dir="${item.isDir ? "1" : "0"}">
+          <span class="file-icon file-icon-${esc(type(item))}">${icon(item)}</span>
+          <span class="file-copy">
+            <strong>${esc(item.name)}</strong>
+            <small>${esc(t(type(item) as "folder" | "video" | "audio" | "image"))}</small>
+          </span>
+        </button>
+      `).join("");
+    }
+
+    function renderCurrent() {
+      if (!s.current) return;
+      d.kind.textContent = t(s.current.kind || "video");
+      d.title.textContent = s.current.name;
+      d.mediaPath.textContent = s.current.path;
+      d.subtitle.hidden = !s.current.sub;
+    }
+
+    async function load(path = s.path) {
+      setStatus(d.libraryStatus, t("loading"));
+      const response = await fetch("/api/public/list", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path })
+      });
+      const data = (await response.json()) as any;
+      if (!data.ok) throw new Error(data.details || data.error || t("loadFailed"));
+      s.path = data.path || "/root";
+      s.items = data.items || [];
+      setStatus(d.libraryStatus);
+      render();
+    }
+
+    async function clearMedia() {
+      if (s.ass) {
+        await s.ass.destroy().catch(() => undefined);
+        s.ass = null;
+      }
+      d.video.pause();
+      d.audio.pause();
+      d.video.removeAttribute("src");
+      d.audio.removeAttribute("src");
+      d.image.removeAttribute("src");
+      d.videoFrame.hidden = true;
+      d.imageFrame.hidden = true;
+      d.audioFrame.hidden = true;
+      d.empty.hidden = true;
+    }
+
+    async function openItem(path: string) {
+      setStatus(d.playerStatus, t("loading"));
+      const response = await fetch("/api/public/item", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path })
+      });
+      const data = (await response.json()) as any;
+      if (!data.ok) throw new Error(data.details || data.error || t("itemFailed"));
+      const item: MediaItem = data.item;
+      await clearMedia();
+      s.current = item;
+      d.source.href = item.url || "#";
+      d.source.hidden = false;
+      renderCurrent();
+      render();
+
+      if (item.kind === "image") {
+        d.imageFrame.hidden = false;
+        d.image.src = item.url || "";
+        d.image.alt = item.name;
+      } else if (item.kind === "audio") {
+        d.audioFrame.hidden = false;
+        d.audioPoster.src = item.poster || "/poster.svg";
+        d.audioPoster.alt = "";
+        d.audioTitle.textContent = item.name;
+        d.audioPath.textContent = item.path;
+        d.audio.src = item.url || "";
+        d.audio.load();
+        d.audio.play().catch(() => undefined);
+      } else {
+        d.videoFrame.hidden = false;
+        d.video.poster = item.poster || "/poster.svg";
+        d.video.src = item.url || "";
+        d.video.load();
+        if (item.sub) {
+          try {
+            const ass = new JASSUB({
+              video: d.video,
+              subUrl: `/api/public/sub?path=${encodeURIComponent(item.path)}`
+            });
+            s.ass = ass;
+            ass.ready.catch(() => {
+              if (s.ass === ass) setStatus(d.playerStatus, t("subFailed"), "error");
+            });
+          } catch {
+            setStatus(d.playerStatus, t("subFailed"), "error");
+          }
+        }
+        d.video.play().catch(() => undefined);
+      }
+      if (!d.playerStatus.dataset.tone) setStatus(d.playerStatus, t("playing"));
+    }
+
+    d.list.addEventListener("click", (event) => {
+      const row = (event.target as HTMLElement).closest<HTMLElement>("[data-path]");
+      if (!row?.dataset.path) return;
+      const action = row.dataset.dir === "1" ? load(row.dataset.path) : openItem(row.dataset.path);
+      action.catch((error) => setStatus(row.dataset.dir === "1" ? d.libraryStatus : d.playerStatus, error.message, "error"));
+    });
+
+    d.parent.addEventListener("click", () => {
+      const parent = s.path.split("/").filter(Boolean).slice(0, -1).join("/");
+      load(parent ? `/${parent}` : "/root").catch((error) => setStatus(d.libraryStatus, error.message, "error"));
+    });
+    d.refresh.addEventListener("click", () => load().catch((error) => setStatus(d.libraryStatus, error.message, "error")));
+    d.search.addEventListener("input", render);
+    d.language.addEventListener("change", () => {
+      s.lang = d.language.value as Lang;
+      localStorage.setItem("rp_l", s.lang);
+      applyLanguage();
+    });
+
+    async function detectLanguage() {
+      try {
+        const response = await fetch("/api/public/geo");
+        const data = (await response.json()) as { ok?: boolean; lang?: Lang };
+        if (!data.ok || (data.lang !== "en" && data.lang !== "zh" && data.lang !== "ja")) return;
+        if (localStorage.getItem("rp_l")) return;
+        s.lang = data.lang;
+        d.language.value = s.lang;
+        applyLanguage();
+      } catch {
+        // English remains the default when location detection is unavailable.
+      }
+    }
+
+    const saved = localStorage.getItem("rp_l");
+    if (saved === "zh" || saved === "ja" || saved === "en") s.lang = saved;
+    d.language.value = s.lang;
+    applyLanguage();
+    if (!saved) detectLanguage();
+    load("/root").catch((error) => setStatus(d.libraryStatus, error.message, "error"));
+  </script>
+</SiteShell>
