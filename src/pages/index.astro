@@ -251,6 +251,71 @@ import SiteShell from "../layouts/SiteShell.astro";
     const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
     const t = (k: keyof (typeof c)["en"]) => c[s.lang][k];
+    const subtitleFontUrls = async (content: string) => {
+      const characters = [...new Set([...content].filter((character) => {
+        const point = character.codePointAt(0) || 0;
+        return point >= 0x20 && point !== 0x7f;
+      }))];
+      const chunks = Array.from(
+        { length: Math.max(1, Math.ceil(characters.length / 700)) },
+        (_, part) => characters.slice(part * 700, (part + 1) * 700).join("")
+      );
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 6000);
+      try {
+        const urls = await Promise.all(chunks.map(async (text) => {
+          const url = new URL("https://fonts.googleapis.com/css2");
+          url.searchParams.set("family", "Noto Sans SC:wght@400");
+          url.searchParams.set("text", text);
+          const response = await fetch(url, { signal: controller.signal });
+          if (!response.ok) throw new Error("Font CSS request failed.");
+          const css = await response.text();
+          const font = css.match(/url\((https:\/\/[^)]+)\)/)?.[1];
+          if (!font) throw new Error("Font URL was not found.");
+          return font;
+        }));
+        const fonts = await Promise.all(urls.map(async (url) => {
+          const response = await fetch(url, { signal: controller.signal });
+          if (!response.ok) throw new Error("Font request failed.");
+          return new Uint8Array(await response.arrayBuffer());
+        }));
+        return { fonts, defaultFont: "Noto Sans SC" };
+      } catch {
+        const kana = [...content].filter((character) => {
+          const point = character.codePointAt(0) || 0;
+          return point >= 0x3040 && point <= 0x30ff;
+        }).length;
+        const han = [...content].filter((character) => {
+          const point = character.codePointAt(0) || 0;
+          return point >= 0x4e00 && point <= 0x9fff;
+        }).length;
+        const japanese = kana * 3 > han;
+        const url = japanese ? "/fonts/NotoSansJP-Regular.woff2" : "/fonts/NotoSansSC-Regular.woff2";
+        const response = await fetch(url);
+        return {
+          fonts: response.ok ? [new Uint8Array(await response.arrayBuffer())] : [],
+          defaultFont: japanese ? "Noto Sans JP" : "Noto Sans SC"
+        };
+      } finally {
+        window.clearTimeout(timer);
+      }
+    };
+    const normalizeAssFonts = (content: string, font: string) => {
+      let styles = false;
+      return content.split(/\r?\n/).map((line) => {
+        if (/^\s*\[(V4\+? Styles)\]\s*$/i.test(line)) {
+          styles = true;
+          return line;
+        }
+        if (/^\s*\[.+\]\s*$/.test(line)) styles = false;
+        if (styles && /^\s*Style\s*:/i.test(line)) {
+          const fields = line.split(",");
+          if (fields.length > 2) fields[1] = font;
+          line = fields.join(",");
+        }
+        return line.replace(/\\fn[^\\}]+/g, `\\fn${font}`);
+      }).join("\n");
+    };
     const icon = (item: MediaItem) => {
       const id = item.isDir ? "iconFolder" : item.kind === "audio" ? "iconAudio" : item.kind === "image" ? "iconImage" : "iconVideo";
       return document.querySelector<HTMLTemplateElement>(`#${id}`)?.innerHTML ?? "";
@@ -377,12 +442,25 @@ import SiteShell from "../layouts/SiteShell.astro";
         d.video.load();
         if (item.sub) {
           try {
+            const subUrl = `/api/public/sub?path=${encodeURIComponent(item.path)}`;
+            const response = await fetch(subUrl);
+            if (!response.ok) throw new Error("Subtitle request failed.");
+            const rawSubtitle = await response.text();
+            const fontPromise = subtitleFontUrls(rawSubtitle);
+            const subContent = normalizeAssFonts(rawSubtitle, "Noto Sans SC");
             const ass = new JASSUB({
               video: d.video,
-              subUrl: `/api/public/sub?path=${encodeURIComponent(item.path)}`
+              subContent
             });
             s.ass = ass;
-            ass.ready.catch(() => {
+            d.videoFrame.dataset.subtitleReady = "0";
+            Promise.all([ass.ready, fontPromise]).then(async ([, font]) => {
+              if (s.ass !== ass) return;
+              await ass.renderer.addFonts(font.fonts);
+              ass.renderer.setDefaultFont(font.defaultFont);
+              await ass.resize(true);
+              d.videoFrame.dataset.subtitleReady = "1";
+            }).catch(() => {
               if (s.ass === ass) setStatus(d.playerStatus, t("subFailed"), "error");
             });
           } catch {

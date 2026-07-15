@@ -8,7 +8,7 @@ Re Player 是一个使用 Astro 框架、可部署到 Cloudflare Workers 的链�
 
 - 在固定根路径 `/root` 下创建链接伪挂载
 - 播放视频、音频和图片
-- 使用 JASSUB/libass 在浏览器中渲染可选 ASS 字幕
+- 使用 JASSUB/libass 和内置中日文回退字体在浏览器中渲染可选 ASS 字幕
 - 根据 IP 自动选择英语、简体中文或日语，并支持手动覆盖
 - 手动访问 `/admin`，验证密码后进入类似 OpenList 的管理表格
 - 使用 Cloudflare D1 持久化，本地无 D1 时使用内存回退
@@ -63,7 +63,7 @@ UI=你的网站-id
 
 ## ASS 字幕
 
-添加视频时可填写公开的 HTTP(S) `.ass` 字幕链接。RP 会通过站内字幕接口读取已配置的字幕，避免普通浏览器跨域限制；字幕来源仍需能被 Cloudflare Workers 访问。
+添加视频时可填写公开的 HTTP(S) `.ass` 字幕链接。RP 会通过站内字幕接口读取已配置的字幕，避免普通浏览器跨域限制；播放器会按每份字幕实际使用的字符请求小型 Noto Sans 字体子集，字体服务不可用时再回退到站内 SC/JP 字体。字幕来源仍需能被 Cloudflare Workers 访问。
 
 ## 自动语言
 

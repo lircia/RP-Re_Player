@@ -8,7 +8,7 @@ Re Player is a link-based media library that uses the Astro framework and runs o
 
 - Link pseudo-mounts under the required `/root` path
 - Video, audio, and image playback
-- Optional ASS subtitles rendered in the browser with JASSUB/libass
+- Optional ASS subtitles rendered in the browser with JASSUB/libass and bundled Chinese/Japanese font fallbacks
 - Automatic IP-based English, Simplified Chinese, or Japanese selection with a manual override
 - Password-protected `/admin` console with an OpenList-style file table
 - Cloudflare D1 persistence with an in-memory local fallback
@@ -63,7 +63,7 @@ UI=your-website-id
 
 ## ASS Subtitles
 
-When adding a video, enter a public HTTP(S) URL to an `.ass` subtitle file. RP fetches that configured subtitle through its own public subtitle endpoint, which avoids ordinary browser CORS restrictions. The subtitle source must still be reachable from Cloudflare Workers.
+When adding a video, enter a public HTTP(S) URL to an `.ass` subtitle file. RP fetches that configured subtitle through its own public subtitle endpoint, which avoids ordinary browser CORS restrictions. The player requests small Noto Sans subsets for the characters used by each subtitle; locally hosted SC/JP files remain as a fallback when the font service is unavailable. The subtitle source must still be reachable from Cloudflare Workers.
 
 ## Automatic Language
 
