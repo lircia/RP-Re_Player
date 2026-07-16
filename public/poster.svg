@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Re Player media placeholder">
-  <rect width="1280" height="720" fill="#edf2f0"/>
-  <rect x="120" y="92" width="1040" height="536" rx="8" fill="#ffffff" stroke="#d5dfdb" stroke-width="2"/>
-  <rect x="168" y="140" width="944" height="376" rx="8" fill="#14201b"/>
-  <path d="m590 238 164 90-164 90V238Z" fill="#42a979"/>
-  <rect x="168" y="556" width="330" height="18" rx="4" fill="#b8c8c1"/>
-  <rect x="168" y="590" width="196" height="10" rx="4" fill="#d5dfdb"/>
-  <text x="1112" y="590" text-anchor="end" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="700" fill="#26362f">Re Player</text>
+  <rect width="1280" height="720" fill="#f3f8fd"/>
+  <rect x="120" y="92" width="1040" height="536" rx="8" fill="#ffffff" stroke="#c9ddec" stroke-width="2"/>
+  <rect x="168" y="140" width="944" height="376" rx="8" fill="#08131e"/>
+  <path d="m590 238 164 90-164 90V238Z" fill="#5aa4df"/>
+  <rect x="168" y="556" width="330" height="18" rx="4" fill="#b9d2e6"/>
+  <rect x="168" y="590" width="196" height="10" rx="4" fill="#dce9f4"/>
+  <text x="1112" y="590" text-anchor="end" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="700" fill="#173854">Re Player</text>
 </svg>

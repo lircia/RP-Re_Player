@@ -8,9 +8,14 @@ import {
   Folder,
   Languages,
   Music2,
+  Maximize,
+  Minimize,
+  Pause,
   Play,
   RefreshCw,
-  Search
+  Search,
+  Volume2,
+  VolumeX
 } from "@lucide/astro";
 import SiteShell from "../layouts/SiteShell.astro";
 ---
@@ -80,8 +85,34 @@ import SiteShell from "../layouts/SiteShell.astro";
             <span>Re Player</span>
           </div>
 
-          <div id="videoFrame" class="video-frame" hidden>
-            <video id="videoPlayer" controls playsinline preload="metadata"></video>
+          <div id="videoFrame" class="video-frame" tabindex="0" hidden>
+            <video id="videoPlayer" playsinline preload="metadata"></video>
+            <div id="videoControls" class="video-controls">
+              <label class="video-seek">
+                <span class="sr-only" data-i18n="seek">Seek</span>
+                <input id="videoSeek" type="range" min="0" max="0" value="0" step="0.1" aria-label="Seek" />
+              </label>
+              <div class="video-control-row">
+                <button id="playToggle" class="player-control" type="button" title="Play" aria-label="Play">
+                  <span id="playIcon"><Play size={19} fill="currentColor" /></span>
+                  <span id="pauseIcon" hidden><Pause size={19} fill="currentColor" /></span>
+                </button>
+                <output id="videoTime" class="video-time">00:00 / 00:00</output>
+                <span class="video-control-spacer"></span>
+                <button id="muteToggle" class="player-control" type="button" title="Mute" aria-label="Mute">
+                  <span id="volumeIcon"><Volume2 size={19} /></span>
+                  <span id="mutedIcon" hidden><VolumeX size={19} /></span>
+                </button>
+                <label class="volume-control">
+                  <span class="sr-only" data-i18n="volume">Volume</span>
+                  <input id="videoVolume" type="range" min="0" max="1" value="1" step="0.05" aria-label="Volume" />
+                </label>
+                <button id="fullscreenToggle" class="player-control" type="button" title="Fullscreen" aria-label="Fullscreen">
+                  <span id="fullscreenIcon"><Maximize size={19} /></span>
+                  <span id="exitFullscreenIcon" hidden><Minimize size={19} /></span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div id="imageFrame" class="image-frame" hidden>
@@ -151,7 +182,15 @@ import SiteShell from "../layouts/SiteShell.astro";
         loadFailed: "Could not load this folder.",
         itemFailed: "Could not open this media.",
         subFailed: "The ASS subtitle could not be loaded.",
-        playing: "Now playing"
+        playing: "Now playing",
+        play: "Play",
+        pause: "Pause",
+        mute: "Mute",
+        unmute: "Unmute",
+        seek: "Seek",
+        volume: "Volume",
+        fullscreen: "Fullscreen",
+        exitFullscreen: "Exit fullscreen"
       },
       zh: {
         search: "搜索媒体库",
@@ -174,7 +213,15 @@ import SiteShell from "../layouts/SiteShell.astro";
         loadFailed: "无法读取此目录。",
         itemFailed: "无法打开此媒体。",
         subFailed: "ASS 字幕加载失败。",
-        playing: "正在播放"
+        playing: "正在播放",
+        play: "播放",
+        pause: "暂停",
+        mute: "静音",
+        unmute: "取消静音",
+        seek: "播放进度",
+        volume: "音量",
+        fullscreen: "全屏",
+        exitFullscreen: "退出全屏"
       },
       ja: {
         search: "ライブラリを検索",
@@ -197,7 +244,15 @@ import SiteShell from "../layouts/SiteShell.astro";
         loadFailed: "フォルダーを読み込めませんでした。",
         itemFailed: "メディアを開けませんでした。",
         subFailed: "ASS字幕を読み込めませんでした。",
-        playing: "再生中"
+        playing: "再生中",
+        play: "再生",
+        pause: "一時停止",
+        mute: "ミュート",
+        unmute: "ミュート解除",
+        seek: "再生位置",
+        volume: "音量",
+        fullscreen: "全画面",
+        exitFullscreen: "全画面を終了"
       }
     } as const;
 
@@ -233,6 +288,19 @@ import SiteShell from "../layouts/SiteShell.astro";
       empty: document.querySelector<HTMLElement>("#emptyPlayer")!,
       videoFrame: document.querySelector<HTMLElement>("#videoFrame")!,
       video: document.querySelector<HTMLVideoElement>("#videoPlayer")!,
+      videoControls: document.querySelector<HTMLElement>("#videoControls")!,
+      playToggle: document.querySelector<HTMLButtonElement>("#playToggle")!,
+      playIcon: document.querySelector<HTMLElement>("#playIcon")!,
+      pauseIcon: document.querySelector<HTMLElement>("#pauseIcon")!,
+      seek: document.querySelector<HTMLInputElement>("#videoSeek")!,
+      time: document.querySelector<HTMLOutputElement>("#videoTime")!,
+      muteToggle: document.querySelector<HTMLButtonElement>("#muteToggle")!,
+      volumeIcon: document.querySelector<HTMLElement>("#volumeIcon")!,
+      mutedIcon: document.querySelector<HTMLElement>("#mutedIcon")!,
+      volume: document.querySelector<HTMLInputElement>("#videoVolume")!,
+      fullscreenToggle: document.querySelector<HTMLButtonElement>("#fullscreenToggle")!,
+      fullscreenIcon: document.querySelector<HTMLElement>("#fullscreenIcon")!,
+      exitFullscreenIcon: document.querySelector<HTMLElement>("#exitFullscreenIcon")!,
       imageFrame: document.querySelector<HTMLElement>("#imageFrame")!,
       image: document.querySelector<HTMLImageElement>("#imageViewer")!,
       audioFrame: document.querySelector<HTMLElement>("#audioFrame")!,
@@ -247,6 +315,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       source: document.querySelector<HTMLAnchorElement>("#sourceLink")!,
       playerStatus: document.querySelector<HTMLElement>("#playerStatus")!
     };
+    let controlTimer = 0;
+    let seeking = false;
 
     const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
@@ -327,6 +397,69 @@ import SiteShell from "../layouts/SiteShell.astro";
       tone ? (el.dataset.tone = tone) : delete el.dataset.tone;
     }
 
+    const formatTime = (seconds: number) => {
+      if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
+      const whole = Math.floor(seconds);
+      const hours = Math.floor(whole / 3600);
+      const minutes = Math.floor((whole % 3600) / 60);
+      const rest = whole % 60;
+      return hours
+        ? `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`
+        : `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+    };
+
+    const setRangeFill = (input: HTMLInputElement, value: number) => {
+      input.style.setProperty("--range-fill", `${Math.max(0, Math.min(100, value))}%`);
+    };
+
+    function scheduleControls(delay = 2200) {
+      window.clearTimeout(controlTimer);
+      if (d.video.paused || seeking) return;
+      controlTimer = window.setTimeout(() => d.videoFrame.classList.add("controls-hidden"), delay);
+    }
+
+    function showControls(lock = false) {
+      window.clearTimeout(controlTimer);
+      d.videoFrame.classList.remove("controls-hidden");
+      if (!lock) scheduleControls();
+    }
+
+    function updateVideoControls() {
+      const paused = d.video.paused;
+      const muted = d.video.muted || d.video.volume === 0;
+      const fullscreen = document.fullscreenElement === d.videoFrame;
+      const duration = Number.isFinite(d.video.duration) ? d.video.duration : 0;
+      d.videoFrame.dataset.playing = paused ? "0" : "1";
+      d.playIcon.hidden = !paused;
+      d.pauseIcon.hidden = paused;
+      d.playToggle.title = d.playToggle.ariaLabel = t(paused ? "play" : "pause");
+      d.volumeIcon.hidden = muted;
+      d.mutedIcon.hidden = !muted;
+      d.muteToggle.title = d.muteToggle.ariaLabel = t(muted ? "unmute" : "mute");
+      d.fullscreenIcon.hidden = fullscreen;
+      d.exitFullscreenIcon.hidden = !fullscreen;
+      d.fullscreenToggle.title = d.fullscreenToggle.ariaLabel = t(fullscreen ? "exitFullscreen" : "fullscreen");
+      d.seek.ariaLabel = t("seek");
+      d.volume.ariaLabel = t("volume");
+      d.seek.max = String(duration);
+      if (!seeking) d.seek.value = String(Math.min(d.video.currentTime || 0, duration));
+      d.volume.value = String(muted ? 0 : d.video.volume);
+      d.time.value = `${formatTime(d.video.currentTime)} / ${formatTime(duration)}`;
+      setRangeFill(d.seek, duration ? (Number(d.seek.value) / duration) * 100 : 0);
+      setRangeFill(d.volume, Number(d.volume.value) * 100);
+    }
+
+    function togglePlay() {
+      if (d.video.paused) d.video.play().catch(() => undefined);
+      else d.video.pause();
+    }
+
+    async function toggleFullscreen() {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await d.videoFrame.requestFullscreen();
+      d.videoFrame.focus({ preventScroll: true });
+    }
+
     function applyLanguage() {
       document.documentElement.lang = s.lang === "zh" ? "zh-CN" : s.lang === "ja" ? "ja" : "en";
       document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
@@ -341,6 +474,7 @@ import SiteShell from "../layouts/SiteShell.astro";
         const key = el.dataset.i18nPlaceholder as keyof (typeof c)["en"];
         if (key && c[s.lang][key]) el.placeholder = t(key);
       });
+      updateVideoControls();
       render();
       renderCurrent();
     }
@@ -400,6 +534,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       d.audio.removeAttribute("src");
       d.image.removeAttribute("src");
       d.videoFrame.hidden = true;
+      d.videoFrame.classList.remove("controls-hidden");
+      window.clearTimeout(controlTimer);
       d.imageFrame.hidden = true;
       d.audioFrame.hidden = true;
       d.empty.hidden = true;
@@ -440,6 +576,8 @@ import SiteShell from "../layouts/SiteShell.astro";
         d.video.poster = item.poster || "/poster.svg";
         d.video.src = item.url || "";
         d.video.load();
+        updateVideoControls();
+        showControls();
         if (item.sub) {
           try {
             const subUrl = `/api/public/sub?path=${encodeURIComponent(item.path)}`;
@@ -485,6 +623,65 @@ import SiteShell from "../layouts/SiteShell.astro";
     });
     d.refresh.addEventListener("click", () => load().catch((error) => setStatus(d.libraryStatus, error.message, "error")));
     d.search.addEventListener("input", render);
+    d.playToggle.addEventListener("click", togglePlay);
+    d.muteToggle.addEventListener("click", () => {
+      d.video.muted = !d.video.muted;
+      if (!d.video.muted && d.video.volume === 0) d.video.volume = 1;
+    });
+    d.fullscreenToggle.addEventListener("click", () => toggleFullscreen().catch(() => undefined));
+    d.video.addEventListener("click", togglePlay);
+    d.video.addEventListener("dblclick", () => toggleFullscreen().catch(() => undefined));
+    d.videoFrame.addEventListener("pointermove", () => showControls());
+    d.videoFrame.addEventListener("pointerdown", () => d.videoFrame.focus({ preventScroll: true }));
+    d.videoFrame.addEventListener("pointerleave", () => scheduleControls(600));
+    d.videoControls.addEventListener("pointerenter", () => showControls(true));
+    d.videoControls.addEventListener("pointerleave", () => showControls());
+    d.videoControls.addEventListener("focusin", () => showControls(true));
+    d.videoControls.addEventListener("focusout", () => showControls());
+    d.seek.addEventListener("pointerdown", () => {
+      seeking = true;
+      showControls(true);
+    });
+    d.seek.addEventListener("input", () => {
+      d.video.currentTime = Number(d.seek.value);
+      updateVideoControls();
+    });
+    window.addEventListener("pointerup", () => {
+      if (!seeking) return;
+      seeking = false;
+      scheduleControls();
+    });
+    d.volume.addEventListener("input", () => {
+      d.video.muted = false;
+      d.video.volume = Number(d.volume.value);
+    });
+    ["play", "pause", "ended", "timeupdate", "durationchange", "loadedmetadata", "volumechange"].forEach((event) => {
+      d.video.addEventListener(event, () => {
+        updateVideoControls();
+        if (event === "play") scheduleControls();
+        if (event === "pause" || event === "ended") showControls(true);
+      });
+    });
+    document.addEventListener("fullscreenchange", () => {
+      updateVideoControls();
+      showControls();
+      s.ass?.resize(true).catch(() => undefined);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (d.videoFrame.hidden) return;
+      const active = document.activeElement;
+      const controlsPlayer = document.fullscreenElement === d.videoFrame || active === d.videoFrame || (active instanceof Node && d.videoFrame.contains(active));
+      if (!controlsPlayer || active instanceof HTMLInputElement) return;
+      const key = event.key.toLowerCase();
+      if (key === " " || key === "k") togglePlay();
+      else if (key === "f") toggleFullscreen().catch(() => undefined);
+      else if (key === "m") d.video.muted = !d.video.muted;
+      else if (key === "arrowleft") d.video.currentTime = Math.max(0, d.video.currentTime - 5);
+      else if (key === "arrowright") d.video.currentTime = Math.min(d.video.duration || Infinity, d.video.currentTime + 5);
+      else return;
+      event.preventDefault();
+      showControls();
+    });
     d.language.addEventListener("change", () => {
       s.lang = d.language.value as Lang;
       localStorage.setItem("rp_l", s.lang);
