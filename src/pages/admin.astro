@@ -174,6 +174,21 @@ const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
               <span data-i18n="assUrl">ASS subtitle URL</span>
               <input name="sub" type="url" placeholder="https://example.com/subtitle.ass" autocomplete="off" />
             </label>
+            <div id="lrcFields" class="lyrics-fields" hidden>
+              <label class="field">
+                <span data-i18n="lrcUrl">Lyrics URL</span>
+                <input name="lrc" type="url" placeholder="https://example.com/lyrics.lrc" autocomplete="off" />
+              </label>
+              <label class="toggle-field">
+                <input id="bilingualToggle" name="bi" type="checkbox" value="1" />
+                <span class="toggle-track" aria-hidden="true"><span></span></span>
+                <span data-i18n="bilingual">Bilingual lyrics</span>
+              </label>
+              <label id="lrc2Field" class="field" hidden>
+                <span data-i18n="otherLrcUrl">Other-language lyrics URL</span>
+                <input name="lrc2" type="url" placeholder="https://example.com/other-language.lrc" autocomplete="off" />
+              </label>
+            </div>
             <div id="formStatus" class="form-status" role="status"></div>
             <div class="dialog-actions">
               <button class="secondary-button" type="button" data-close data-i18n="cancel">Cancel</button>
@@ -195,10 +210,11 @@ const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
       en: {
         language: "Language", console: "Admin console", signIn: "Sign in", signInCopy: "Enter the administrator password to continue.",
         password: "Password", signOut: "Sign out", storage: "Storage", pseudoMounts: "Pseudo mounts",
-        pageCopy: "Manage public media links and optional ASS subtitles.", addFile: "Add file", refresh: "Refresh",
-        name: "Name", path: "Path", type: "Type", subtitle: "Subtitle", source: "Source", actions: "Actions",
+        pageCopy: "Manage public media links, subtitles, and lyrics.", addFile: "Add file", refresh: "Refresh",
+        name: "Name", path: "Path", type: "Type", subtitle: "Subtitles / Lyrics", source: "Source", actions: "Actions",
         loading: "Loading...", addMount: "Add pseudo mount", close: "Close", folder: "Folder", video: "Video",
         audio: "Audio", image: "Image", posterUrl: "Poster URL", mediaUrl: "Media URL", assUrl: "ASS subtitle URL",
+        lrcUrl: "Lyrics URL", bilingual: "Bilingual lyrics", otherLrcUrl: "Other-language lyrics URL",
         cancel: "Cancel", create: "Create", empty: "No pseudo mounts yet", item: "item", items: "items",
         wrongPassword: "Incorrect password.", signingIn: "Signing in...", loadFailed: "Could not load pseudo mounts.",
         createFailed: "Could not create the pseudo mount.", created: "Pseudo mount created.", delete: "Delete",
@@ -206,11 +222,12 @@ const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
       },
       zh: {
         language: "语言", console: "管理后台", signIn: "登录", signInCopy: "请输入管理员密码以继续。", password: "密码",
-        signOut: "退出登录", storage: "存储", pseudoMounts: "伪挂载", pageCopy: "管理公开媒体链接及可选的 ASS 字幕。",
-        addFile: "添加文件", refresh: "刷新", name: "文件名", path: "路径", type: "类型", subtitle: "字幕",
+        signOut: "退出登录", storage: "存储", pseudoMounts: "伪挂载", pageCopy: "管理公开媒体链接、字幕及歌词。",
+        addFile: "添加文件", refresh: "刷新", name: "文件名", path: "路径", type: "类型", subtitle: "字幕 / 歌词",
         source: "源链接", actions: "操作", loading: "正在加载...", addMount: "添加伪挂载", close: "关闭",
         folder: "目录", video: "视频", audio: "音频", image: "图片", posterUrl: "封面链接", mediaUrl: "媒体链接",
-        assUrl: "ASS 字幕链接", cancel: "取消", create: "创建", empty: "暂无伪挂载", item: "项", items: "项",
+        assUrl: "ASS 字幕链接", lrcUrl: "歌词链接", bilingual: "是否双语", otherLrcUrl: "另一语言歌词链接",
+        cancel: "取消", create: "创建", empty: "暂无伪挂载", item: "项", items: "项",
         wrongPassword: "密码错误。", signingIn: "正在登录...", loadFailed: "无法读取伪挂载。",
         createFailed: "无法创建伪挂载。", created: "伪挂载已创建。", delete: "删除", deleteConfirm: "删除此伪挂载？",
         deleteFailed: "无法删除此伪挂载。"
@@ -218,11 +235,12 @@ const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
       ja: {
         language: "言語", console: "管理コンソール", signIn: "ログイン", signInCopy: "管理者パスワードを入力してください。",
         password: "パスワード", signOut: "ログアウト", storage: "ストレージ", pseudoMounts: "疑似マウント",
-        pageCopy: "公開メディアリンクと任意のASS字幕を管理します。", addFile: "ファイルを追加", refresh: "更新",
-        name: "名前", path: "パス", type: "種類", subtitle: "字幕", source: "元リンク", actions: "操作",
+        pageCopy: "公開メディアリンク、字幕、歌詞を管理します。", addFile: "ファイルを追加", refresh: "更新",
+        name: "名前", path: "パス", type: "種類", subtitle: "字幕 / 歌詞", source: "元リンク", actions: "操作",
         loading: "読み込み中...", addMount: "疑似マウントを追加", close: "閉じる", folder: "フォルダー",
         video: "動画", audio: "音声", image: "画像", posterUrl: "ポスターURL", mediaUrl: "メディアURL",
-        assUrl: "ASS字幕URL", cancel: "キャンセル", create: "作成", empty: "疑似マウントはありません", item: "件",
+        assUrl: "ASS字幕URL", lrcUrl: "歌詞URL", bilingual: "二言語歌詞", otherLrcUrl: "別言語の歌詞URL",
+        cancel: "キャンセル", create: "作成", empty: "疑似マウントはありません", item: "件",
         items: "件", wrongPassword: "パスワードが正しくありません。", signingIn: "ログイン中...",
         loadFailed: "疑似マウントを読み込めませんでした。", createFailed: "疑似マウントを作成できませんでした。",
         created: "疑似マウントを作成しました。", delete: "削除", deleteConfirm: "この疑似マウントを削除しますか？",
@@ -231,7 +249,7 @@ const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
     } as const;
 
     type Lang = keyof typeof c;
-    type Item = { id: string; name: string; path: string; url: string; kind: "video" | "audio" | "image"; poster?: string; sub?: string };
+    type Item = { id: string; name: string; path: string; url: string; kind: "video" | "audio" | "image"; poster?: string; sub?: string; lrc?: string; lrc2?: string };
     let lang: Lang = "en";
     let items: Item[] = [];
     const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
@@ -277,7 +295,7 @@ const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
           <td><span class="table-file">${typeIcon(item.kind)}<span>${esc(item.name)}</span></span></td>
           <td><span class="url-cell" title="${esc(item.path)}">${esc(item.path)}</span></td>
           <td><span class="type-chip">${esc(t(item.kind))}</span></td>
-          <td>${item.sub ? '<span class="type-chip">ASS</span>' : '<span class="url-cell">-</span>'}</td>
+          <td>${item.sub ? '<span class="type-chip">ASS</span>' : item.lrc ? `<span class="type-chip">LRC${item.lrc2 ? " x2" : ""}</span>` : '<span class="url-cell">-</span>'}</td>
           <td><a class="url-cell" href="${esc(item.url)}" title="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.url)}</a></td>
           <td><span class="row-actions"><button class="icon-button danger-button" type="button" data-delete="${esc(item.id)}" title="${esc(t("delete"))}">${trash}<span class="sr-only">${esc(t("delete"))}</span></button></span></td>
         </tr>
@@ -344,17 +362,27 @@ const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
     const form = document.querySelector<HTMLFormElement>("#linkForm");
     const kind = document.querySelector("#kindSelect") as HTMLSelectElement | null;
     const subField = document.querySelector<HTMLElement>("#subField");
-    const toggleSub = () => {
-      if (!kind || !subField) return;
+    const lrcFields = document.querySelector<HTMLElement>("#lrcFields");
+    const bilingual = document.querySelector<HTMLInputElement>("#bilingualToggle");
+    const lrc2Field = document.querySelector<HTMLElement>("#lrc2Field");
+    const toggleFields = () => {
+      if (!kind || !subField || !lrcFields || !bilingual || !lrc2Field) return;
       subField.hidden = kind.value !== "video";
-      const input = subField.querySelector<HTMLInputElement>("input");
-      if (input && kind.value !== "video") input.value = "";
+      lrcFields.hidden = kind.value !== "audio";
+      if (kind.value !== "video") subField.querySelector<HTMLInputElement>("input")!.value = "";
+      if (kind.value !== "audio") {
+        lrcFields.querySelectorAll<HTMLInputElement>('input[type="url"]').forEach((input) => (input.value = ""));
+        bilingual.checked = false;
+      }
+      lrc2Field.hidden = kind.value !== "audio" || !bilingual.checked;
+      if (!bilingual.checked) lrc2Field.querySelector<HTMLInputElement>("input")!.value = "";
     };
 
     document.querySelector("#addBtn")?.addEventListener("click", () => dialog?.showModal());
     document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => dialog?.close()));
-    kind?.addEventListener("change", toggleSub);
-    toggleSub();
+    kind?.addEventListener("change", toggleFields);
+    bilingual?.addEventListener("change", toggleFields);
+    toggleFields();
 
     form?.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -370,7 +398,7 @@ const loggedIn = await isAdmin(Astro.request, getEnv(Astro));
       form.reset();
       const folder = form.querySelector<HTMLInputElement>('[name="folder"]');
       if (folder) folder.value = "/root";
-      toggleSub();
+      toggleFields();
       set(status, t("created"), "ok");
       await loadLinks();
       setTimeout(() => dialog?.close(), 350);

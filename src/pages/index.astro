@@ -122,10 +122,17 @@ import SiteShell from "../layouts/SiteShell.astro";
           <div id="audioFrame" class="audio-frame" hidden>
             <img id="audioPoster" src="/poster.svg" alt="" />
             <div class="audio-copy">
-              <Music2 size={30} />
-              <strong id="audioTitle">Re Player</strong>
-              <span id="audioPath">/root</span>
+              <div class="audio-heading">
+                <Music2 size={28} />
+                <div>
+                  <strong id="audioTitle">Re Player</strong>
+                  <span id="audioPath">/root</span>
+                </div>
+              </div>
               <audio id="audioPlayer" controls preload="metadata"></audio>
+              <section id="lyricsPanel" class="lyrics-panel" hidden>
+                <div id="lyricsList" class="lyrics-list" aria-live="off"></div>
+              </section>
             </div>
           </div>
         </section>
@@ -136,6 +143,9 @@ import SiteShell from "../layouts/SiteShell.astro";
               <span id="kindBadge" class="media-badge" data-i18n="ready">Ready</span>
               <span id="subtitleBadge" class="media-badge subtitle-badge" hidden>
                 <Captions size={14} /> ASS
+              </span>
+              <span id="lyricsBadge" class="media-badge subtitle-badge" hidden>
+                <Music2 size={14} /> LRC
               </span>
             </div>
             <h2 id="mediaTitle" data-i18n="nothingSelected">Nothing selected</h2>
@@ -159,6 +169,7 @@ import SiteShell from "../layouts/SiteShell.astro";
 
   <script>
     import JASSUB from "jassub";
+    import { buildLyrics, type LyricCue } from "../lib/lrc";
 
     const c = {
       en: {
@@ -190,7 +201,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         seek: "Seek",
         volume: "Volume",
         fullscreen: "Fullscreen",
-        exitFullscreen: "Exit fullscreen"
+        exitFullscreen: "Exit fullscreen",
+        lyricsLoading: "Loading lyrics...",
+        lyricsEmpty: "No timed lyrics",
+        lyricsFailed: "Lyrics could not be loaded"
       },
       zh: {
         search: "搜索媒体库",
@@ -221,7 +235,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         seek: "播放进度",
         volume: "音量",
         fullscreen: "全屏",
-        exitFullscreen: "退出全屏"
+        exitFullscreen: "退出全屏",
+        lyricsLoading: "正在加载歌词...",
+        lyricsEmpty: "暂无时间轴歌词",
+        lyricsFailed: "歌词加载失败"
       },
       ja: {
         search: "ライブラリを検索",
@@ -252,7 +269,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         seek: "再生位置",
         volume: "音量",
         fullscreen: "全画面",
-        exitFullscreen: "全画面を終了"
+        exitFullscreen: "全画面を終了",
+        lyricsLoading: "歌詞を読み込み中...",
+        lyricsEmpty: "同期歌詞がありません",
+        lyricsFailed: "歌詞を読み込めませんでした"
       }
     } as const;
 
@@ -265,15 +285,29 @@ import SiteShell from "../layouts/SiteShell.astro";
       kind?: "video" | "audio" | "image";
       poster?: string;
       sub?: string;
+      lrc?: string;
+      lrc2?: string;
       isDir?: boolean;
     };
 
-    const s: { path: string; items: MediaItem[]; current: MediaItem | null; lang: Lang; ass: JASSUB | null } = {
+    const s: {
+      path: string;
+      items: MediaItem[];
+      current: MediaItem | null;
+      lang: Lang;
+      ass: JASSUB | null;
+      lyrics: LyricCue[];
+      lyricIndex: number;
+      lyricToken: number;
+    } = {
       path: "/root",
       items: [],
       current: null,
       lang: "en",
-      ass: null
+      ass: null,
+      lyrics: [],
+      lyricIndex: -1,
+      lyricToken: 0
     };
 
     const d = {
@@ -285,6 +319,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       libraryStatus: document.querySelector<HTMLElement>("#libraryStatus")!,
       parent: document.querySelector<HTMLButtonElement>("#parentBtn")!,
       refresh: document.querySelector<HTMLButtonElement>("#refreshBtn")!,
+      stage: document.querySelector<HTMLElement>("#playerStage")!,
       empty: document.querySelector<HTMLElement>("#emptyPlayer")!,
       videoFrame: document.querySelector<HTMLElement>("#videoFrame")!,
       video: document.querySelector<HTMLVideoElement>("#videoPlayer")!,
@@ -308,8 +343,11 @@ import SiteShell from "../layouts/SiteShell.astro";
       audioPoster: document.querySelector<HTMLImageElement>("#audioPoster")!,
       audioTitle: document.querySelector<HTMLElement>("#audioTitle")!,
       audioPath: document.querySelector<HTMLElement>("#audioPath")!,
+      lyricsPanel: document.querySelector<HTMLElement>("#lyricsPanel")!,
+      lyricsList: document.querySelector<HTMLElement>("#lyricsList")!,
       kind: document.querySelector<HTMLElement>("#kindBadge")!,
       subtitle: document.querySelector<HTMLElement>("#subtitleBadge")!,
+      lyricsBadge: document.querySelector<HTMLElement>("#lyricsBadge")!,
       title: document.querySelector<HTMLElement>("#mediaTitle")!,
       mediaPath: document.querySelector<HTMLElement>("#mediaPath")!,
       source: document.querySelector<HTMLAnchorElement>("#sourceLink")!,
@@ -454,6 +492,85 @@ import SiteShell from "../layouts/SiteShell.astro";
       else d.video.pause();
     }
 
+    function setLyricsState(key: "lyricsLoading" | "lyricsEmpty" | "lyricsFailed") {
+      d.lyricsPanel.hidden = false;
+      d.lyricsList.innerHTML = `<div class="lyrics-state">${esc(t(key))}</div>`;
+    }
+
+    function resetLyrics() {
+      s.lyricToken += 1;
+      s.lyrics = [];
+      s.lyricIndex = -1;
+      d.lyricsList.replaceChildren();
+      d.lyricsPanel.hidden = true;
+    }
+
+    function syncLyrics(force = false) {
+      if (!s.lyrics.length) return;
+      const now = d.audio.currentTime + 0.05;
+      let low = 0;
+      let high = s.lyrics.length - 1;
+      let index = -1;
+      while (low <= high) {
+        const middle = (low + high) >> 1;
+        if (s.lyrics[middle].at <= now) {
+          index = middle;
+          low = middle + 1;
+        } else {
+          high = middle - 1;
+        }
+      }
+      if (!force && index === s.lyricIndex) return;
+
+      d.lyricsList.querySelector(".is-active")?.classList.remove("is-active");
+      s.lyricIndex = index;
+      if (index < 0) {
+        d.lyricsList.scrollTo({ top: 0, behavior: force ? "auto" : "smooth" });
+        return;
+      }
+
+      const line = d.lyricsList.querySelector<HTMLElement>(`[data-lyric="${index}"]`);
+      if (!line) return;
+      line.classList.add("is-active");
+      const top = line.offsetTop - d.lyricsList.clientHeight / 2 + line.offsetHeight / 2;
+      d.lyricsList.scrollTo({ top: Math.max(0, top), behavior: force ? "auto" : "smooth" });
+    }
+
+    function renderLyrics(cues: LyricCue[]) {
+      s.lyrics = cues;
+      s.lyricIndex = -1;
+      if (!cues.length) return setLyricsState("lyricsEmpty");
+      d.lyricsPanel.hidden = false;
+      d.lyricsList.innerHTML = cues.map((cue, index) => {
+        const top = cue.top || cue.bottom || "";
+        const bottom = cue.top ? cue.bottom : undefined;
+        return `
+          <button class="lyric-line" type="button" data-lyric="${index}" data-at="${cue.at}">
+            <span class="lyric-top">${esc(top)}</span>
+            ${bottom ? `<span class="lyric-bottom">${esc(bottom)}</span>` : ""}
+          </button>
+        `;
+      }).join("");
+      syncLyrics(true);
+    }
+
+    async function loadLyrics(item: MediaItem) {
+      const token = ++s.lyricToken;
+      setLyricsState("lyricsLoading");
+      const fetchTrack = async (slot: 1 | 2) => {
+        const response = await fetch(`/api/public/lyric?path=${encodeURIComponent(item.path)}&n=${slot}`);
+        if (!response.ok) throw new Error("Lyrics request failed.");
+        return response.text();
+      };
+      const [primary, other] = await Promise.all([
+        item.lrc ? fetchTrack(1).catch(() => null) : Promise.resolve(null),
+        item.lrc2 ? fetchTrack(2).catch(() => null) : Promise.resolve(null)
+      ]);
+      if (token !== s.lyricToken) return;
+      if (primary === null && other === null) return setLyricsState("lyricsFailed");
+      renderLyrics(primary && other ? buildLyrics(primary, other) : buildLyrics(primary || other || ""));
+    }
+
     async function toggleFullscreen() {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await d.videoFrame.requestFullscreen();
@@ -506,6 +623,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       d.title.textContent = s.current.name;
       d.mediaPath.textContent = s.current.path;
       d.subtitle.hidden = !s.current.sub;
+      d.lyricsBadge.hidden = !s.current.lrc && !s.current.lrc2;
     }
 
     async function load(path = s.path) {
@@ -538,6 +656,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       window.clearTimeout(controlTimer);
       d.imageFrame.hidden = true;
       d.audioFrame.hidden = true;
+      delete d.stage.dataset.mode;
+      resetLyrics();
       d.empty.hidden = true;
     }
 
@@ -559,10 +679,12 @@ import SiteShell from "../layouts/SiteShell.astro";
       render();
 
       if (item.kind === "image") {
+        d.stage.dataset.mode = "image";
         d.imageFrame.hidden = false;
         d.image.src = item.url || "";
         d.image.alt = item.name;
       } else if (item.kind === "audio") {
+        d.stage.dataset.mode = "audio";
         d.audioFrame.hidden = false;
         d.audioPoster.src = item.poster || "/poster.svg";
         d.audioPoster.alt = "";
@@ -570,8 +692,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         d.audioPath.textContent = item.path;
         d.audio.src = item.url || "";
         d.audio.load();
+        if (item.lrc || item.lrc2) loadLyrics(item).catch(() => setLyricsState("lyricsFailed"));
         d.audio.play().catch(() => undefined);
       } else {
+        d.stage.dataset.mode = "video";
         d.videoFrame.hidden = false;
         d.video.poster = item.poster || "/poster.svg";
         d.video.src = item.url || "";
@@ -623,6 +747,14 @@ import SiteShell from "../layouts/SiteShell.astro";
     });
     d.refresh.addEventListener("click", () => load().catch((error) => setStatus(d.libraryStatus, error.message, "error")));
     d.search.addEventListener("input", render);
+    d.audio.addEventListener("timeupdate", () => syncLyrics());
+    d.audio.addEventListener("seeked", () => syncLyrics(true));
+    d.lyricsList.addEventListener("click", (event) => {
+      const line = (event.target as HTMLElement).closest<HTMLElement>("[data-at]");
+      if (!line?.dataset.at) return;
+      d.audio.currentTime = Number(line.dataset.at);
+      syncLyrics(true);
+    });
     d.playToggle.addEventListener("click", togglePlay);
     d.muteToggle.addEventListener("click", () => {
       d.video.muted = !d.video.muted;

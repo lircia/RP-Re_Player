@@ -10,6 +10,8 @@ export interface PseudoItem {
   kind: PseudoKind;
   poster?: string;
   sub?: string;
+  lrc?: string;
+  lrc2?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,6 +92,8 @@ async function ensureDb(env: AppEnv) {
         kind TEXT NOT NULL,
         poster TEXT,
         sub TEXT,
+        lrc TEXT,
+        lrc2 TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -99,6 +103,12 @@ async function ensureDb(env: AppEnv) {
   const info = await env.DB.prepare("PRAGMA table_info(rp_pseudo_links)").all<{ name: string }>();
   if (!(info.results ?? []).some((column) => column.name === "sub")) {
     await env.DB.prepare("ALTER TABLE rp_pseudo_links ADD COLUMN sub TEXT").run();
+  }
+  if (!(info.results ?? []).some((column) => column.name === "lrc")) {
+    await env.DB.prepare("ALTER TABLE rp_pseudo_links ADD COLUMN lrc TEXT").run();
+  }
+  if (!(info.results ?? []).some((column) => column.name === "lrc2")) {
+    await env.DB.prepare("ALTER TABLE rp_pseudo_links ADD COLUMN lrc2 TEXT").run();
   }
   return true;
 }
@@ -112,6 +122,8 @@ function mapRow(row: any): PseudoItem {
     kind: row.kind,
     poster: row.poster || undefined,
     sub: row.sub || undefined,
+    lrc: row.lrc || undefined,
+    lrc2: row.lrc2 || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -120,7 +132,7 @@ function mapRow(row: any): PseudoItem {
 export async function allItems(env: AppEnv): Promise<PseudoItem[]> {
   if (await ensureDb(env)) {
     const result = await env.DB!.prepare(
-      "SELECT id, name, path, url, kind, poster, sub, created_at, updated_at FROM rp_pseudo_links ORDER BY path ASC"
+      "SELECT id, name, path, url, kind, poster, sub, lrc, lrc2, created_at, updated_at FROM rp_pseudo_links ORDER BY path ASC"
     ).all<any>();
     return (result.results ?? []).map(mapRow);
   }
@@ -168,7 +180,7 @@ export async function getItem(env: AppEnv, path: string) {
   const normalized = normalizeRootPath(path);
   if (await ensureDb(env)) {
     const row = await env.DB!.prepare(
-      "SELECT id, name, path, url, kind, poster, sub, created_at, updated_at FROM rp_pseudo_links WHERE path = ? LIMIT 1"
+      "SELECT id, name, path, url, kind, poster, sub, lrc, lrc2, created_at, updated_at FROM rp_pseudo_links WHERE path = ? LIMIT 1"
     )
       .bind(normalized)
       .first<any>();
@@ -186,6 +198,8 @@ export async function createItem(
     kind: PseudoKind;
     poster?: string;
     sub?: string;
+    lrc?: string;
+    lrc2?: string;
   }
 ) {
   const folder = normalizeRootPath(input.folder || "/root");
@@ -201,6 +215,8 @@ export async function createItem(
     kind: input.kind === "image" || input.kind === "audio" ? input.kind : "video",
     poster: webUrl(input.poster || "", "Poster URL"),
     sub: input.kind === "video" ? webUrl(input.sub || "", "Subtitle URL") : undefined,
+    lrc: input.kind === "audio" ? webUrl(input.lrc || "", "Lyrics URL") : undefined,
+    lrc2: input.kind === "audio" ? webUrl(input.lrc2 || "", "Other lyrics URL") : undefined,
     createdAt: now,
     updatedAt: now
   };
@@ -210,18 +226,32 @@ export async function createItem(
   if (await ensureDb(env)) {
     await env.DB!.prepare(
       `
-        INSERT INTO rp_pseudo_links (id, name, path, url, kind, poster, sub, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO rp_pseudo_links (id, name, path, url, kind, poster, sub, lrc, lrc2, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(path) DO UPDATE SET
           name = excluded.name,
           url = excluded.url,
           kind = excluded.kind,
           poster = excluded.poster,
           sub = excluded.sub,
+          lrc = excluded.lrc,
+          lrc2 = excluded.lrc2,
           updated_at = excluded.updated_at
       `
     )
-      .bind(item.id, item.name, item.path, item.url, item.kind, item.poster ?? null, item.sub ?? null, now, now)
+      .bind(
+        item.id,
+        item.name,
+        item.path,
+        item.url,
+        item.kind,
+        item.poster ?? null,
+        item.sub ?? null,
+        item.lrc ?? null,
+        item.lrc2 ?? null,
+        now,
+        now
+      )
       .run();
   } else {
     const state = memory();

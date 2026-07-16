@@ -23,7 +23,9 @@ export const POST: APIRoute = async (context) => {
       url: body.url,
       kind: body.kind,
       poster: body.poster,
-      sub: body.sub
+      sub: body.sub,
+      lrc: body.lrc,
+      lrc2: body.lrc2
     });
     return json({ ok: true, item });
   } catch (error) {
