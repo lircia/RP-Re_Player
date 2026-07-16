@@ -1,17 +1,17 @@
 :root {
   color-scheme: light;
-  --page: #f8fbfe;
+  --page: #fbfdff;
   --surface: #ffffff;
   --surface-soft: #fbfdff;
-  --surface-hover: #f1f8fd;
+  --surface-hover: #f5faff;
   --ink: #263b4c;
   --muted: #7b8f9f;
-  --line: #e4eef6;
-  --line-strong: #cddfeb;
-  --accent: #8fc8eb;
-  --accent-dark: #609cc4;
-  --accent-soft: #edf8ff;
-  --gold: #b88326;
+  --line: #eaf2f8;
+  --line-strong: #d9e7f1;
+  --accent: #b8def4;
+  --accent-dark: #8dbdd9;
+  --accent-soft: #f3faff;
+  --folder: #d10a1c;
   --coral: #c55e4f;
   --danger: #bc3d4d;
   --player: #08131e;
@@ -60,7 +60,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(143, 200, 235, 0.34);
+  outline: 3px solid rgba(184, 222, 244, 0.46);
   outline-offset: 2px;
 }
 
@@ -150,7 +150,7 @@ textarea:focus-visible {
 .search-box:focus-within {
   border-color: var(--accent);
   background: var(--surface);
-  box-shadow: 0 0 0 3px rgba(143, 200, 235, 0.18);
+  box-shadow: 0 0 0 3px rgba(184, 222, 244, 0.24);
 }
 
 .search-box input {
@@ -289,8 +289,8 @@ textarea:focus-visible {
 }
 
 .file-icon-folder {
-  background: #fbf1dc;
-  color: var(--gold);
+  background: #f7eeee;
+  color: var(--folder);
 }
 
 .file-icon-video {
@@ -710,7 +710,7 @@ textarea:focus-visible {
 .primary-button {
   border-color: var(--accent);
   background: var(--accent);
-  color: #ffffff;
+  color: #31566f;
 }
 
 .primary-button:hover {
@@ -987,7 +987,7 @@ textarea:focus-visible {
 .field textarea:focus,
 .login-form input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(143, 200, 235, 0.18);
+  box-shadow: 0 0 0 3px rgba(184, 222, 244, 0.24);
 }
 
 .form-row {

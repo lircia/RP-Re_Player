@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Re Player media placeholder">
-  <rect width="1280" height="720" fill="#f8fbfe"/>
+  <rect width="1280" height="720" fill="#fbfdff"/>
   <rect x="120" y="92" width="1040" height="536" rx="8" fill="#ffffff" stroke="#dceaf4" stroke-width="2"/>
   <rect x="168" y="140" width="944" height="376" rx="8" fill="#08131e"/>
-  <path d="m590 238 164 90-164 90V238Z" fill="#8fc8eb"/>
+  <path d="m590 238 164 90-164 90V238Z" fill="#b8def4"/>
   <rect x="168" y="556" width="330" height="18" rx="4" fill="#d2e5f2"/>
   <rect x="168" y="590" width="196" height="10" rx="4" fill="#e4eef6"/>
   <text x="1112" y="590" text-anchor="end" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="700" fill="#526b7d">Re Player</text>
