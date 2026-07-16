@@ -588,28 +588,63 @@ textarea:focus-visible {
 
 .audio-frame {
   display: grid;
-  grid-template-columns: minmax(180px, 34%) minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(24px, 5vw, 72px);
-  padding: clamp(28px, 6vw, 90px);
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  gap: clamp(14px, 2.2vh, 24px);
+  padding: clamp(20px, 3vw, 38px) clamp(22px, 4vw, 54px) clamp(16px, 2.5vw, 30px);
+  background: #f8fcff;
 }
 
-.audio-frame > img {
+.player-stage[data-mode="audio"] {
+  min-height: 440px;
+  border-color: #dcecf7;
+  background: #f8fcff;
+}
+
+.audio-overview {
+  display: grid;
+  grid-template-columns: clamp(96px, 12vw, 144px) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(18px, 3vw, 34px);
+}
+
+.audio-cover-shell {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--radius);
+  overflow: hidden;
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  background: #edf7fd;
+  box-shadow: 0 12px 30px rgba(90, 143, 179, 0.18);
+}
+
+.audio-poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  animation: audio-cover-spin 22s linear infinite;
+  animation-play-state: paused;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.audio-frame.is-playing .audio-poster {
+  animation-play-state: running;
+}
+
+@keyframes audio-cover-spin {
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 .audio-copy {
   display: grid;
   min-width: 0;
-  height: 100%;
-  min-height: 0;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 14px;
-  color: #f4f9fd;
+  gap: 16px;
+  color: var(--ink);
 }
 
 .audio-heading {
@@ -632,79 +667,87 @@ textarea:focus-visible {
 }
 
 .audio-heading strong {
-  font-size: 24px;
+  color: #314c60;
+  font-size: 22px;
 }
 
 .audio-heading div > span {
   margin-top: 5px;
-  color: #b8ccdc;
+  color: #8298a8;
   font-size: 12px;
 }
 
 .audio-copy audio {
+  display: block;
   width: 100%;
   margin: 0;
+  color-scheme: light;
 }
 
 .lyrics-panel {
   min-height: 0;
   overflow: hidden;
-  border-top: 1px solid rgba(184, 222, 244, 0.2);
 }
 
 .lyrics-list {
+  position: relative;
   height: 100%;
   overflow-y: auto;
-  padding: max(54px, 18%) 0;
-  scrollbar-color: rgba(184, 222, 244, 0.35) transparent;
+  overscroll-behavior: contain;
+  padding: 0 clamp(4px, 2vw, 20px);
+  scrollbar-color: #c6e3f3 transparent;
   scrollbar-width: thin;
   scroll-behavior: smooth;
+}
+
+.lyrics-list::before,
+.lyrics-list::after {
+  display: block;
+  height: calc(50% - 32px);
+  min-height: 48px;
+  content: "";
 }
 
 .lyric-line {
   display: grid;
   place-content: center;
   width: 100%;
-  min-height: 56px;
-  gap: 5px;
+  min-height: 64px;
+  gap: 3px;
   border: 0;
   background: transparent;
-  color: #9bb1c2;
-  padding: 9px 10px;
-  opacity: 0.46;
+  color: #8da3b2;
+  padding: 9px 12px;
+  opacity: 0.55;
   text-align: center;
-  transition: color 180ms ease, opacity 180ms ease;
+  transition: color 180ms ease, opacity 180ms ease, transform 180ms ease;
 }
 
 .lyric-line:hover {
-  color: #d5e9f7;
-  opacity: 0.78;
+  color: #5e7a8e;
+  opacity: 0.9;
 }
 
 .lyric-line.is-active {
-  color: #ffffff;
+  color: #284b63;
   opacity: 1;
+  transform: scale(1.02);
 }
 
 .lyric-top,
 .lyric-bottom {
   display: block;
   overflow-wrap: anywhere;
+  color: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
   letter-spacing: 0;
   white-space: normal;
 }
 
-.lyric-top {
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
 .lyric-bottom {
-  color: inherit;
-  font-size: 12px;
-  line-height: 1.35;
-  opacity: 0.78;
+  opacity: 0.82;
 }
 
 .lyrics-state {
@@ -712,7 +755,7 @@ textarea:focus-visible {
   height: 100%;
   min-height: 120px;
   place-items: center;
-  color: #91a9bb;
+  color: #829aaa;
   font-size: 12px;
 }
 
@@ -1303,25 +1346,41 @@ textarea:focus-visible {
   }
 
   .audio-frame {
-    grid-template-columns: 1fr;
-    padding: 15px;
+    gap: 12px;
+    padding: 18px 14px 12px;
   }
 
   .player-stage[data-mode="audio"] {
-    min-height: 420px;
+    height: clamp(480px, 68vh, 560px);
+    min-height: 480px;
     aspect-ratio: auto;
   }
 
-  .audio-frame > img {
-    display: none;
+  .audio-overview {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .audio-cover-shell {
+    border-width: 3px;
+    box-shadow: 0 8px 20px rgba(90, 143, 179, 0.16);
+  }
+
+  .audio-copy {
+    gap: 10px;
   }
 
   .audio-heading strong {
     font-size: 17px;
   }
 
-  .lyrics-list {
-    padding-block: 68px;
+  .audio-heading svg {
+    display: none;
+  }
+
+  .lyric-top,
+  .lyric-bottom {
+    font-size: 14px;
   }
 
   .now-playing {

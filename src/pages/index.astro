@@ -120,20 +120,24 @@ import SiteShell from "../layouts/SiteShell.astro";
           </div>
 
           <div id="audioFrame" class="audio-frame" hidden>
-            <img id="audioPoster" src="/poster.svg" alt="" />
-            <div class="audio-copy">
-              <div class="audio-heading">
-                <Music2 size={28} />
-                <div>
-                  <strong id="audioTitle">Re Player</strong>
-                  <span id="audioPath">/root</span>
-                </div>
+            <div class="audio-overview">
+              <div class="audio-cover-shell">
+                <img id="audioPoster" class="audio-poster" src="/poster.svg" alt="" />
               </div>
-              <audio id="audioPlayer" controls preload="metadata"></audio>
-              <section id="lyricsPanel" class="lyrics-panel" hidden>
-                <div id="lyricsList" class="lyrics-list" aria-live="off"></div>
-              </section>
+              <div class="audio-copy">
+                <div class="audio-heading">
+                  <Music2 size={26} />
+                  <div>
+                    <strong id="audioTitle">Re Player</strong>
+                    <span id="audioPath">/root</span>
+                  </div>
+                </div>
+                <audio id="audioPlayer" controls preload="metadata"></audio>
+              </div>
             </div>
+            <section id="lyricsPanel" class="lyrics-panel" hidden>
+              <div id="lyricsList" class="lyrics-list" aria-live="off"></div>
+            </section>
           </div>
         </section>
 
@@ -299,6 +303,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       lyrics: LyricCue[];
       lyricIndex: number;
       lyricToken: number;
+      lyricManual: boolean;
+      lyricScrollTimer: number;
     } = {
       path: "/root",
       items: [],
@@ -307,7 +313,9 @@ import SiteShell from "../layouts/SiteShell.astro";
       ass: null,
       lyrics: [],
       lyricIndex: -1,
-      lyricToken: 0
+      lyricToken: 0,
+      lyricManual: false,
+      lyricScrollTimer: 0
     };
 
     const d = {
@@ -498,11 +506,29 @@ import SiteShell from "../layouts/SiteShell.astro";
     }
 
     function resetLyrics() {
+      window.clearTimeout(s.lyricScrollTimer);
       s.lyricToken += 1;
       s.lyrics = [];
       s.lyricIndex = -1;
+      s.lyricManual = false;
       d.lyricsList.replaceChildren();
       d.lyricsPanel.hidden = true;
+    }
+
+    function centerLyric(line: HTMLElement, behavior: ScrollBehavior) {
+      const listBox = d.lyricsList.getBoundingClientRect();
+      const lineBox = line.getBoundingClientRect();
+      const top = d.lyricsList.scrollTop + lineBox.top - listBox.top - (listBox.height - lineBox.height) / 2;
+      d.lyricsList.scrollTo({ top: Math.max(0, top), behavior });
+    }
+
+    function pauseLyricFollow() {
+      s.lyricManual = true;
+      window.clearTimeout(s.lyricScrollTimer);
+      s.lyricScrollTimer = window.setTimeout(() => {
+        s.lyricManual = false;
+        syncLyrics(true);
+      }, 3000);
     }
 
     function syncLyrics(force = false) {
@@ -522,7 +548,9 @@ import SiteShell from "../layouts/SiteShell.astro";
       }
       if (!force && index === s.lyricIndex) return;
 
-      d.lyricsList.querySelector(".is-active")?.classList.remove("is-active");
+      const previous = d.lyricsList.querySelector<HTMLElement>(".is-active");
+      previous?.classList.remove("is-active");
+      previous?.removeAttribute("aria-current");
       s.lyricIndex = index;
       if (index < 0) {
         d.lyricsList.scrollTo({ top: 0, behavior: force ? "auto" : "smooth" });
@@ -532,8 +560,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       const line = d.lyricsList.querySelector<HTMLElement>(`[data-lyric="${index}"]`);
       if (!line) return;
       line.classList.add("is-active");
-      const top = line.offsetTop - d.lyricsList.clientHeight / 2 + line.offsetHeight / 2;
-      d.lyricsList.scrollTo({ top: Math.max(0, top), behavior: force ? "auto" : "smooth" });
+      line.setAttribute("aria-current", "true");
+      if (force || !s.lyricManual) centerLyric(line, force ? "auto" : "smooth");
     }
 
     function renderLyrics(cues: LyricCue[]) {
@@ -656,6 +684,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       window.clearTimeout(controlTimer);
       d.imageFrame.hidden = true;
       d.audioFrame.hidden = true;
+      d.audioFrame.classList.remove("is-playing");
       delete d.stage.dataset.mode;
       resetLyrics();
       d.empty.hidden = true;
@@ -687,7 +716,7 @@ import SiteShell from "../layouts/SiteShell.astro";
         d.stage.dataset.mode = "audio";
         d.audioFrame.hidden = false;
         d.audioPoster.src = item.poster || "/poster.svg";
-        d.audioPoster.alt = "";
+        d.audioPoster.alt = item.name;
         d.audioTitle.textContent = item.name;
         d.audioPath.textContent = item.path;
         d.audio.src = item.url || "";
@@ -749,9 +778,18 @@ import SiteShell from "../layouts/SiteShell.astro";
     d.search.addEventListener("input", render);
     d.audio.addEventListener("timeupdate", () => syncLyrics());
     d.audio.addEventListener("seeked", () => syncLyrics(true));
+    d.audio.addEventListener("play", () => d.audioFrame.classList.add("is-playing"));
+    ["pause", "ended"].forEach((event) => d.audio.addEventListener(event, () => d.audioFrame.classList.remove("is-playing")));
+    d.audioPoster.addEventListener("error", () => {
+      if (!d.audioPoster.src.endsWith("/poster.svg")) d.audioPoster.src = "/poster.svg";
+    });
+    d.lyricsList.addEventListener("wheel", pauseLyricFollow, { passive: true });
+    d.lyricsList.addEventListener("touchstart", pauseLyricFollow, { passive: true });
     d.lyricsList.addEventListener("click", (event) => {
       const line = (event.target as HTMLElement).closest<HTMLElement>("[data-at]");
       if (!line?.dataset.at) return;
+      window.clearTimeout(s.lyricScrollTimer);
+      s.lyricManual = false;
       d.audio.currentTime = Number(line.dataset.at);
       syncLyrics(true);
     });
