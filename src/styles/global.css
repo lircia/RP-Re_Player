@@ -1,22 +1,22 @@
 :root {
   color-scheme: light;
-  --page: #f3f8fd;
+  --page: #f8fbfe;
   --surface: #ffffff;
-  --surface-soft: #f8fbff;
-  --surface-hover: #edf6ff;
-  --ink: #172c40;
-  --muted: #667b8f;
-  --line: #dce9f4;
-  --line-strong: #bfd3e5;
-  --accent: #4b91cf;
-  --accent-dark: #2c70ad;
-  --accent-soft: #e6f2fc;
+  --surface-soft: #fbfdff;
+  --surface-hover: #f1f8fd;
+  --ink: #263b4c;
+  --muted: #7b8f9f;
+  --line: #e4eef6;
+  --line-strong: #cddfeb;
+  --accent: #8fc8eb;
+  --accent-dark: #609cc4;
+  --accent-soft: #edf8ff;
   --gold: #b88326;
   --coral: #c55e4f;
   --danger: #bc3d4d;
   --player: #08131e;
   --player-soft: #102131;
-  --shadow: 0 12px 34px rgba(40, 91, 132, 0.1);
+  --shadow: 0 12px 34px rgba(83, 128, 160, 0.09);
   --radius: 8px;
   font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
@@ -60,7 +60,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(75, 145, 207, 0.28);
+  outline: 3px solid rgba(143, 200, 235, 0.34);
   outline-offset: 2px;
 }
 
@@ -110,8 +110,10 @@ textarea:focus-visible {
   width: 38px;
   height: 38px;
   border-radius: 8px;
-  background: var(--accent);
-  color: #ffffff;
+  border: 1px solid #f3d7e0;
+  background: #ffffff;
+  color: #e6a1b6;
+  box-shadow: 0 5px 16px rgba(218, 144, 166, 0.14);
 }
 
 .app-brand strong,
@@ -121,12 +123,13 @@ textarea:focus-visible {
 }
 
 .app-brand strong {
+  color: #40586a;
   font-size: 15px;
 }
 
 .app-brand small {
   margin-top: 4px;
-  color: var(--muted);
+  color: #dda0b3;
   font-size: 11px;
   font-weight: 700;
 }
@@ -147,7 +150,7 @@ textarea:focus-visible {
 .search-box:focus-within {
   border-color: var(--accent);
   background: var(--surface);
-  box-shadow: 0 0 0 3px rgba(75, 145, 207, 0.14);
+  box-shadow: 0 0 0 3px rgba(143, 200, 235, 0.18);
 }
 
 .search-box input {
@@ -376,10 +379,10 @@ textarea:focus-visible {
   max-height: calc(100dvh - 230px);
   min-height: 300px;
   overflow: clip;
-  border: 1px solid rgba(151, 194, 228, 0.34);
+  border: 1px solid rgba(190, 219, 239, 0.56);
   border-radius: 10px;
   background: var(--player);
-  box-shadow: 0 22px 54px rgba(30, 73, 110, 0.18);
+  box-shadow: 0 20px 48px rgba(72, 112, 143, 0.14);
 }
 
 .player-empty {
@@ -400,7 +403,7 @@ textarea:focus-visible {
   width: 70px;
   height: 70px;
   margin-bottom: 4px;
-  border: 1px solid #45657f;
+  border: 1px solid #6f91aa;
   border-radius: 50%;
   color: var(--accent);
 }
@@ -447,12 +450,12 @@ textarea:focus-visible {
   left: 14px;
   display: grid;
   gap: 7px;
-  border: 1px solid rgba(190, 219, 241, 0.9);
+  border: 1px solid rgba(215, 234, 247, 0.96);
   border-radius: 8px;
   background: rgba(247, 251, 255, 0.94);
-  box-shadow: 0 8px 28px rgba(5, 24, 40, 0.22);
+  box-shadow: 0 8px 28px rgba(34, 72, 101, 0.17);
   padding: 10px 12px 8px;
-  color: #173854;
+  color: #587890;
   opacity: 1;
   transform: translateY(0);
   transition: opacity 180ms ease, transform 180ms ease;
@@ -490,19 +493,19 @@ textarea:focus-visible {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #24577f;
+  color: #719bb8;
   padding: 0;
 }
 
 .player-control:hover,
 .player-control:focus-visible {
-  background: #e2f1fc;
+  background: #eef8ff;
   color: var(--accent-dark);
 }
 
 .video-time {
   min-width: 92px;
-  color: #526f88;
+  color: #7991a4;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -534,13 +537,13 @@ textarea:focus-visible {
 .video-controls input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 4px;
-  background: linear-gradient(to right, var(--accent) var(--range-fill, 0%), #cbddea var(--range-fill, 0%));
+  background: linear-gradient(to right, var(--accent) var(--range-fill, 0%), #dceaf4 var(--range-fill, 0%));
 }
 
 .video-controls input[type="range"]::-moz-range-track {
   height: 4px;
   border-radius: 4px;
-  background: #cbddea;
+  background: #dceaf4;
 }
 
 .video-controls input[type="range"]::-moz-range-progress {
@@ -557,7 +560,7 @@ textarea:focus-visible {
   border-radius: 50%;
   appearance: none;
   background: var(--accent);
-  box-shadow: 0 1px 4px rgba(26, 75, 115, 0.36);
+  box-shadow: 0 1px 4px rgba(73, 127, 165, 0.28);
 }
 
 .video-controls input[type="range"]::-moz-range-thumb {
@@ -566,7 +569,7 @@ textarea:focus-visible {
   border: 2px solid #ffffff;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 1px 4px rgba(26, 75, 115, 0.36);
+  box-shadow: 0 1px 4px rgba(73, 127, 165, 0.28);
 }
 
 .video-frame:fullscreen {
@@ -984,7 +987,7 @@ textarea:focus-visible {
 .field textarea:focus,
 .login-form input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(75, 145, 207, 0.14);
+  box-shadow: 0 0 0 3px rgba(143, 200, 235, 0.18);
 }
 
 .form-row {

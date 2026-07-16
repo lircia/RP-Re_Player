@@ -412,9 +412,9 @@ import SiteShell from "../layouts/SiteShell.astro";
       input.style.setProperty("--range-fill", `${Math.max(0, Math.min(100, value))}%`);
     };
 
-    function scheduleControls(delay = 2200) {
+    function scheduleControls(delay = document.fullscreenElement === d.videoFrame ? 1600 : 2200) {
       window.clearTimeout(controlTimer);
-      if (d.video.paused || seeking) return;
+      if (seeking || (d.video.paused && document.fullscreenElement !== d.videoFrame)) return;
       controlTimer = window.setTimeout(() => d.videoFrame.classList.add("controls-hidden"), delay);
     }
 
@@ -634,9 +634,9 @@ import SiteShell from "../layouts/SiteShell.astro";
     d.videoFrame.addEventListener("pointermove", () => showControls());
     d.videoFrame.addEventListener("pointerdown", () => d.videoFrame.focus({ preventScroll: true }));
     d.videoFrame.addEventListener("pointerleave", () => scheduleControls(600));
-    d.videoControls.addEventListener("pointerenter", () => showControls(true));
-    d.videoControls.addEventListener("pointerleave", () => showControls());
-    d.videoControls.addEventListener("focusin", () => showControls(true));
+    d.videoControls.addEventListener("pointerenter", () => showControls());
+    d.videoControls.addEventListener("pointerleave", () => scheduleControls(600));
+    d.videoControls.addEventListener("focusin", () => showControls(document.fullscreenElement !== d.videoFrame));
     d.videoControls.addEventListener("focusout", () => showControls());
     d.seek.addEventListener("pointerdown", () => {
       seeking = true;
@@ -659,7 +659,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       d.video.addEventListener(event, () => {
         updateVideoControls();
         if (event === "play") scheduleControls();
-        if (event === "pause" || event === "ended") showControls(true);
+        if (event === "pause" || event === "ended") showControls(document.fullscreenElement !== d.videoFrame);
       });
     });
     document.addEventListener("fullscreenchange", () => {
