@@ -82,6 +82,11 @@ textarea:focus-visible {
   min-height: 100vh;
 }
 
+.mobile-library-toggle,
+.mobile-library-scrim {
+  display: none;
+}
+
 .app-topbar {
   position: sticky;
   z-index: 20;
@@ -484,15 +489,29 @@ textarea:focus-visible {
 
 .video-control-row,
 .audio-control-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   min-width: 0;
   height: 28px;
   gap: 8px;
 }
 
-.video-control-spacer {
-  flex: 1;
+.player-control-side,
+.media-step-controls {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+
+.player-control-side.is-end {
+  justify-self: end;
+}
+
+.media-step-controls {
+  justify-self: center;
+  gap: 2px;
 }
 
 .player-control {
@@ -508,10 +527,15 @@ textarea:focus-visible {
   padding: 0;
 }
 
-.player-control:hover,
-.player-control:focus-visible {
+.player-control:hover:not(:disabled),
+.player-control:focus-visible:not(:disabled) {
   background: #eef8ff;
   color: var(--accent-dark);
+}
+
+.player-control:disabled {
+  cursor: default;
+  opacity: 0.28;
 }
 
 .video-time {
@@ -738,6 +762,11 @@ textarea:focus-visible {
   height: calc(50% - 32px);
   min-height: 48px;
   content: "";
+}
+
+.lyrics-list.is-intro::before {
+  height: 0;
+  min-height: 0;
 }
 
 .lyric-line {
@@ -1324,26 +1353,90 @@ textarea:focus-visible {
 
 @media (max-width: 680px) {
   .app-topbar {
-    grid-template-columns: 90px minmax(0, 1fr) 92px;
+    grid-template-columns: 84px minmax(0, 1fr) 76px 36px;
+    gap: 8px;
     height: 60px;
+    padding: 0 10px;
+  }
+
+  .app-topbar .app-brand strong {
+    font-size: 16px;
+  }
+
+  .search-box {
+    height: 36px;
+    gap: 6px;
+    padding: 0 8px;
   }
 
   .language-box select {
-    width: 92px;
+    width: 76px;
+  }
+
+  .mobile-library-toggle {
+    display: inline-grid;
+    justify-self: end;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .mobile-library-toggle > span {
+    display: grid;
+    place-items: center;
+    transition: transform 180ms ease;
+  }
+
+  .mobile-library-scrim {
+    position: fixed;
+    z-index: 24;
+    top: 60px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    border: 0;
+    border-radius: 0;
+    background: rgba(47, 72, 90, 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
   }
 
   .media-workspace {
-    display: flex;
+    display: block;
     min-height: calc(100vh - 60px);
-    flex-direction: column;
   }
 
   .library-pane {
-    width: 100%;
-    height: 42vh;
-    min-height: 300px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+    position: fixed;
+    z-index: 25;
+    top: 60px;
+    right: auto;
+    left: 0;
+    width: min(86vw, 340px);
+    height: calc(100dvh - 60px);
+    min-height: 0;
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+    border-left: 0;
+    box-shadow: 18px 0 42px rgba(54, 91, 118, 0.16);
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+  }
+
+  .media-app.is-library-open .library-pane {
+    transform: translateX(0);
+  }
+
+  .media-app.is-library-open .mobile-library-scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .media-app.is-library-open .mobile-library-toggle > span {
+    transform: rotate(180deg);
   }
 
   .library-heading {
@@ -1373,11 +1466,11 @@ textarea:focus-visible {
 
   .audio-volume-control {
     display: flex;
-    width: 58px;
+    width: 40px;
   }
 
   .video-time {
-    min-width: 82px;
+    min-width: 68px;
     font-size: 10px;
   }
 
@@ -1416,7 +1509,17 @@ textarea:focus-visible {
   }
 
   .audio-control-row {
-    gap: 5px;
+    gap: 6px;
+  }
+
+  .audio-control-row .player-control {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  .audio-control-row .player-control-side {
+    gap: 3px;
   }
 
   .audio-heading strong {
@@ -1467,5 +1570,11 @@ textarea:focus-visible {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .audio-volume-control {
+    display: none;
   }
 }

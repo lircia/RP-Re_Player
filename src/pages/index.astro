@@ -16,6 +16,8 @@ import {
   Repeat1,
   Search,
   Shuffle,
+  SkipBack,
+  SkipForward,
   Volume2,
   VolumeX
 } from "@lucide/astro";
@@ -44,10 +46,16 @@ import SiteShell from "../layouts/SiteShell.astro";
           <option value="ja">日本語</option>
         </select>
       </label>
+
+      <button id="mobileLibraryToggle" class="icon-button mobile-library-toggle" type="button" title="Show library" aria-label="Show library" aria-controls="libraryPane" aria-expanded="false">
+        <span><ArrowLeft size={19} /></span>
+      </button>
     </header>
 
+    <button id="mobileLibraryScrim" class="mobile-library-scrim" type="button" aria-label="Hide library" aria-hidden="true" tabindex="-1"></button>
+
     <div class="media-workspace">
-      <aside class="library-pane" aria-label="Media library">
+      <aside id="libraryPane" class="library-pane" aria-label="Media library">
         <div class="library-heading">
           <div>
             <p class="section-kicker" data-i18n="library">Library</p>
@@ -91,24 +99,31 @@ import SiteShell from "../layouts/SiteShell.astro";
                 <input id="videoSeek" type="range" min="0" max="0" value="0" step="0.1" aria-label="Seek" />
               </label>
               <div class="video-control-row">
-                <button id="playToggle" class="player-control" type="button" title="Play" aria-label="Play">
-                  <span id="playIcon"><Play size={19} fill="currentColor" /></span>
-                  <span id="pauseIcon" hidden><Pause size={19} fill="currentColor" /></span>
-                </button>
-                <output id="videoTime" class="video-time">00:00 / 00:00</output>
-                <span class="video-control-spacer"></span>
-                <button id="muteToggle" class="player-control" type="button" title="Mute" aria-label="Mute">
-                  <span id="volumeIcon"><Volume2 size={19} /></span>
-                  <span id="mutedIcon" hidden><VolumeX size={19} /></span>
-                </button>
-                <label class="volume-control">
-                  <span class="sr-only" data-i18n="volume">Volume</span>
-                  <input id="videoVolume" type="range" min="0" max="1" value="1" step="0.05" aria-label="Volume" />
-                </label>
-                <button id="fullscreenToggle" class="player-control" type="button" title="Fullscreen" aria-label="Fullscreen">
-                  <span id="fullscreenIcon"><Maximize size={19} /></span>
-                  <span id="exitFullscreenIcon" hidden><Minimize size={19} /></span>
-                </button>
+                <span class="player-control-side">
+                  <button id="playToggle" class="player-control" type="button" title="Play" aria-label="Play">
+                    <span id="playIcon"><Play size={19} fill="currentColor" /></span>
+                    <span id="pauseIcon" hidden><Pause size={19} fill="currentColor" /></span>
+                  </button>
+                  <output id="videoTime" class="video-time">00:00 / 00:00</output>
+                </span>
+                <span class="media-step-controls">
+                  <button id="videoPrevious" class="player-control" type="button" title="Previous" aria-label="Previous" disabled><SkipBack size={19} fill="currentColor" /></button>
+                  <button id="videoNext" class="player-control" type="button" title="Next" aria-label="Next" disabled><SkipForward size={19} fill="currentColor" /></button>
+                </span>
+                <span class="player-control-side is-end">
+                  <button id="muteToggle" class="player-control" type="button" title="Mute" aria-label="Mute">
+                    <span id="volumeIcon"><Volume2 size={19} /></span>
+                    <span id="mutedIcon" hidden><VolumeX size={19} /></span>
+                  </button>
+                  <label class="volume-control">
+                    <span class="sr-only" data-i18n="volume">Volume</span>
+                    <input id="videoVolume" type="range" min="0" max="1" value="1" step="0.05" aria-label="Volume" />
+                  </label>
+                  <button id="fullscreenToggle" class="player-control" type="button" title="Fullscreen" aria-label="Fullscreen">
+                    <span id="fullscreenIcon"><Maximize size={19} /></span>
+                    <span id="exitFullscreenIcon" hidden><Minimize size={19} /></span>
+                  </button>
+                </span>
               </div>
             </div>
           </div>
@@ -137,25 +152,32 @@ import SiteShell from "../layouts/SiteShell.astro";
                     <input id="audioSeek" type="range" min="0" max="0" value="0" step="0.1" aria-label="Seek" />
                   </label>
                   <div class="audio-control-row">
-                    <button id="audioPlayToggle" class="player-control" type="button" title="Play" aria-label="Play">
-                      <span id="audioPlayIcon"><Play size={19} fill="currentColor" /></span>
-                      <span id="audioPauseIcon" hidden><Pause size={19} fill="currentColor" /></span>
-                    </button>
-                    <output id="audioTime" class="video-time">00:00 / 00:00</output>
-                    <span class="video-control-spacer"></span>
-                    <button id="audioModeToggle" class="player-control" type="button" title="Repeat one" aria-label="Repeat one">
-                      <span id="audioModeOneIcon"><Repeat1 size={19} /></span>
-                      <span id="audioModeListIcon" hidden><Repeat size={19} /></span>
-                      <span id="audioModeShuffleIcon" hidden><Shuffle size={19} /></span>
-                    </button>
-                    <button id="audioMuteToggle" class="player-control" type="button" title="Mute" aria-label="Mute">
-                      <span id="audioVolumeIcon"><Volume2 size={19} /></span>
-                      <span id="audioMutedIcon" hidden><VolumeX size={19} /></span>
-                    </button>
-                    <label class="volume-control audio-volume-control">
-                      <span class="sr-only" data-i18n="volume">Volume</span>
-                      <input id="audioVolume" type="range" min="0" max="1" value="1" step="0.05" aria-label="Volume" />
-                    </label>
+                    <span class="player-control-side">
+                      <button id="audioPlayToggle" class="player-control" type="button" title="Play" aria-label="Play">
+                        <span id="audioPlayIcon"><Play size={19} fill="currentColor" /></span>
+                        <span id="audioPauseIcon" hidden><Pause size={19} fill="currentColor" /></span>
+                      </button>
+                      <output id="audioTime" class="video-time">00:00 / 00:00</output>
+                    </span>
+                    <span class="media-step-controls">
+                      <button id="audioPrevious" class="player-control" type="button" title="Previous" aria-label="Previous" disabled><SkipBack size={19} fill="currentColor" /></button>
+                      <button id="audioNext" class="player-control" type="button" title="Next" aria-label="Next" disabled><SkipForward size={19} fill="currentColor" /></button>
+                    </span>
+                    <span class="player-control-side is-end">
+                      <button id="audioModeToggle" class="player-control" type="button" title="Repeat one" aria-label="Repeat one">
+                        <span id="audioModeOneIcon"><Repeat1 size={19} /></span>
+                        <span id="audioModeListIcon" hidden><Repeat size={19} /></span>
+                        <span id="audioModeShuffleIcon" hidden><Shuffle size={19} /></span>
+                      </button>
+                      <button id="audioMuteToggle" class="player-control" type="button" title="Mute" aria-label="Mute">
+                        <span id="audioVolumeIcon"><Volume2 size={19} /></span>
+                        <span id="audioMutedIcon" hidden><VolumeX size={19} /></span>
+                      </button>
+                      <label class="volume-control audio-volume-control">
+                        <span class="sr-only" data-i18n="volume">Volume</span>
+                        <input id="audioVolume" type="range" min="0" max="1" value="1" step="0.05" aria-label="Volume" />
+                      </label>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -224,6 +246,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         unmute: "Unmute",
         seek: "Seek",
         volume: "Volume",
+        previous: "Previous",
+        next: "Next",
+        showLibrary: "Show library",
+        hideLibrary: "Hide library",
         repeatOne: "Repeat one",
         repeatList: "Repeat list",
         shuffle: "Shuffle",
@@ -260,6 +286,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         unmute: "取消静音",
         seek: "播放进度",
         volume: "音量",
+        previous: "上一个",
+        next: "下一个",
+        showLibrary: "显示媒体库",
+        hideLibrary: "隐藏媒体库",
         repeatOne: "单曲循环",
         repeatList: "列表循环",
         shuffle: "随机播放",
@@ -296,6 +326,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         unmute: "ミュート解除",
         seek: "再生位置",
         volume: "音量",
+        previous: "前へ",
+        next: "次へ",
+        showLibrary: "ライブラリを表示",
+        hideLibrary: "ライブラリを隠す",
         repeatOne: "1曲リピート",
         repeatList: "リストリピート",
         shuffle: "シャッフル",
@@ -327,6 +361,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       path: string;
       items: MediaItem[];
       audioQueue: MediaItem[];
+      videoQueue: MediaItem[];
       current: MediaItem | null;
       lang: Lang;
       ass: JASSUB | null;
@@ -340,6 +375,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       path: "/root",
       items: [],
       audioQueue: [],
+      videoQueue: [],
       current: null,
       lang: "en",
       ass: null,
@@ -352,8 +388,11 @@ import SiteShell from "../layouts/SiteShell.astro";
     };
 
     const d = {
+      app: document.querySelector<HTMLElement>(".media-app")!,
       search: document.querySelector<HTMLInputElement>("#searchInput")!,
       language: document.querySelector("#languageSelect") as unknown as HTMLSelectElement,
+      libraryToggle: document.querySelector<HTMLButtonElement>("#mobileLibraryToggle")!,
+      libraryScrim: document.querySelector<HTMLButtonElement>("#mobileLibraryScrim")!,
       path: document.querySelector<HTMLElement>("#pathTitle")!,
       list: document.querySelector<HTMLElement>("#fileList")!,
       count: document.querySelector<HTMLElement>("#itemCount")!,
@@ -368,6 +407,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       playToggle: document.querySelector<HTMLButtonElement>("#playToggle")!,
       playIcon: document.querySelector<HTMLElement>("#playIcon")!,
       pauseIcon: document.querySelector<HTMLElement>("#pauseIcon")!,
+      videoPrevious: document.querySelector<HTMLButtonElement>("#videoPrevious")!,
+      videoNext: document.querySelector<HTMLButtonElement>("#videoNext")!,
       seek: document.querySelector<HTMLInputElement>("#videoSeek")!,
       time: document.querySelector<HTMLOutputElement>("#videoTime")!,
       muteToggle: document.querySelector<HTMLButtonElement>("#muteToggle")!,
@@ -384,6 +425,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       audioPlayToggle: document.querySelector<HTMLButtonElement>("#audioPlayToggle")!,
       audioPlayIcon: document.querySelector<HTMLElement>("#audioPlayIcon")!,
       audioPauseIcon: document.querySelector<HTMLElement>("#audioPauseIcon")!,
+      audioPrevious: document.querySelector<HTMLButtonElement>("#audioPrevious")!,
+      audioNext: document.querySelector<HTMLButtonElement>("#audioNext")!,
       audioSeek: document.querySelector<HTMLInputElement>("#audioSeek")!,
       audioTime: document.querySelector<HTMLOutputElement>("#audioTime")!,
       audioModeToggle: document.querySelector<HTMLButtonElement>("#audioModeToggle")!,
@@ -505,6 +548,37 @@ import SiteShell from "../layouts/SiteShell.astro";
       input.style.setProperty("--range-fill", `${Math.max(0, Math.min(100, value))}%`);
     };
 
+    function setLibraryOpen(open: boolean) {
+      d.app.classList.toggle("is-library-open", open);
+      d.libraryToggle.ariaExpanded = String(open);
+      d.libraryScrim.setAttribute("aria-hidden", String(!open));
+      const label = t(open ? "hideLibrary" : "showLibrary");
+      d.libraryToggle.title = d.libraryToggle.ariaLabel = label;
+      d.libraryScrim.ariaLabel = t("hideLibrary");
+    }
+
+    function updateMediaNavigation() {
+      const update = (kind: "video" | "audio", queue: MediaItem[], previous: HTMLButtonElement, next: HTMLButtonElement) => {
+        const active = s.current?.kind === kind;
+        const index = active ? queue.findIndex((item) => item.path === s.current?.path) : -1;
+        previous.disabled = index <= 0;
+        next.disabled = index < 0 || index >= queue.length - 1;
+        previous.title = previous.ariaLabel = t("previous");
+        next.title = next.ariaLabel = t("next");
+      };
+      update("video", s.videoQueue, d.videoPrevious, d.videoNext);
+      update("audio", s.audioQueue, d.audioPrevious, d.audioNext);
+    }
+
+    async function playAdjacent(kind: "video" | "audio", direction: -1 | 1) {
+      if (s.current?.kind !== kind) return;
+      const queue = kind === "audio" ? s.audioQueue : s.videoQueue;
+      const index = queue.findIndex((item) => item.path === s.current?.path);
+      const target = queue[index + direction];
+      if (index < 0 || !target) return;
+      await openItem(target.path);
+    }
+
     function scheduleControls(delay = document.fullscreenElement === d.videoFrame ? 1600 : 2200) {
       window.clearTimeout(controlTimer);
       if (seeking || (d.video.paused && document.fullscreenElement !== d.videoFrame)) return;
@@ -605,6 +679,7 @@ import SiteShell from "../layouts/SiteShell.astro";
 
     function setLyricsState(key: "lyricsLoading" | "lyricsEmpty" | "lyricsFailed") {
       d.lyricsPanel.hidden = false;
+      d.lyricsList.classList.remove("is-intro");
       d.lyricsList.innerHTML = `<div class="lyrics-state">${esc(t(key))}</div>`;
     }
 
@@ -614,6 +689,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       s.lyrics = [];
       s.lyricIndex = -1;
       s.lyricManual = false;
+      d.lyricsList.classList.remove("is-intro");
       d.lyricsList.replaceChildren();
       d.lyricsPanel.hidden = true;
     }
@@ -649,6 +725,7 @@ import SiteShell from "../layouts/SiteShell.astro";
           high = middle - 1;
         }
       }
+      d.lyricsList.classList.toggle("is-intro", index < Math.min(3, s.lyrics.length));
       if (!force && index === s.lyricIndex) return;
 
       const previous = d.lyricsList.querySelector<HTMLElement>(".is-active");
@@ -672,6 +749,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       s.lyricIndex = -1;
       if (!cues.length) return setLyricsState("lyricsEmpty");
       d.lyricsPanel.hidden = false;
+      d.lyricsList.classList.add("is-intro");
       d.lyricsList.innerHTML = cues.map((cue, index) => {
         const top = cue.top || cue.bottom || "";
         const bottom = cue.top ? cue.bottom : undefined;
@@ -724,6 +802,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       });
       updateVideoControls();
       updateAudioControls();
+      setLibraryOpen(d.app.classList.contains("is-library-open"));
       render();
       renderCurrent();
     }
@@ -750,6 +829,7 @@ import SiteShell from "../layouts/SiteShell.astro";
     }
 
     function renderCurrent() {
+      updateMediaNavigation();
       if (!s.current) return;
       d.kind.textContent = t(s.current.kind || "video");
       d.title.textContent = s.current.name;
@@ -809,9 +889,11 @@ import SiteShell from "../layouts/SiteShell.astro";
       if (!data.ok) throw new Error(data.details || data.error || t("itemFailed"));
       const item: MediaItem = data.item;
       const audioQueue = s.items.filter((entry) => !entry.isDir && entry.kind === "audio");
+      const videoQueue = s.items.filter((entry) => !entry.isDir && entry.kind === "video");
       await clearMedia();
       s.current = item;
-      if (item.kind === "audio") s.audioQueue = audioQueue;
+      if (item.kind === "audio" && !s.audioQueue.some((entry) => entry.path === item.path)) s.audioQueue = audioQueue;
+      if (item.kind === "video" && !s.videoQueue.some((entry) => entry.path === item.path)) s.videoQueue = videoQueue;
       renderCurrent();
       render();
 
@@ -875,6 +957,7 @@ import SiteShell from "../layouts/SiteShell.astro";
     d.list.addEventListener("click", (event) => {
       const row = (event.target as HTMLElement).closest<HTMLElement>("[data-path]");
       if (!row?.dataset.path) return;
+      if (row.dataset.dir !== "1") setLibraryOpen(false);
       const action = row.dataset.dir === "1" ? load(row.dataset.path) : openItem(row.dataset.path);
       action.catch((error) => setStatus(row.dataset.dir === "1" ? d.libraryStatus : d.playerStatus, error.message, "error"));
     });
@@ -885,6 +968,11 @@ import SiteShell from "../layouts/SiteShell.astro";
     });
     d.refresh.addEventListener("click", () => load().catch((error) => setStatus(d.libraryStatus, error.message, "error")));
     d.search.addEventListener("input", render);
+    d.libraryToggle.addEventListener("click", () => setLibraryOpen(!d.app.classList.contains("is-library-open")));
+    d.libraryScrim.addEventListener("click", () => setLibraryOpen(false));
+    window.matchMedia("(min-width: 681px)").addEventListener("change", (event) => {
+      if (event.matches) setLibraryOpen(false);
+    });
     d.audio.addEventListener("timeupdate", () => {
       syncLyrics();
       updateAudioControls();
@@ -898,6 +986,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       continueAudio().catch((error) => setStatus(d.playerStatus, error.message, "error"));
     });
     d.audioPlayToggle.addEventListener("click", toggleAudioPlay);
+    d.audioPrevious.addEventListener("click", () => playAdjacent("audio", -1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
+    d.audioNext.addEventListener("click", () => playAdjacent("audio", 1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
     d.audioModeToggle.addEventListener("click", cycleAudioMode);
     d.audioMuteToggle.addEventListener("click", () => {
       d.audio.muted = !d.audio.muted;
@@ -933,13 +1023,14 @@ import SiteShell from "../layouts/SiteShell.astro";
       syncLyrics(true);
     });
     d.playToggle.addEventListener("click", togglePlay);
+    d.videoPrevious.addEventListener("click", () => playAdjacent("video", -1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
+    d.videoNext.addEventListener("click", () => playAdjacent("video", 1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
     d.muteToggle.addEventListener("click", () => {
       d.video.muted = !d.video.muted;
       if (!d.video.muted && d.video.volume === 0) d.video.volume = 1;
     });
     d.fullscreenToggle.addEventListener("click", () => toggleFullscreen().catch(() => undefined));
-    d.video.addEventListener("click", togglePlay);
-    d.video.addEventListener("dblclick", () => toggleFullscreen().catch(() => undefined));
+    d.video.addEventListener("dblclick", togglePlay);
     d.videoFrame.addEventListener("pointermove", () => showControls());
     d.videoFrame.addEventListener("pointerdown", () => d.videoFrame.focus({ preventScroll: true }));
     d.videoFrame.addEventListener("pointerleave", () => scheduleControls(600));
@@ -982,6 +1073,11 @@ import SiteShell from "../layouts/SiteShell.astro";
       s.ass?.resize(true).catch(() => undefined);
     });
     document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && d.app.classList.contains("is-library-open")) {
+        setLibraryOpen(false);
+        d.libraryToggle.focus();
+        return;
+      }
       if (d.videoFrame.hidden) return;
       const active = document.activeElement;
       const controlsPlayer = document.fullscreenElement === d.videoFrame || active === d.videoFrame || (active instanceof Node && d.videoFrame.contains(active));
