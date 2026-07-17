@@ -2,6 +2,9 @@ import type { APIContext } from "astro";
 import { env as cloudflareEnv } from "cloudflare:workers";
 
 export interface AppEnv {
+  H?: string;
+  I?: string;
+  M?: string;
   N?: string;
   P?: string;
   US?: string;

@@ -2,7 +2,6 @@
 import {
   ArrowLeft,
   Captions,
-  ExternalLink,
   FileImage,
   Film,
   Folder,
@@ -13,22 +12,21 @@ import {
   Pause,
   Play,
   RefreshCw,
+  Repeat,
+  Repeat1,
   Search,
+  Shuffle,
   Volume2,
   VolumeX
 } from "@lucide/astro";
 import SiteShell from "../layouts/SiteShell.astro";
 ---
 
-<SiteShell title="Re Player">
+<SiteShell title="Re-Player">
   <div class="media-app">
     <header class="app-topbar">
-      <a class="app-brand" href="/" aria-label="Re Player">
-        <span class="app-brand-mark"><Play size={20} fill="currentColor" /></span>
-        <span>
-          <strong>Re Player</strong>
-          <small>RP</small>
-        </span>
+      <a class="app-brand" href="/" aria-label="Re-Player">
+        <strong>Re-Player</strong>
       </a>
 
       <label class="search-box">
@@ -53,7 +51,7 @@ import SiteShell from "../layouts/SiteShell.astro";
         <div class="library-heading">
           <div>
             <p class="section-kicker" data-i18n="library">Library</p>
-            <h1 id="pathTitle">/root</h1>
+            <h1 id="pathTitle">/</h1>
           </div>
           <div class="icon-actions">
             <button id="parentBtn" class="icon-button" type="button" title="Parent folder" data-i18n-title="parent">
@@ -129,10 +127,37 @@ import SiteShell from "../layouts/SiteShell.astro";
                   <Music2 size={26} />
                   <div>
                     <strong id="audioTitle">Re Player</strong>
-                    <span id="audioPath">/root</span>
+                    <span id="audioPath">/</span>
                   </div>
                 </div>
-                <audio id="audioPlayer" controls preload="metadata"></audio>
+                <audio id="audioPlayer" preload="metadata"></audio>
+                <div class="audio-controls">
+                  <label class="audio-seek">
+                    <span class="sr-only" data-i18n="seek">Seek</span>
+                    <input id="audioSeek" type="range" min="0" max="0" value="0" step="0.1" aria-label="Seek" />
+                  </label>
+                  <div class="audio-control-row">
+                    <button id="audioPlayToggle" class="player-control" type="button" title="Play" aria-label="Play">
+                      <span id="audioPlayIcon"><Play size={19} fill="currentColor" /></span>
+                      <span id="audioPauseIcon" hidden><Pause size={19} fill="currentColor" /></span>
+                    </button>
+                    <output id="audioTime" class="video-time">00:00 / 00:00</output>
+                    <span class="video-control-spacer"></span>
+                    <button id="audioModeToggle" class="player-control" type="button" title="Repeat one" aria-label="Repeat one">
+                      <span id="audioModeOneIcon"><Repeat1 size={19} /></span>
+                      <span id="audioModeListIcon" hidden><Repeat size={19} /></span>
+                      <span id="audioModeShuffleIcon" hidden><Shuffle size={19} /></span>
+                    </button>
+                    <button id="audioMuteToggle" class="player-control" type="button" title="Mute" aria-label="Mute">
+                      <span id="audioVolumeIcon"><Volume2 size={19} /></span>
+                      <span id="audioMutedIcon" hidden><VolumeX size={19} /></span>
+                    </button>
+                    <label class="volume-control audio-volume-control">
+                      <span class="sr-only" data-i18n="volume">Volume</span>
+                      <input id="audioVolume" type="range" min="0" max="1" value="1" step="0.05" aria-label="Volume" />
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
             <section id="lyricsPanel" class="lyrics-panel" hidden>
@@ -153,12 +178,8 @@ import SiteShell from "../layouts/SiteShell.astro";
               </span>
             </div>
             <h2 id="mediaTitle" data-i18n="nothingSelected">Nothing selected</h2>
-            <p id="mediaPath">/root</p>
+            <p id="mediaPath">/</p>
           </div>
-          <a id="sourceLink" class="command-button" href="#" target="_blank" rel="noreferrer" hidden>
-            <ExternalLink size={17} />
-            <span data-i18n="openSource">Open source</span>
-          </a>
         </section>
 
         <div id="playerStatus" class="player-status" role="status"></div>
@@ -187,7 +208,6 @@ import SiteShell from "../layouts/SiteShell.astro";
         nothingPlaying: "Nothing playing",
         nothingSelected: "Nothing selected",
         ready: "Ready",
-        openSource: "Open source",
         folder: "Folder",
         video: "Video",
         audio: "Audio",
@@ -204,6 +224,9 @@ import SiteShell from "../layouts/SiteShell.astro";
         unmute: "Unmute",
         seek: "Seek",
         volume: "Volume",
+        repeatOne: "Repeat one",
+        repeatList: "Repeat list",
+        shuffle: "Shuffle",
         fullscreen: "Fullscreen",
         exitFullscreen: "Exit fullscreen",
         lyricsLoading: "Loading lyrics...",
@@ -221,7 +244,6 @@ import SiteShell from "../layouts/SiteShell.astro";
         nothingPlaying: "暂无播放内容",
         nothingSelected: "尚未选择媒体",
         ready: "就绪",
-        openSource: "打开源链接",
         folder: "目录",
         video: "视频",
         audio: "音频",
@@ -238,6 +260,9 @@ import SiteShell from "../layouts/SiteShell.astro";
         unmute: "取消静音",
         seek: "播放进度",
         volume: "音量",
+        repeatOne: "单曲循环",
+        repeatList: "列表循环",
+        shuffle: "随机播放",
         fullscreen: "全屏",
         exitFullscreen: "退出全屏",
         lyricsLoading: "正在加载歌词...",
@@ -255,7 +280,6 @@ import SiteShell from "../layouts/SiteShell.astro";
         nothingPlaying: "再生中のメディアはありません",
         nothingSelected: "メディアが選択されていません",
         ready: "準備完了",
-        openSource: "元リンクを開く",
         folder: "フォルダー",
         video: "動画",
         audio: "音声",
@@ -272,6 +296,9 @@ import SiteShell from "../layouts/SiteShell.astro";
         unmute: "ミュート解除",
         seek: "再生位置",
         volume: "音量",
+        repeatOne: "1曲リピート",
+        repeatList: "リストリピート",
+        shuffle: "シャッフル",
         fullscreen: "全画面",
         exitFullscreen: "全画面を終了",
         lyricsLoading: "歌詞を読み込み中...",
@@ -281,12 +308,14 @@ import SiteShell from "../layouts/SiteShell.astro";
     } as const;
 
     type Lang = keyof typeof c;
+    type AudioMode = "one" | "list" | "shuffle";
     type MediaItem = {
       id?: string;
       name: string;
       path: string;
       url?: string;
       kind?: "video" | "audio" | "image";
+      artist?: string;
       poster?: string;
       sub?: string;
       lrc?: string;
@@ -297,6 +326,7 @@ import SiteShell from "../layouts/SiteShell.astro";
     const s: {
       path: string;
       items: MediaItem[];
+      audioQueue: MediaItem[];
       current: MediaItem | null;
       lang: Lang;
       ass: JASSUB | null;
@@ -305,9 +335,11 @@ import SiteShell from "../layouts/SiteShell.astro";
       lyricToken: number;
       lyricManual: boolean;
       lyricScrollTimer: number;
+      audioMode: AudioMode;
     } = {
       path: "/root",
       items: [],
+      audioQueue: [],
       current: null,
       lang: "en",
       ass: null,
@@ -315,7 +347,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       lyricIndex: -1,
       lyricToken: 0,
       lyricManual: false,
-      lyricScrollTimer: 0
+      lyricScrollTimer: 0,
+      audioMode: "one"
     };
 
     const d = {
@@ -348,6 +381,19 @@ import SiteShell from "../layouts/SiteShell.astro";
       image: document.querySelector<HTMLImageElement>("#imageViewer")!,
       audioFrame: document.querySelector<HTMLElement>("#audioFrame")!,
       audio: document.querySelector<HTMLAudioElement>("#audioPlayer")!,
+      audioPlayToggle: document.querySelector<HTMLButtonElement>("#audioPlayToggle")!,
+      audioPlayIcon: document.querySelector<HTMLElement>("#audioPlayIcon")!,
+      audioPauseIcon: document.querySelector<HTMLElement>("#audioPauseIcon")!,
+      audioSeek: document.querySelector<HTMLInputElement>("#audioSeek")!,
+      audioTime: document.querySelector<HTMLOutputElement>("#audioTime")!,
+      audioModeToggle: document.querySelector<HTMLButtonElement>("#audioModeToggle")!,
+      audioModeOneIcon: document.querySelector<HTMLElement>("#audioModeOneIcon")!,
+      audioModeListIcon: document.querySelector<HTMLElement>("#audioModeListIcon")!,
+      audioModeShuffleIcon: document.querySelector<HTMLElement>("#audioModeShuffleIcon")!,
+      audioMuteToggle: document.querySelector<HTMLButtonElement>("#audioMuteToggle")!,
+      audioVolumeIcon: document.querySelector<HTMLElement>("#audioVolumeIcon")!,
+      audioMutedIcon: document.querySelector<HTMLElement>("#audioMutedIcon")!,
+      audioVolume: document.querySelector<HTMLInputElement>("#audioVolume")!,
       audioPoster: document.querySelector<HTMLImageElement>("#audioPoster")!,
       audioTitle: document.querySelector<HTMLElement>("#audioTitle")!,
       audioPath: document.querySelector<HTMLElement>("#audioPath")!,
@@ -358,15 +404,16 @@ import SiteShell from "../layouts/SiteShell.astro";
       lyricsBadge: document.querySelector<HTMLElement>("#lyricsBadge")!,
       title: document.querySelector<HTMLElement>("#mediaTitle")!,
       mediaPath: document.querySelector<HTMLElement>("#mediaPath")!,
-      source: document.querySelector<HTMLAnchorElement>("#sourceLink")!,
       playerStatus: document.querySelector<HTMLElement>("#playerStatus")!
     };
     let controlTimer = 0;
     let seeking = false;
+    let audioSeeking = false;
 
     const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
     const t = (k: keyof (typeof c)["en"]) => c[s.lang][k];
+    const displayPath = (path: string) => path.replace(/^\/root(?=\/|$)/, "") || "/";
     const subtitleFontUrls = async (content: string) => {
       const characters = [...new Set([...content].filter((character) => {
         const point = character.codePointAt(0) || 0;
@@ -495,9 +542,65 @@ import SiteShell from "../layouts/SiteShell.astro";
       setRangeFill(d.volume, Number(d.volume.value) * 100);
     }
 
+    function updateAudioControls() {
+      const paused = d.audio.paused;
+      const muted = d.audio.muted || d.audio.volume === 0;
+      const duration = Number.isFinite(d.audio.duration) ? d.audio.duration : 0;
+      const modeKey = s.audioMode === "one" ? "repeatOne" : s.audioMode === "list" ? "repeatList" : "shuffle";
+      d.audioFrame.classList.toggle("is-playing", !paused);
+      d.audioPlayIcon.hidden = !paused;
+      d.audioPauseIcon.hidden = paused;
+      d.audioPlayToggle.title = d.audioPlayToggle.ariaLabel = t(paused ? "play" : "pause");
+      d.audioVolumeIcon.hidden = muted;
+      d.audioMutedIcon.hidden = !muted;
+      d.audioMuteToggle.title = d.audioMuteToggle.ariaLabel = t(muted ? "unmute" : "mute");
+      d.audioModeOneIcon.hidden = s.audioMode !== "one";
+      d.audioModeListIcon.hidden = s.audioMode !== "list";
+      d.audioModeShuffleIcon.hidden = s.audioMode !== "shuffle";
+      d.audioModeToggle.title = d.audioModeToggle.ariaLabel = t(modeKey);
+      d.audioSeek.ariaLabel = t("seek");
+      d.audioVolume.ariaLabel = t("volume");
+      d.audioSeek.max = String(duration);
+      if (!audioSeeking) d.audioSeek.value = String(Math.min(d.audio.currentTime || 0, duration));
+      d.audioVolume.value = String(muted ? 0 : d.audio.volume);
+      d.audioTime.value = `${formatTime(d.audio.currentTime)} / ${formatTime(duration)}`;
+      setRangeFill(d.audioSeek, duration ? (Number(d.audioSeek.value) / duration) * 100 : 0);
+      setRangeFill(d.audioVolume, Number(d.audioVolume.value) * 100);
+    }
+
     function togglePlay() {
       if (d.video.paused) d.video.play().catch(() => undefined);
       else d.video.pause();
+    }
+
+    function toggleAudioPlay() {
+      if (d.audio.paused) d.audio.play().catch(() => undefined);
+      else d.audio.pause();
+    }
+
+    function cycleAudioMode() {
+      s.audioMode = s.audioMode === "one" ? "list" : s.audioMode === "list" ? "shuffle" : "one";
+      updateAudioControls();
+    }
+
+    async function continueAudio() {
+      if (s.audioMode === "one") {
+        d.audio.currentTime = 0;
+        await d.audio.play().catch(() => undefined);
+        return;
+      }
+
+      const tracks = s.audioQueue;
+      const alternatives = tracks.filter((item) => item.path !== s.current?.path);
+      if (!alternatives.length) return;
+      let next: MediaItem;
+      if (s.audioMode === "shuffle") {
+        next = alternatives[Math.floor(Math.random() * alternatives.length)];
+      } else {
+        const current = tracks.findIndex((item) => item.path === s.current?.path);
+        next = tracks[(current + 1 + tracks.length) % tracks.length];
+      }
+      await openItem(next.path);
     }
 
     function setLyricsState(key: "lyricsLoading" | "lyricsEmpty" | "lyricsFailed") {
@@ -620,12 +723,13 @@ import SiteShell from "../layouts/SiteShell.astro";
         if (key && c[s.lang][key]) el.placeholder = t(key);
       });
       updateVideoControls();
+      updateAudioControls();
       render();
       renderCurrent();
     }
 
     function render() {
-      d.path.textContent = s.path;
+      d.path.textContent = displayPath(s.path);
       d.parent.disabled = s.path === "/root";
       const q = d.search.value.trim().toLocaleLowerCase(s.lang);
       const items = s.items.filter((item) => !q || `${item.name} ${item.path}`.toLocaleLowerCase(s.lang).includes(q));
@@ -639,7 +743,7 @@ import SiteShell from "../layouts/SiteShell.astro";
           <span class="file-icon file-icon-${esc(type(item))}">${icon(item)}</span>
           <span class="file-copy">
             <strong>${esc(item.name)}</strong>
-            <small>${esc(t(type(item) as "folder" | "video" | "audio" | "image"))}</small>
+            <small>${esc(item.artist || t(type(item) as "folder" | "video" | "audio" | "image"))}</small>
           </span>
         </button>
       `).join("");
@@ -649,7 +753,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       if (!s.current) return;
       d.kind.textContent = t(s.current.kind || "video");
       d.title.textContent = s.current.name;
-      d.mediaPath.textContent = s.current.path;
+      d.mediaPath.textContent = s.current.artist || displayPath(s.current.path);
       d.subtitle.hidden = !s.current.sub;
       d.lyricsBadge.hidden = !s.current.lrc && !s.current.lrc2;
     }
@@ -685,6 +789,10 @@ import SiteShell from "../layouts/SiteShell.astro";
       d.imageFrame.hidden = true;
       d.audioFrame.hidden = true;
       d.audioFrame.classList.remove("is-playing");
+      d.audioSeek.value = "0";
+      d.audioSeek.max = "0";
+      d.audioTime.value = "00:00 / 00:00";
+      setRangeFill(d.audioSeek, 0);
       delete d.stage.dataset.mode;
       resetLyrics();
       d.empty.hidden = true;
@@ -700,10 +808,10 @@ import SiteShell from "../layouts/SiteShell.astro";
       const data = (await response.json()) as any;
       if (!data.ok) throw new Error(data.details || data.error || t("itemFailed"));
       const item: MediaItem = data.item;
+      const audioQueue = s.items.filter((entry) => !entry.isDir && entry.kind === "audio");
       await clearMedia();
       s.current = item;
-      d.source.href = item.url || "#";
-      d.source.hidden = false;
+      if (item.kind === "audio") s.audioQueue = audioQueue;
       renderCurrent();
       render();
 
@@ -718,9 +826,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         d.audioPoster.src = item.poster || "/poster.svg";
         d.audioPoster.alt = item.name;
         d.audioTitle.textContent = item.name;
-        d.audioPath.textContent = item.path;
+        d.audioPath.textContent = item.artist || displayPath(item.path);
         d.audio.src = item.url || "";
         d.audio.load();
+        updateAudioControls();
         if (item.lrc || item.lrc2) loadLyrics(item).catch(() => setLyricsState("lyricsFailed"));
         d.audio.play().catch(() => undefined);
       } else {
@@ -776,10 +885,40 @@ import SiteShell from "../layouts/SiteShell.astro";
     });
     d.refresh.addEventListener("click", () => load().catch((error) => setStatus(d.libraryStatus, error.message, "error")));
     d.search.addEventListener("input", render);
-    d.audio.addEventListener("timeupdate", () => syncLyrics());
+    d.audio.addEventListener("timeupdate", () => {
+      syncLyrics();
+      updateAudioControls();
+    });
     d.audio.addEventListener("seeked", () => syncLyrics(true));
-    d.audio.addEventListener("play", () => d.audioFrame.classList.add("is-playing"));
-    ["pause", "ended"].forEach((event) => d.audio.addEventListener(event, () => d.audioFrame.classList.remove("is-playing")));
+    ["play", "pause", "durationchange", "loadedmetadata", "volumechange"].forEach((event) => {
+      d.audio.addEventListener(event, updateAudioControls);
+    });
+    d.audio.addEventListener("ended", () => {
+      updateAudioControls();
+      continueAudio().catch((error) => setStatus(d.playerStatus, error.message, "error"));
+    });
+    d.audioPlayToggle.addEventListener("click", toggleAudioPlay);
+    d.audioModeToggle.addEventListener("click", cycleAudioMode);
+    d.audioMuteToggle.addEventListener("click", () => {
+      d.audio.muted = !d.audio.muted;
+      if (!d.audio.muted && d.audio.volume === 0) d.audio.volume = 1;
+    });
+    d.audioSeek.addEventListener("pointerdown", () => {
+      audioSeeking = true;
+    });
+    d.audioSeek.addEventListener("input", () => {
+      d.audio.currentTime = Number(d.audioSeek.value);
+      updateAudioControls();
+      syncLyrics(true);
+    });
+    d.audioSeek.addEventListener("change", () => {
+      audioSeeking = false;
+      updateAudioControls();
+    });
+    d.audioVolume.addEventListener("input", () => {
+      d.audio.muted = false;
+      d.audio.volume = Number(d.audioVolume.value);
+    });
     d.audioPoster.addEventListener("error", () => {
       if (!d.audioPoster.src.endsWith("/poster.svg")) d.audioPoster.src = "/poster.svg";
     });
@@ -817,9 +956,14 @@ import SiteShell from "../layouts/SiteShell.astro";
       updateVideoControls();
     });
     window.addEventListener("pointerup", () => {
-      if (!seeking) return;
-      seeking = false;
-      scheduleControls();
+      if (seeking) {
+        seeking = false;
+        scheduleControls();
+      }
+      if (audioSeeking) {
+        audioSeeking = false;
+        updateAudioControls();
+      }
     });
     d.volume.addEventListener("input", () => {
       d.video.muted = false;
