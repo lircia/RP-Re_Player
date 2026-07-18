@@ -2,6 +2,7 @@
 import {
   ArrowLeft,
   Captions,
+  FastForward,
   FileImage,
   Film,
   Folder,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
   Repeat,
   Repeat1,
+  Rewind,
   Search,
   Shuffle,
   SkipBack,
@@ -92,7 +94,12 @@ import SiteShell from "../layouts/SiteShell.astro";
           </div>
 
           <div id="videoFrame" class="video-frame" tabindex="0" hidden>
-            <video id="videoPlayer" playsinline preload="metadata"></video>
+            <video id="videoPlayer" playsinline preload="auto"></video>
+            <div id="videoHoldFeedback" class="video-hold-feedback" aria-live="off" hidden>
+              <span id="videoRewindIcon" hidden><Rewind size={24} /></span>
+              <span id="videoFastIcon" hidden><FastForward size={24} /></span>
+              <strong id="videoHoldLabel"></strong>
+            </div>
             <div id="videoControls" class="video-controls">
               <label class="video-seek">
                 <span class="sr-only" data-i18n="seek">Seek</span>
@@ -111,6 +118,9 @@ import SiteShell from "../layouts/SiteShell.astro";
                   <button id="videoNext" class="player-control" type="button" title="Next" aria-label="Next" disabled><SkipForward size={19} fill="currentColor" /></button>
                 </span>
                 <span class="player-control-side is-end">
+                  <button id="videoSpeedToggle" class="player-control video-speed-control" type="button" title="Speed: 1×" aria-label="Speed: 1×">
+                    <span id="videoSpeedValue">1×</span>
+                  </button>
                   <button id="muteToggle" class="player-control" type="button" title="Mute" aria-label="Mute">
                     <span id="volumeIcon"><Volume2 size={19} /></span>
                     <span id="mutedIcon" hidden><VolumeX size={19} /></span>
@@ -240,12 +250,14 @@ import SiteShell from "../layouts/SiteShell.astro";
         itemFailed: "Could not open this media.",
         subFailed: "The ASS subtitle could not be loaded.",
         playing: "Now playing",
+        buffering: "Buffering...",
         play: "Play",
         pause: "Pause",
         mute: "Mute",
         unmute: "Unmute",
         seek: "Seek",
         volume: "Volume",
+        speed: "Speed",
         previous: "Previous",
         next: "Next",
         showLibrary: "Show library",
@@ -280,12 +292,14 @@ import SiteShell from "../layouts/SiteShell.astro";
         itemFailed: "无法打开此媒体。",
         subFailed: "ASS 字幕加载失败。",
         playing: "正在播放",
+        buffering: "正在缓冲...",
         play: "播放",
         pause: "暂停",
         mute: "静音",
         unmute: "取消静音",
         seek: "播放进度",
         volume: "音量",
+        speed: "速度",
         previous: "上一个",
         next: "下一个",
         showLibrary: "显示媒体库",
@@ -320,12 +334,14 @@ import SiteShell from "../layouts/SiteShell.astro";
         itemFailed: "メディアを開けませんでした。",
         subFailed: "ASS字幕を読み込めませんでした。",
         playing: "再生中",
+        buffering: "バッファリング中...",
         play: "再生",
         pause: "一時停止",
         mute: "ミュート",
         unmute: "ミュート解除",
         seek: "再生位置",
         volume: "音量",
+        speed: "速度",
         previous: "前へ",
         next: "次へ",
         showLibrary: "ライブラリを表示",
@@ -403,6 +419,10 @@ import SiteShell from "../layouts/SiteShell.astro";
       empty: document.querySelector<HTMLElement>("#emptyPlayer")!,
       videoFrame: document.querySelector<HTMLElement>("#videoFrame")!,
       video: document.querySelector<HTMLVideoElement>("#videoPlayer")!,
+      videoHoldFeedback: document.querySelector<HTMLElement>("#videoHoldFeedback")!,
+      videoRewindIcon: document.querySelector<HTMLElement>("#videoRewindIcon")!,
+      videoFastIcon: document.querySelector<HTMLElement>("#videoFastIcon")!,
+      videoHoldLabel: document.querySelector<HTMLElement>("#videoHoldLabel")!,
       videoControls: document.querySelector<HTMLElement>("#videoControls")!,
       playToggle: document.querySelector<HTMLButtonElement>("#playToggle")!,
       playIcon: document.querySelector<HTMLElement>("#playIcon")!,
@@ -411,6 +431,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       videoNext: document.querySelector<HTMLButtonElement>("#videoNext")!,
       seek: document.querySelector<HTMLInputElement>("#videoSeek")!,
       time: document.querySelector<HTMLOutputElement>("#videoTime")!,
+      speedToggle: document.querySelector<HTMLButtonElement>("#videoSpeedToggle")!,
+      speedValue: document.querySelector<HTMLElement>("#videoSpeedValue")!,
       muteToggle: document.querySelector<HTMLButtonElement>("#muteToggle")!,
       volumeIcon: document.querySelector<HTMLElement>("#volumeIcon")!,
       mutedIcon: document.querySelector<HTMLElement>("#mutedIcon")!,
@@ -450,8 +472,19 @@ import SiteShell from "../layouts/SiteShell.astro";
       playerStatus: document.querySelector<HTMLElement>("#playerStatus")!
     };
     let controlTimer = 0;
+    let videoClickTimer = 0;
+    let videoHoldTimer = 0;
+    let videoRewindTimer = 0;
+    let videoHoldMode: "rewind" | "fast" | null = null;
+    let videoHoldTriggered = false;
+    let suppressVideoClick = false;
+    let videoHoldRate = 1;
+    let videoHoldX = 0;
+    let videoHoldY = 0;
     let seeking = false;
     let audioSeeking = false;
+
+    const VIDEO_RATES = [1, 1.25, 1.5, 2];
 
     const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
@@ -579,9 +612,9 @@ import SiteShell from "../layouts/SiteShell.astro";
       await openItem(target.path);
     }
 
-    function scheduleControls(delay = document.fullscreenElement === d.videoFrame ? 1600 : 2200) {
+    function scheduleControls(delay = 4200) {
       window.clearTimeout(controlTimer);
-      if (seeking || (d.video.paused && document.fullscreenElement !== d.videoFrame)) return;
+      if (seeking) return;
       controlTimer = window.setTimeout(() => d.videoFrame.classList.add("controls-hidden"), delay);
     }
 
@@ -591,11 +624,91 @@ import SiteShell from "../layouts/SiteShell.astro";
       if (!lock) scheduleControls();
     }
 
+    function hideControls() {
+      window.clearTimeout(controlTimer);
+      if (!seeking) d.videoFrame.classList.add("controls-hidden");
+    }
+
+    function toggleVideoControls() {
+      if (d.videoFrame.classList.contains("controls-hidden")) showControls();
+      else hideControls();
+    }
+
+    function cycleVideoSpeed() {
+      const current = d.video.defaultPlaybackRate || d.video.playbackRate || 1;
+      const index = VIDEO_RATES.findIndex((rate) => Math.abs(rate - current) < 0.01);
+      const rate = VIDEO_RATES[(index + 1 + VIDEO_RATES.length) % VIDEO_RATES.length];
+      d.video.defaultPlaybackRate = rate;
+      d.video.playbackRate = rate;
+      updateVideoControls();
+    }
+
+    function showVideoHoldFeedback(mode: "rewind" | "fast") {
+      d.videoHoldFeedback.hidden = false;
+      d.videoHoldFeedback.classList.toggle("is-rewind", mode === "rewind");
+      d.videoHoldFeedback.classList.toggle("is-fast", mode === "fast");
+      d.videoRewindIcon.hidden = mode !== "rewind";
+      d.videoFastIcon.hidden = mode !== "fast";
+      d.videoHoldLabel.textContent = mode === "rewind" ? "-2s" : "2×";
+    }
+
+    function stopVideoHold() {
+      window.clearTimeout(videoHoldTimer);
+      window.clearInterval(videoRewindTimer);
+      const triggered = videoHoldTriggered;
+      if (triggered && videoHoldMode === "fast") d.video.playbackRate = videoHoldRate;
+      videoHoldTimer = 0;
+      videoRewindTimer = 0;
+      videoHoldMode = null;
+      videoHoldTriggered = false;
+      d.videoHoldFeedback.hidden = true;
+      updateVideoControls();
+      if (triggered) {
+        suppressVideoClick = true;
+        window.setTimeout(() => {
+          suppressVideoClick = false;
+        }, 350);
+      }
+    }
+
+    function beginVideoHold(event: PointerEvent) {
+      if (event.button !== 0 || d.videoControls.contains(event.target as Node)) return;
+      stopVideoHold();
+      const rect = d.videoFrame.getBoundingClientRect();
+      const ratio = (event.clientX - rect.left) / rect.width;
+      if (ratio > 1 / 6 && ratio < 5 / 6) return;
+      videoHoldMode = ratio <= 1 / 6 ? "rewind" : "fast";
+      videoHoldX = event.clientX;
+      videoHoldY = event.clientY;
+      videoHoldTimer = window.setTimeout(() => {
+        if (!videoHoldMode || (videoHoldMode === "fast" && d.video.paused)) return;
+        videoHoldTriggered = true;
+        showVideoHoldFeedback(videoHoldMode);
+        if (videoHoldMode === "fast") {
+          videoHoldRate = d.video.playbackRate || 1;
+          d.video.playbackRate = 2;
+          updateVideoControls();
+          return;
+        }
+        const rewind = () => {
+          d.video.currentTime = Math.max(0, d.video.currentTime - 2);
+        };
+        rewind();
+        videoRewindTimer = window.setInterval(rewind, 1000);
+      }, 3000);
+    }
+
+    function moveVideoHold(event: PointerEvent) {
+      if (!videoHoldMode || videoHoldTriggered) return;
+      if (Math.hypot(event.clientX - videoHoldX, event.clientY - videoHoldY) > 18) stopVideoHold();
+    }
+
     function updateVideoControls() {
       const paused = d.video.paused;
       const muted = d.video.muted || d.video.volume === 0;
       const fullscreen = document.fullscreenElement === d.videoFrame;
       const duration = Number.isFinite(d.video.duration) ? d.video.duration : 0;
+      const rate = d.video.playbackRate || 1;
       d.videoFrame.dataset.playing = paused ? "0" : "1";
       d.playIcon.hidden = !paused;
       d.pauseIcon.hidden = paused;
@@ -603,6 +716,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       d.volumeIcon.hidden = muted;
       d.mutedIcon.hidden = !muted;
       d.muteToggle.title = d.muteToggle.ariaLabel = t(muted ? "unmute" : "mute");
+      d.speedValue.textContent = `${rate}×`;
+      d.speedToggle.title = d.speedToggle.ariaLabel = `${t("speed")}: ${rate}×`;
       d.fullscreenIcon.hidden = fullscreen;
       d.exitFullscreenIcon.hidden = !fullscreen;
       d.fullscreenToggle.title = d.fullscreenToggle.ariaLabel = t(fullscreen ? "exitFullscreen" : "fullscreen");
@@ -1025,17 +1140,46 @@ import SiteShell from "../layouts/SiteShell.astro";
     d.playToggle.addEventListener("click", togglePlay);
     d.videoPrevious.addEventListener("click", () => playAdjacent("video", -1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
     d.videoNext.addEventListener("click", () => playAdjacent("video", 1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
+    d.speedToggle.addEventListener("click", cycleVideoSpeed);
     d.muteToggle.addEventListener("click", () => {
       d.video.muted = !d.video.muted;
       if (!d.video.muted && d.video.volume === 0) d.video.volume = 1;
     });
     d.fullscreenToggle.addEventListener("click", () => toggleFullscreen().catch(() => undefined));
-    d.video.addEventListener("dblclick", togglePlay);
-    d.videoFrame.addEventListener("pointermove", () => showControls());
-    d.videoFrame.addEventListener("pointerdown", () => d.videoFrame.focus({ preventScroll: true }));
-    d.videoFrame.addEventListener("pointerleave", () => scheduleControls(600));
+    d.videoFrame.addEventListener("click", (event) => {
+      if (d.videoControls.contains(event.target as Node)) return;
+      if (suppressVideoClick) {
+        event.preventDefault();
+        return;
+      }
+      window.clearTimeout(videoClickTimer);
+      videoClickTimer = window.setTimeout(toggleVideoControls, 240);
+    });
+    d.videoFrame.addEventListener("dblclick", (event) => {
+      if (d.videoControls.contains(event.target as Node) || suppressVideoClick) return;
+      window.clearTimeout(videoClickTimer);
+      togglePlay();
+      showControls();
+    });
+    d.videoFrame.addEventListener("pointerdown", (event) => {
+      d.videoFrame.focus({ preventScroll: true });
+      beginVideoHold(event);
+    });
+    d.videoFrame.addEventListener("pointermove", (event) => {
+      moveVideoHold(event);
+      if (!d.videoFrame.classList.contains("controls-hidden") && !videoHoldMode) showControls();
+    });
+    d.videoFrame.addEventListener("pointerleave", () => {
+      stopVideoHold();
+      scheduleControls();
+    });
+    d.videoFrame.addEventListener("pointercancel", stopVideoHold);
+    d.videoFrame.addEventListener("contextmenu", (event) => {
+      if (!d.videoControls.contains(event.target as Node)) event.preventDefault();
+    });
     d.videoControls.addEventListener("pointerenter", () => showControls());
-    d.videoControls.addEventListener("pointerleave", () => scheduleControls(600));
+    d.videoControls.addEventListener("pointerleave", () => scheduleControls());
+    d.videoControls.addEventListener("click", () => showControls());
     d.videoControls.addEventListener("focusin", () => showControls(document.fullscreenElement !== d.videoFrame));
     d.videoControls.addEventListener("focusout", () => showControls());
     d.seek.addEventListener("pointerdown", () => {
@@ -1047,6 +1191,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       updateVideoControls();
     });
     window.addEventListener("pointerup", () => {
+      stopVideoHold();
       if (seeking) {
         seeking = false;
         scheduleControls();
@@ -1060,11 +1205,19 @@ import SiteShell from "../layouts/SiteShell.astro";
       d.video.muted = false;
       d.video.volume = Number(d.volume.value);
     });
-    ["play", "pause", "ended", "timeupdate", "durationchange", "loadedmetadata", "volumechange"].forEach((event) => {
+    ["play", "pause", "ended", "timeupdate", "durationchange", "loadedmetadata", "volumechange", "ratechange"].forEach((event) => {
       d.video.addEventListener(event, () => {
         updateVideoControls();
         if (event === "play") scheduleControls();
-        if (event === "pause" || event === "ended") showControls(document.fullscreenElement !== d.videoFrame);
+        if (event === "pause" || event === "ended") showControls();
+      });
+    });
+    ["waiting", "stalled"].forEach((event) => {
+      d.video.addEventListener(event, () => setStatus(d.playerStatus, t("buffering")));
+    });
+    ["canplay", "playing"].forEach((event) => {
+      d.video.addEventListener(event, () => {
+        if (s.current?.kind === "video") setStatus(d.playerStatus, t("playing"));
       });
     });
     document.addEventListener("fullscreenchange", () => {
