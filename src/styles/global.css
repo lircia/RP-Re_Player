@@ -956,12 +956,31 @@ textarea:focus-visible {
   color: var(--danger);
 }
 
-.player-status {
-  min-height: 22px;
+.player-status,
+.player-stats {
   max-width: 1320px;
-  padding-top: 8px;
   color: var(--muted);
   font-size: 12px;
+  line-height: 18px;
+  text-align: left;
+}
+
+.player-status {
+  min-height: 22px;
+  padding-top: 8px;
+}
+
+.player-stats {
+  margin-top: 18px;
+}
+
+.player-stats[hidden] {
+  display: none;
+}
+
+.player-stats span {
+  display: block;
+  min-height: 18px;
 }
 
 /* Admin */

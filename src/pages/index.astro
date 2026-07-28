@@ -215,6 +215,10 @@ import SiteShell from "../layouts/SiteShell.astro";
         </section>
 
         <div id="playerStatus" class="player-status" role="status"></div>
+        <div id="playerStats" class="player-stats" hidden>
+          <span id="playCount"></span>
+          <span id="completionRate"></span>
+        </div>
       </main>
     </div>
   </div>
@@ -251,6 +255,8 @@ import SiteShell from "../layouts/SiteShell.astro";
         subFailed: "The ASS subtitle could not be loaded.",
         playing: "Now playing",
         buffering: "Buffering...",
+        playCount: "Play count",
+        completionRate: "Completion rate",
         play: "Play",
         pause: "Pause",
         mute: "Mute",
@@ -293,6 +299,8 @@ import SiteShell from "../layouts/SiteShell.astro";
         subFailed: "ASS 字幕加载失败。",
         playing: "正在播放",
         buffering: "正在缓冲...",
+        playCount: "播放次数",
+        completionRate: "完播率",
         play: "播放",
         pause: "暂停",
         mute: "静音",
@@ -335,6 +343,8 @@ import SiteShell from "../layouts/SiteShell.astro";
         subFailed: "ASS字幕を読み込めませんでした。",
         playing: "再生中",
         buffering: "バッファリング中...",
+        playCount: "再生回数",
+        completionRate: "完走率",
         play: "再生",
         pause: "一時停止",
         mute: "ミュート",
@@ -359,6 +369,11 @@ import SiteShell from "../layouts/SiteShell.astro";
 
     type Lang = keyof typeof c;
     type AudioMode = "one" | "list" | "shuffle";
+    type MediaStat = {
+      plays: number;
+      completions: number;
+      rate: number;
+    };
     type MediaItem = {
       id?: string;
       name: string;
@@ -387,6 +402,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       lyricManual: boolean;
       lyricScrollTimer: number;
       audioMode: AudioMode;
+      stat: MediaStat;
     } = {
       path: "/root",
       items: [],
@@ -400,7 +416,8 @@ import SiteShell from "../layouts/SiteShell.astro";
       lyricToken: 0,
       lyricManual: false,
       lyricScrollTimer: 0,
-      audioMode: "one"
+      audioMode: "one",
+      stat: { plays: 0, completions: 0, rate: 0 }
     };
 
     const d = {
@@ -469,7 +486,10 @@ import SiteShell from "../layouts/SiteShell.astro";
       lyricsBadge: document.querySelector<HTMLElement>("#lyricsBadge")!,
       title: document.querySelector<HTMLElement>("#mediaTitle")!,
       mediaPath: document.querySelector<HTMLElement>("#mediaPath")!,
-      playerStatus: document.querySelector<HTMLElement>("#playerStatus")!
+      playerStatus: document.querySelector<HTMLElement>("#playerStatus")!,
+      playerStats: document.querySelector<HTMLElement>("#playerStats")!,
+      playCount: document.querySelector<HTMLElement>("#playCount")!,
+      completionRate: document.querySelector<HTMLElement>("#completionRate")!
     };
     let controlTimer = 0;
     let videoClickTimer = 0;
@@ -483,6 +503,10 @@ import SiteShell from "../layouts/SiteShell.astro";
     let videoHoldY = 0;
     let seeking = false;
     let audioSeeking = false;
+    let statSession = 0;
+    let statPlayed = false;
+    let statCompleted = false;
+    let statTask: Promise<void> = Promise.resolve();
 
     const VIDEO_RATES = [1, 1.25, 1.5, 2];
 
@@ -564,6 +588,53 @@ import SiteShell from "../layouts/SiteShell.astro";
     function setStatus(el: HTMLElement, message = "", tone = "") {
       el.textContent = message;
       tone ? (el.dataset.tone = tone) : delete el.dataset.tone;
+    }
+
+    function renderStats() {
+      d.playerStats.hidden = !s.current;
+      if (!s.current) return;
+      d.playCount.textContent = `${t("playCount")}: ${s.stat.plays}`;
+      d.completionRate.textContent = `${t("completionRate")}: ${s.stat.rate}%`;
+    }
+
+    function resetStatSession(stat?: MediaStat) {
+      statSession += 1;
+      statPlayed = false;
+      statCompleted = false;
+      if (stat) s.stat = stat;
+      renderStats();
+    }
+
+    function recordStat(event: "play" | "complete") {
+      if (!s.current) return Promise.resolve();
+      if (event === "play") {
+        if (statPlayed) return statTask;
+        statPlayed = true;
+      } else {
+        if (statCompleted) return statTask;
+        statCompleted = true;
+      }
+
+      const session = statSession;
+      const path = s.current.path;
+      statTask = statTask.catch(() => undefined).then(async () => {
+        const response = await fetch("/api/public/stat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path, event })
+        });
+        const data = (await response.json()) as { ok?: boolean; stat?: MediaStat };
+        if (!response.ok || !data.ok || !data.stat) return;
+        if (session !== statSession || s.current?.path !== path) return;
+        s.stat = data.stat;
+        renderStats();
+      }).catch(() => undefined);
+      return statTask;
+    }
+
+    function recordPlay() {
+      if (statCompleted) resetStatSession();
+      return recordStat("play");
     }
 
     const formatTime = (seconds: number) => {
@@ -920,6 +991,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       setLibraryOpen(d.app.classList.contains("is-library-open"));
       render();
       renderCurrent();
+      renderStats();
     }
 
     function render() {
@@ -1007,6 +1079,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       const videoQueue = s.items.filter((entry) => !entry.isDir && entry.kind === "video");
       await clearMedia();
       s.current = item;
+      resetStatSession(data.stat || { plays: 0, completions: 0, rate: 0 });
       if (item.kind === "audio" && !s.audioQueue.some((entry) => entry.path === item.path)) s.audioQueue = audioQueue;
       if (item.kind === "video" && !s.videoQueue.some((entry) => entry.path === item.path)) s.videoQueue = videoQueue;
       renderCurrent();
@@ -1017,6 +1090,7 @@ import SiteShell from "../layouts/SiteShell.astro";
         d.imageFrame.hidden = false;
         d.image.src = item.url || "";
         d.image.alt = item.name;
+        recordStat("play");
       } else if (item.kind === "audio") {
         d.stage.dataset.mode = "audio";
         d.audioFrame.hidden = false;
@@ -1096,8 +1170,12 @@ import SiteShell from "../layouts/SiteShell.astro";
     ["play", "pause", "durationchange", "loadedmetadata", "volumechange"].forEach((event) => {
       d.audio.addEventListener(event, updateAudioControls);
     });
-    d.audio.addEventListener("ended", () => {
+    d.audio.addEventListener("play", () => {
+      recordPlay();
+    });
+    d.audio.addEventListener("ended", async () => {
       updateAudioControls();
+      await recordStat("complete");
       continueAudio().catch((error) => setStatus(d.playerStatus, error.message, "error"));
     });
     d.audioPlayToggle.addEventListener("click", toggleAudioPlay);
@@ -1208,7 +1286,11 @@ import SiteShell from "../layouts/SiteShell.astro";
     ["play", "pause", "ended", "timeupdate", "durationchange", "loadedmetadata", "volumechange", "ratechange"].forEach((event) => {
       d.video.addEventListener(event, () => {
         updateVideoControls();
-        if (event === "play") scheduleControls();
+        if (event === "play") {
+          scheduleControls();
+          recordPlay();
+        }
+        if (event === "ended") recordStat("complete");
         if (event === "pause" || event === "ended") showControls();
       });
     });
