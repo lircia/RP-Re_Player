@@ -82,5 +82,7 @@ When no manual language preference has been saved, RP uses the free, keyless `ap
 ## Deploy
 
 ```bash
-npm run cf:deploy
+You don't need to change Cloudflared's build command.
+
+If you want to run it locally,please run 一键启动.cmd
 ```
