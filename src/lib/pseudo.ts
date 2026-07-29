@@ -1,5 +1,4 @@
 import type { AppEnv } from "./cloudflare";
-import { getOnlineItem, onlineEnabled, onlineName, onlinePlaylist, onlineRoot } from "./online";
 
 export type PseudoKind = "video" | "audio" | "image";
 
@@ -144,23 +143,6 @@ export async function allItems(env: AppEnv): Promise<PseudoItem[]> {
 
 export async function listPublic(env: AppEnv, path = "/root") {
   const current = normalizeRootPath(path);
-  const onlinePath = onlineRoot(env);
-  if (onlineEnabled(env) && current === onlinePath) {
-    const tracks = await onlinePlaylist(env);
-    return {
-      path: current,
-      items: tracks.map((track) => ({
-        name: track.name,
-        path: track.path,
-        isDir: false,
-        kind: track.kind,
-        artist: track.artist,
-        poster: track.poster,
-        updatedAt: track.updatedAt
-      }))
-    };
-  }
-
   const items = await allItems(env);
   const children = new Map<string, PublicNode>();
 
@@ -190,14 +172,6 @@ export async function listPublic(env: AppEnv, path = "/root") {
     }
   }
 
-  if (current === "/root" && onlineEnabled(env)) {
-    children.set(onlinePath, {
-      name: onlineName(env),
-      path: onlinePath,
-      isDir: true
-    });
-  }
-
   return {
     path: current,
     items: [...children.values()].sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name, "zh-CN"))
@@ -206,8 +180,6 @@ export async function listPublic(env: AppEnv, path = "/root") {
 
 export async function getItem(env: AppEnv, path: string) {
   const normalized = normalizeRootPath(path);
-  const online = await getOnlineItem(env, normalized);
-  if (online) return online;
   if (await ensureDb(env)) {
     const row = await env.DB!.prepare(
       "SELECT id, name, path, url, kind, poster, sub, lrc, lrc2, created_at, updated_at FROM rp_pseudo_links WHERE path = ? LIMIT 1"

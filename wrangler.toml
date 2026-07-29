@@ -2,9 +2,6 @@ name = "rp"
 compatibility_date = "2026-07-14"
 
 [vars]
-H = "在线音乐"
-I = "1"
-M = "17810937506"
 N = "Re Player"
 P = "masteradmin"
 US = ""

@@ -43,9 +43,6 @@ RP creates and upgrades the `rp_pseudo_links` table automatically. The D1 bindin
 
 | Variable | Purpose |
 | --- | --- |
-| `H` | Display name of the built-in online music directory |
-| `I` | Online music switch (`1`, `true`, `yes`, or `on` enables it) |
-| `M` | NetEase playlist ID for the built-in Online Music directory |
 | `N` | Site name |
 | `P` | Administrator password |
 | `DB` | D1 binding |
@@ -53,8 +50,6 @@ RP creates and upgrades the `rp_pseudo_links` table automatically. The D1 bindin
 | `UI` | Umami website ID |
 | `UH` | Optional Umami host URL |
 | `UD` | Optional Umami domain list |
-
-Online music is disabled by default with `I=0`. `H` defaults to `在线音乐`, and `M` defaults to `17810937506`. When enabled, the built-in directory uses this playlist through fixed Meting endpoints and does not require an authentication token.
 
 ## Umami
 
