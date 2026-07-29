@@ -77,5 +77,7 @@ UI=你的网站-id
 ## 部署
 
 ```bash
-npm run cf:deploy
+无需更改cloudflared的部署与构建命令
+
+如要本地运行可直接运行“一键启动.cmd"
 ```
