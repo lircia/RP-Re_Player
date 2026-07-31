@@ -1231,13 +1231,30 @@ import SiteShell from "../layouts/SiteShell.astro";
         return;
       }
       window.clearTimeout(videoClickTimer);
-      videoClickTimer = window.setTimeout(toggleVideoControls, 240);
+      const rect = d.videoFrame.getBoundingClientRect();
+      const inLeftFifth = event.clientX - rect.left <= rect.width / 5;
+      if (event.detail >= 3 && inLeftFifth) {
+        d.video.currentTime = Math.max(0, d.video.currentTime - 5);
+        updateVideoControls();
+        showControls();
+        suppressVideoClick = true;
+        window.setTimeout(() => {
+          suppressVideoClick = false;
+        }, 320);
+        return;
+      }
+      videoClickTimer = window.setTimeout(() => {
+        if (event.detail >= 2) {
+          togglePlay();
+          showControls();
+        } else {
+          toggleVideoControls();
+        }
+      }, 280);
     });
     d.videoFrame.addEventListener("dblclick", (event) => {
       if (d.videoControls.contains(event.target as Node) || suppressVideoClick) return;
-      window.clearTimeout(videoClickTimer);
-      togglePlay();
-      showControls();
+      event.preventDefault();
     });
     d.videoFrame.addEventListener("pointerdown", (event) => {
       d.videoFrame.focus({ preventScroll: true });
