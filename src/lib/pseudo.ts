@@ -61,6 +61,16 @@ export function safeFileName(input: string) {
     .slice(0, 180);
 }
 
+export function publicMediaPath(path: string) {
+  const relative = normalizeRootPath(path).slice("/root".length);
+  const encoded = relative
+    .split("/")
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+  return encoded ? `/${encoded}` : "/";
+}
+
 function webUrl(input: string, label: string) {
   const value = String(input || "").trim();
   if (!value) return undefined;

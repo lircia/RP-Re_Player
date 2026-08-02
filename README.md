@@ -7,21 +7,26 @@ Re Player is a link-based media library that uses the Astro framework and runs o
 ## Features
 
 - Link pseudo-mounts under the required `/root` path
+- Same-origin media URLs such as `/video.mp4` and `/Pash/video.mp4`, with streamed range requests
 - Video, audio, and image playback
 - Optional ASS subtitles rendered in the browser with JASSUB/libass and bundled Chinese/Japanese font fallbacks
 - Synchronized LRC lyrics with single-file adaptation and optional bilingual tracks
 - Automatic IP-based English, Simplified Chinese, or Japanese selection with a manual override
+- Visitor cookies remember the selected language and each audio/video file's playback position, including completed positions
 - Password-protected `/admin` console with an OpenList-style file table
 - Cloudflare D1 persistence with an in-memory local fallback
+- Switchable light-blue/retro visitor UI and four administrator-selected intro modes
 - Optional Umami analytics
 
 ## Local Run
 
-Run `一键启动.cmd`, or use:
+Run `一键启动.cmd` to build RP and open HTTP port `80` plus HTTPS port `443`. With the default `IP=127.0.0.1`, it displays `soers.de5.net`. For the configured loopback records, `127.0.0.N` maps to `2N.soers.de5.net` and `172.0.0.N` maps to `7N.soers.de5.net` for `N=0-9`; `127.0.0.1` is the root-domain exception. Other addresses are displayed directly. Wrangler's local HTTPS certificate may require browser trust confirmation.
+
+The equivalent command is:
 
 ```bash
 npm install
-npm run dev
+npm run local
 ```
 
 The default administrator password is `masteradmin`. Open `/admin` manually to sign in. Set `P` to change the password.
@@ -37,7 +42,7 @@ database_name = "your-database-name"
 database_id = "your-cloudflare-d1-database-id"
 ```
 
-RP creates and upgrades the `rp_pseudo_links` table automatically. The D1 binding name must remain `DB`.
+RP creates and upgrades the `rp_pseudo_links`, playback-statistics, and `rp_settings` tables automatically. The D1 binding name must remain `DB`.
 
 ## Short Variables
 
@@ -72,7 +77,7 @@ When adding audio, enter one public HTTP(S) `.lrc` URL for synchronized lyrics. 
 
 ## Automatic Language
 
-When no manual language preference has been saved, RP uses the free, keyless `api.country.is` service to determine the visitor country. `CN` selects Simplified Chinese, `JP` selects Japanese, and every other country selects English. Cloudflare's request country is used as a fallback when the lookup service is unavailable. A manual selection is stored in the browser and always takes priority.
+When no manual language preference has been saved, RP uses the free, keyless `api.country.is` service to determine the visitor country. `CN` selects Simplified Chinese, `JP` selects Japanese, and every other country selects English. Cloudflare's request country is used as a fallback when the lookup service is unavailable. A manual selection is stored in local storage and the `rp_l` cookie. Per-media `rp_p_*` cookies store every audio/video path and playback position on that device; completed media remains recorded at its full duration.
 
 ## Deploy
 

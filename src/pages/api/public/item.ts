@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { getEnv, json, jsonError } from "@lib/cloudflare";
-import { getItem } from "@lib/pseudo";
+import { getItem, publicMediaPath } from "@lib/pseudo";
 import { getMediaStat } from "@lib/stats";
 
 export const POST: APIRoute = async (context) => {
@@ -11,5 +11,5 @@ export const POST: APIRoute = async (context) => {
   const item = await getItem(env, body.path);
   if (!item) return jsonError("Item was not found.", 404);
   const stat = await getMediaStat(env, item.path);
-  return json({ ok: true, item, stat });
+  return json({ ok: true, item: { ...item, url: publicMediaPath(item.path) }, stat });
 };

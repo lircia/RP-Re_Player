@@ -24,20 +24,67 @@ import {
   VolumeX
 } from "@lucide/astro";
 import SiteShell from "../layouts/SiteShell.astro";
+import { getEnv } from "@lib/cloudflare";
+import { getIntro, getTheme } from "@lib/theme";
+
+const env = getEnv(Astro);
+const [theme, intro] = await Promise.all([getTheme(env), getIntro(env)]);
 ---
 
 <SiteShell title="Re-Player">
-  <div class="media-app">
+  {
+    intro !== "off" && (
+      <div class={`site-intro intro-${intro}`} aria-hidden="true">
+        {intro === "a1" && (
+          <div class="intro-unroll">
+            <div class="intro-reel intro-reel-left"><span /><span /><span /><span /><span /></div>
+            <div class="intro-film-strip intro-film-strip-wide">
+              <i /><i /><i /><i /><i /><i /><i /><i />
+            </div>
+            <div class="intro-reel intro-reel-right"><span /><span /><span /><span /><span /></div>
+            <p>RE-PLAYER / FRAME 001</p>
+          </div>
+        )}
+        {intro === "a2" && (
+          <div class="intro-projector-scene">
+            <div class="intro-projector">
+              <div class="intro-projector-reel is-left"><i /><i /><i /><i /><i /></div>
+              <div class="intro-projector-reel is-right"><i /><i /><i /><i /><i /></div>
+              <div class="intro-projector-body"><span /><b /></div>
+              <div class="intro-projector-lens" />
+            </div>
+            <div class="intro-projector-beam" />
+            <div class="intro-projector-screen">
+              <span>ARCHIVE 04</span>
+              <strong>RE-PLAYER</strong>
+              <small>SIGNAL ACQUIRED</small>
+            </div>
+          </div>
+        )}
+        {intro === "a3" && (
+          <div class="intro-book-scene">
+            <div class="intro-book">
+              <div class="intro-book-cover is-left" />
+              <div class="intro-book-cover is-right" />
+              <div class="intro-book-pages">
+                <span class="intro-page-line is-one" />
+                <span class="intro-page-line is-two" />
+                <span class="intro-page-line is-three" />
+                <div class="intro-book-film"><i /><i /><i /><i /><i /></div>
+              </div>
+            </div>
+            <div class="intro-frame-lock"><span /><span /><span /><span /></div>
+            <p class="intro-glitch-text" data-text="MEMORY IS TRANSMITTING">MEMORY IS TRANSMITTING</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+  <div class="media-app" data-theme={theme}>
     <header class="app-topbar">
       <a class="app-brand" href="/" aria-label="Re-Player">
         <strong>Re-Player</strong>
       </a>
-
-      <label class="search-box">
-        <Search size={18} aria-hidden="true" />
-        <span class="sr-only" data-i18n="search">Search library</span>
-        <input id="searchInput" type="search" placeholder="Search library" data-i18n-placeholder="search" autocomplete="off" />
-      </label>
 
       <label class="language-box">
         <Languages size={18} aria-hidden="true" />
@@ -74,6 +121,12 @@ import SiteShell from "../layouts/SiteShell.astro";
             </button>
           </div>
         </div>
+
+        <label class="search-box library-search">
+          <Search size={18} aria-hidden="true" />
+          <span class="sr-only" data-i18n="search">Search library</span>
+          <input id="searchInput" type="search" placeholder="Search library" data-i18n-placeholder="search" autocomplete="off" />
+        </label>
 
         <nav id="fileList" class="file-list" aria-live="polite">
           <div class="list-state" data-i18n="loading">Loading...</div>
@@ -374,6 +427,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       completions: number;
       rate: number;
     };
+    type SavedProgress = { p: string; t: number; d?: number; e?: 1 };
     type MediaItem = {
       id?: string;
       name: string;
@@ -505,6 +559,82 @@ import SiteShell from "../layouts/SiteShell.astro";
     let audioSeeking = false;
     let statSession = 0;
     let statPlayed = false;
+    let progressStamp = 0;
+    const cookie = {
+      get(name: string) {
+        const value = document.cookie.split("; ").find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
+        if (!value) return "";
+        try {
+          return decodeURIComponent(value);
+        } catch {
+          return "";
+        }
+      },
+      set(name: string, value: string, age = 31536000) {
+        document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${age}; SameSite=Lax`;
+      }
+    };
+    function parseProgress(raw: string): SavedProgress | null {
+      try {
+        const value = JSON.parse(raw) as SavedProgress;
+        return typeof value?.p === "string" && Number.isFinite(value?.t) ? value : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function progressKey(path: string) {
+      let a = 2166136261;
+      let b = 5381;
+      for (let i = 0; i < path.length; i += 1) {
+        const code = path.charCodeAt(i);
+        a = Math.imul(a ^ code, 16777619);
+        b = Math.imul(b, 33) ^ code;
+      }
+      return `rp_p_${(a >>> 0).toString(36)}_${(b >>> 0).toString(36)}`;
+    }
+
+    function readProgress(path: string) {
+      const current = parseProgress(cookie.get(progressKey(path)));
+      if (current?.p === path) return current;
+      const legacy = parseProgress(cookie.get("rp_p"));
+      if (legacy?.p !== path) return null;
+      cookie.set(progressKey(path), JSON.stringify(legacy));
+      cookie.set("rp_p", "", 0);
+      return legacy;
+    }
+
+    function activeMedia() {
+      if (s.current?.kind === "video") return d.video;
+      if (s.current?.kind === "audio") return d.audio;
+      return null;
+    }
+
+    function saveProgress(force = false, complete = false) {
+      const media = activeMedia();
+      if (!media || !s.current || !Number.isFinite(media.currentTime)) return;
+      const now = Date.now();
+      if (!force && now - progressStamp < 5000) return;
+      progressStamp = now;
+      const duration = Number.isFinite(media.duration) && media.duration > 0 ? media.duration : undefined;
+      const ended = Boolean(duration && (complete || media.ended || duration - media.currentTime <= 3));
+      if (!ended && media.currentTime <= 0) return;
+      const value: SavedProgress = {
+        p: s.current.path,
+        t: Math.round((ended && duration ? duration : media.currentTime) * 10) / 10
+      };
+      if (duration) value.d = Math.round(duration * 10) / 10;
+      if (ended) value.e = 1;
+      cookie.set(progressKey(s.current.path), JSON.stringify(value));
+    }
+
+    function restoreProgress(media: HTMLMediaElement) {
+      if (!s.current) return;
+      const saved = readProgress(s.current.path);
+      if (!saved || saved.t <= 0) return;
+      const duration = Number.isFinite(media.duration) && media.duration > 0 ? media.duration : undefined;
+      media.currentTime = duration ? (saved.e ? duration : Math.min(saved.t, duration)) : saved.t;
+    }
     let statCompleted = false;
     let statTask: Promise<void> = Promise.resolve();
 
@@ -1041,6 +1171,7 @@ import SiteShell from "../layouts/SiteShell.astro";
     }
 
     async function clearMedia() {
+      saveProgress(true);
       if (s.ass) {
         await s.ass.destroy().catch(() => undefined);
         s.ass = null;
@@ -1067,6 +1198,7 @@ import SiteShell from "../layouts/SiteShell.astro";
 
     async function openItem(path: string) {
       setStatus(d.playerStatus, t("loading"));
+      d.stage.dataset.signal = "transfer";
       const response = await fetch("/api/public/item", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1148,7 +1280,10 @@ import SiteShell from "../layouts/SiteShell.astro";
       if (!row?.dataset.path) return;
       if (row.dataset.dir !== "1") setLibraryOpen(false);
       const action = row.dataset.dir === "1" ? load(row.dataset.path) : openItem(row.dataset.path);
-      action.catch((error) => setStatus(row.dataset.dir === "1" ? d.libraryStatus : d.playerStatus, error.message, "error"));
+      action.catch((error) => {
+        if (row.dataset.dir !== "1") d.stage.dataset.signal = "interrupted";
+        setStatus(row.dataset.dir === "1" ? d.libraryStatus : d.playerStatus, error.message, "error");
+      });
     });
 
     d.parent.addEventListener("click", () => {
@@ -1165,15 +1300,41 @@ import SiteShell from "../layouts/SiteShell.astro";
     d.audio.addEventListener("timeupdate", () => {
       syncLyrics();
       updateAudioControls();
+      saveProgress();
     });
     d.audio.addEventListener("seeked", () => syncLyrics(true));
     ["play", "pause", "durationchange", "loadedmetadata", "volumechange"].forEach((event) => {
       d.audio.addEventListener(event, updateAudioControls);
     });
     d.audio.addEventListener("play", () => {
+      delete d.stage.dataset.signal;
       recordPlay();
     });
+    d.audio.addEventListener("loadedmetadata", () => restoreProgress(d.audio));
+    d.audio.addEventListener("pause", () => saveProgress(true));
+    ["waiting", "stalled"].forEach((event) => {
+      d.audio.addEventListener(event, () => {
+        d.stage.dataset.signal = "unstable";
+        setStatus(d.playerStatus, t("buffering"));
+      });
+    });
+    ["canplay", "playing"].forEach((event) => {
+      d.audio.addEventListener(event, () => {
+        delete d.stage.dataset.signal;
+        if (s.current?.kind === "audio") setStatus(d.playerStatus, t("playing"));
+      });
+    });
+    d.audio.addEventListener("error", () => {
+      d.stage.dataset.signal = "interrupted";
+    });
+    d.image.addEventListener("load", () => {
+      delete d.stage.dataset.signal;
+    });
+    d.image.addEventListener("error", () => {
+      d.stage.dataset.signal = "interrupted";
+    });
     d.audio.addEventListener("ended", async () => {
+      saveProgress(true, true);
       updateAudioControls();
       await recordStat("complete");
       continueAudio().catch((error) => setStatus(d.playerStatus, error.message, "error"));
@@ -1303,21 +1464,34 @@ import SiteShell from "../layouts/SiteShell.astro";
     ["play", "pause", "ended", "timeupdate", "durationchange", "loadedmetadata", "volumechange", "ratechange"].forEach((event) => {
       d.video.addEventListener(event, () => {
         updateVideoControls();
+        if (event === "timeupdate") saveProgress();
         if (event === "play") {
           scheduleControls();
           recordPlay();
         }
-        if (event === "ended") recordStat("complete");
+        if (event === "ended") {
+          saveProgress(true, true);
+          recordStat("complete");
+        }
+        if (event === "pause") saveProgress(true);
         if (event === "pause" || event === "ended") showControls();
       });
     });
+    d.video.addEventListener("loadedmetadata", () => restoreProgress(d.video));
     ["waiting", "stalled"].forEach((event) => {
-      d.video.addEventListener(event, () => setStatus(d.playerStatus, t("buffering")));
+      d.video.addEventListener(event, () => {
+        d.stage.dataset.signal = "unstable";
+        setStatus(d.playerStatus, t("buffering"));
+      });
     });
     ["canplay", "playing"].forEach((event) => {
       d.video.addEventListener(event, () => {
+        delete d.stage.dataset.signal;
         if (s.current?.kind === "video") setStatus(d.playerStatus, t("playing"));
       });
+    });
+    d.video.addEventListener("error", () => {
+      d.stage.dataset.signal = "interrupted";
     });
     document.addEventListener("fullscreenchange", () => {
       updateVideoControls();
@@ -1347,6 +1521,7 @@ import SiteShell from "../layouts/SiteShell.astro";
     d.language.addEventListener("change", () => {
       s.lang = d.language.value as Lang;
       localStorage.setItem("rp_l", s.lang);
+      cookie.set("rp_l", s.lang);
       applyLanguage();
     });
 
@@ -1355,20 +1530,26 @@ import SiteShell from "../layouts/SiteShell.astro";
         const response = await fetch("/api/public/geo");
         const data = (await response.json()) as { ok?: boolean; lang?: Lang };
         if (!data.ok || (data.lang !== "en" && data.lang !== "zh" && data.lang !== "ja")) return;
-        if (localStorage.getItem("rp_l")) return;
+        if (localStorage.getItem("rp_l") || cookie.get("rp_l")) return;
         s.lang = data.lang;
         d.language.value = s.lang;
+        cookie.set("rp_l", s.lang);
         applyLanguage();
       } catch {
         // English remains the default when location detection is unavailable.
       }
     }
 
-    const saved = localStorage.getItem("rp_l");
+    const saved = localStorage.getItem("rp_l") || cookie.get("rp_l");
     if (saved === "zh" || saved === "ja" || saved === "en") s.lang = saved;
+    if (saved === "zh" || saved === "ja" || saved === "en") {
+      localStorage.setItem("rp_l", saved);
+      cookie.set("rp_l", saved);
+    }
     d.language.value = s.lang;
     applyLanguage();
     if (!saved) detectLanguage();
+    window.addEventListener("pagehide", () => saveProgress(true));
     load("/root").catch((error) => setStatus(d.libraryStatus, error.message, "error"));
   </script>
 </SiteShell>

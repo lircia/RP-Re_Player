@@ -8,6 +8,7 @@
     "astro:dev": "astro dev --host 0.0.0.0",
     "build": "astro check && astro build",
     "preview": "wrangler dev --config dist/server/wrangler.json --ip 127.0.0.1",
+    "local": "npm run build && node scripts/local.mjs 127.0.0.1",
     "cf:dev": "npm run build && wrangler dev --config dist/server/wrangler.json --ip 127.0.0.1",
     "cf:deploy": "npm run build && wrangler deploy --config dist/server/wrangler.json"
   },
