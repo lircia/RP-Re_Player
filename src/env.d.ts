@@ -3,6 +3,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 interface ImportMetaEnv {
+  readonly A?: string;
   readonly N?: string;
   readonly P?: string;
   readonly US?: string;

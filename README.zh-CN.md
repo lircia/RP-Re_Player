@@ -7,15 +7,13 @@ Re Player 是一个使用 Astro 框架、可部署到 Cloudflare Workers 的链�
 ## 功能
 
 - 在固定根路径 `/root` 下创建链接伪挂载
-- 通过 `/视频.mp4`、`/Pash/视频.mp4` 形式的同域地址流式访问媒体，并支持分段请求
 - 播放视频、音频和图片
 - 使用 JASSUB/libass 和内置中日文回退字体在浏览器中渲染可选 ASS 字幕
 - 支持实时同步 LRC 歌词、单文件自动适配和可选双语歌词
 - 根据 IP 自动选择英语、简体中文或日语，并支持手动覆盖
 - 通过访客 Cookie 分别记住当前语言和每个音视频的播放进度，完播记录保留在末端
-- 手动访问 `/admin`，验证密码后进入类似 OpenList 的管理表格
+- 手动访问 `/admin`，验证密码后进入类管理表格
 - 使用 Cloudflare D1 持久化，本地无 D1 时使用内存回退
-- 后台可切换浅蓝/复古访客 UI，以及三种动画和无动画共四种入场模式
 - 可选 Umami 统计
 
 ## 本地运行
@@ -28,6 +26,14 @@ Re Player 是一个使用 Astro 框架、可部署到 Cloudflare Workers 的链�
 npm install
 npm run local
 ```
+
+本地主题替换测试脚本位于 `S:\RP-loacl-test\switch-visitor-theme.ps1`。例如：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File S:\RP-loacl-test\switch-visitor-theme.ps1 -Theme tech -Start
+```
+
+脚本会先把项目当前的 `src/lib/visitor-theme.ts` 和 `src/styles/visitor-theme.css` 移入本地备份目录，再把所选主题模板移动进项目；整个过程不会改写主题文件内容，并可选择重新构建及启动 RP。
 
 默认管理员密码为 `masteradmin`。手动打开 `/admin` 登录；通过变量 `P` 修改密码。
 
@@ -42,12 +48,13 @@ database_name = "你的数据库名称"
 database_id = "你的-cloudflare-d1-database-id"
 ```
 
-RP 会自动创建并升级 `rp_pseudo_links`、播放统计和 `rp_settings` 表。D1 绑定名必须保持为 `DB`。
+RP 会自动创建并升级 `rp_pseudo_links` 和播放统计表。D1 绑定名必须保持为 `DB`。
 
 ## 短变量
 
 | 变量 | 用途 |
 | --- | --- |
+| `A` | 访客页打开前显示的外部媒体地址 |
 | `N` | 网站名称 |
 | `P` | 管理员密码 |
 | `DB` | D1 绑定 |

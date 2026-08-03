@@ -7,15 +7,13 @@ Re Player is a link-based media library that uses the Astro framework and runs o
 ## Features
 
 - Link pseudo-mounts under the required `/root` path
-- Same-origin media URLs such as `/video.mp4` and `/Pash/video.mp4`, with streamed range requests
 - Video, audio, and image playback
 - Optional ASS subtitles rendered in the browser with JASSUB/libass and bundled Chinese/Japanese font fallbacks
 - Synchronized LRC lyrics with single-file adaptation and optional bilingual tracks
 - Automatic IP-based English, Simplified Chinese, or Japanese selection with a manual override
 - Visitor cookies remember the selected language and each audio/video file's playback position, including completed positions
-- Password-protected `/admin` console with an OpenList-style file table
+- Password-protected `/admin` console with a management-style table
 - Cloudflare D1 persistence with an in-memory local fallback
-- Switchable light-blue/retro visitor UI and four administrator-selected intro modes
 - Optional Umami analytics
 
 ## Local Run
@@ -28,6 +26,14 @@ The equivalent command is:
 npm install
 npm run local
 ```
+
+For local theme replacement tests, run `S:\RP-loacl-test\switch-visitor-theme.ps1`. For example:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File S:\RP-loacl-test\switch-visitor-theme.ps1 -Theme tech -Start
+```
+
+The script moves the current `src/lib/visitor-theme.ts` and `src/styles/visitor-theme.css` files into the local backup directory, then moves the selected theme templates into the project without rewriting them. It can then rebuild and start RP.
 
 The default administrator password is `masteradmin`. Open `/admin` manually to sign in. Set `P` to change the password.
 
@@ -42,12 +48,13 @@ database_name = "your-database-name"
 database_id = "your-cloudflare-d1-database-id"
 ```
 
-RP creates and upgrades the `rp_pseudo_links`, playback-statistics, and `rp_settings` tables automatically. The D1 binding name must remain `DB`.
+RP creates and upgrades the `rp_pseudo_links` and playback-statistics tables automatically. The D1 binding name must remain `DB`.
 
 ## Short Variables
 
 | Variable | Purpose |
 | --- | --- |
+| `A` | External media URL shown before the visitor page |
 | `N` | Site name |
 | `P` | Administrator password |
 | `DB` | D1 binding |

@@ -25,66 +25,64 @@ import {
 } from "@lucide/astro";
 import SiteShell from "../layouts/SiteShell.astro";
 import { getEnv } from "@lib/cloudflare";
-import { getIntro, getTheme } from "@lib/theme";
+import { visitorTheme } from "@lib/visitor-theme";
 
 const env = getEnv(Astro);
-const [theme, intro] = await Promise.all([getTheme(env), getIntro(env)]);
+const introSource = (() => {
+  const value = env.A?.trim();
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
+})();
+const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSource);
 ---
 
 <SiteShell title="Re-Player">
   {
-    intro !== "off" && (
-      <div class={`site-intro intro-${intro}`} aria-hidden="true">
-        {intro === "a1" && (
-          <div class="intro-unroll">
-            <div class="intro-reel intro-reel-left"><span /><span /><span /><span /><span /></div>
-            <div class="intro-film-strip intro-film-strip-wide">
-              <i /><i /><i /><i /><i /><i /><i /><i />
-            </div>
-            <div class="intro-reel intro-reel-right"><span /><span /><span /><span /><span /></div>
-            <p>RE-PLAYER / FRAME 001</p>
-          </div>
-        )}
-        {intro === "a2" && (
-          <div class="intro-projector-scene">
-            <div class="intro-projector">
-              <div class="intro-projector-reel is-left"><i /><i /><i /><i /><i /></div>
-              <div class="intro-projector-reel is-right"><i /><i /><i /><i /><i /></div>
-              <div class="intro-projector-body"><span /><b /></div>
-              <div class="intro-projector-lens" />
-            </div>
-            <div class="intro-projector-beam" />
-            <div class="intro-projector-screen">
-              <span>ARCHIVE 04</span>
-              <strong>RE-PLAYER</strong>
-              <small>SIGNAL ACQUIRED</small>
-            </div>
-          </div>
-        )}
-        {intro === "a3" && (
-          <div class="intro-book-scene">
-            <div class="intro-book">
-              <div class="intro-book-cover is-left" />
-              <div class="intro-book-cover is-right" />
-              <div class="intro-book-pages">
-                <span class="intro-page-line is-one" />
-                <span class="intro-page-line is-two" />
-                <span class="intro-page-line is-three" />
-                <div class="intro-book-film"><i /><i /><i /><i /><i /></div>
-              </div>
-            </div>
-            <div class="intro-frame-lock"><span /><span /><span /><span /></div>
-            <p class="intro-glitch-text" data-text="MEMORY IS TRANSMITTING">MEMORY IS TRANSMITTING</p>
-          </div>
+    introSource && (
+      <div id="externalIntro" class="external-intro" aria-hidden="true">
+        {introIsVideo ? (
+          <video class="external-intro-media" src={introSource} autoplay muted playsinline preload="auto" />
+        ) : (
+          <img class="external-intro-media" src={introSource} alt="" />
         )}
       </div>
     )
   }
-  <div class="media-app" data-theme={theme}>
+  <script is:inline>
+    (() => {
+      const intro = document.querySelector("#externalIntro");
+      const media = intro?.querySelector(".external-intro-media");
+      if (!intro || !media) return;
+      let closed = false;
+      const close = () => {
+        if (closed) return;
+        closed = true;
+        intro.classList.add("is-leaving");
+        window.setTimeout(() => intro.remove(), 260);
+      };
+      intro.addEventListener("pointerdown", close, { once: true });
+      if (media instanceof HTMLVideoElement) {
+        media.addEventListener("ended", close, { once: true });
+        media.addEventListener("error", close, { once: true });
+        media.play().catch(close);
+      } else if (media instanceof HTMLImageElement) {
+        const show = () => window.setTimeout(close, 4200);
+        media.addEventListener("error", close, { once: true });
+        if (media.complete && media.naturalWidth) show();
+        else media.addEventListener("load", show, { once: true });
+      }
+    })();
+  </script>
+  <div class="media-app" data-theme={visitorTheme}>
     <header class="app-topbar">
-      <a class="app-brand" href="/" aria-label="Re-Player">
+      <div class="app-brand" aria-label="Re-Player">
         <strong>Re-Player</strong>
-      </a>
+      </div>
 
       <label class="language-box">
         <Languages size={18} aria-hidden="true" />
@@ -143,7 +141,6 @@ const [theme, intro] = await Promise.all([getTheme(env), getIntro(env)]);
           <div id="emptyPlayer" class="player-empty">
             <span class="player-empty-mark"><Play size={34} fill="currentColor" /></span>
             <strong data-i18n="nothingPlaying">Nothing playing</strong>
-            <span>Re Player</span>
           </div>
 
           <div id="videoFrame" class="video-frame" tabindex="0" hidden>
