@@ -13,6 +13,7 @@ Re Player is a link-based media library that uses the Astro framework and runs o
 - Automatic IP-based English, Simplified Chinese, or Japanese selection with a manual override
 - Visitor cookies remember the selected language and each audio/video file's playback position, including completed positions
 - Password-protected `/admin` console with a management-style table
+- Five D1-backed visitor themes switched from one admin button: Default, Retro, Azure, New Blue, and Light Gray
 - Cloudflare D1 persistence with an in-memory local fallback
 - Optional Umami analytics
 
@@ -27,15 +28,9 @@ npm install
 npm run local
 ```
 
-For local theme replacement tests, run `S:\RP-loacl-test\switch-visitor-theme.ps1`. For example:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File S:\RP-loacl-test\switch-visitor-theme.ps1 -Theme tech -Start
-```
-
-The script moves the current `src/lib/visitor-theme.ts` and `src/styles/visitor-theme.css` files into the local backup directory, then moves the selected theme templates into the project without rewriting them. It can then rebuild and start RP.
-
 The default administrator password is `masteradmin`. Open `/admin` manually to sign in. Set `P` to change the password.
+
+After signing in, use the visitor-theme button in the lower-left corner. One button cycles through Default, Retro, Azure, New Blue, and Light Gray; the selection is stored in D1 and applies to the public visitor page only.
 
 ## Cloudflare D1
 
@@ -48,13 +43,14 @@ database_name = "your-database-name"
 database_id = "your-cloudflare-d1-database-id"
 ```
 
-RP creates and upgrades the `rp_pseudo_links` and playback-statistics tables automatically. The D1 binding name must remain `DB`.
+RP creates and upgrades the `rp_pseudo_links`, `rp_media_stats`, and `rp_settings` tables automatically. The D1 binding name must remain `DB`.
 
 ## Short Variables
 
 | Variable | Purpose |
 | --- | --- |
 | `A` | External media URL shown before the visitor page |
+| `B` | Maximum display/playback time for `A`, in seconds; default `4.2` |
 | `N` | Site name |
 | `P` | Administrator password |
 | `DB` | D1 binding |
@@ -62,6 +58,8 @@ RP creates and upgrades the `rp_pseudo_links` and playback-statistics tables aut
 | `UI` | Umami website ID |
 | `UH` | Optional Umami host URL |
 | `UD` | Optional Umami domain list |
+
+When `A` is a video, RP enters the visitor page when the video ends or after `B` seconds, whichever comes first. Images and GIFs remain visible for `B` seconds.
 
 ## Umami
 

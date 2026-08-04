@@ -6,6 +6,13 @@ if not exist node_modules (
   call npm.cmd install --no-audit --no-fund
   if errorlevel 1 goto :fail
 )
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\stop-local.ps1"
+if errorlevel 1 goto :fail
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\clean-dist.ps1"
+if errorlevel 1 goto :fail
+
 call npm.cmd run build
 if errorlevel 1 goto :fail
 

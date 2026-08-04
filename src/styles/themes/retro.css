@@ -1,0 +1,133 @@
+body:has(.media-app[data-theme="retro"]) {
+  background:
+    repeating-linear-gradient(0deg, rgba(28, 28, 27, 0.035) 0, rgba(28, 28, 27, 0.035) 1px, transparent 1px, transparent 6px),
+    #c8c8c2;
+}
+
+.media-app[data-theme="retro"] {
+  --page: #c8c8c2;
+  --surface: #e7e7e1;
+  --surface-soft: #d8d8d2;
+  --surface-hover: #f1f1eb;
+  --ink: #171717;
+  --muted: #62625d;
+  --line: #969690;
+  --line-strong: #555550;
+  --accent: #da2c43;
+  --accent-dark: #a51f32;
+  --accent-soft: #efd0d5;
+  --player: #111413;
+  --player-soft: #242725;
+  --folder: #a42f3e;
+  --coral: #99636a;
+  background: transparent;
+  font-family: Consolas, "Courier New", "Microsoft YaHei", monospace;
+  letter-spacing: 0;
+}
+
+.media-app[data-theme="retro"] .app-topbar {
+  border-top: 1px solid #4c4c48;
+  border-bottom: 3px double #555550;
+  background: rgba(231, 231, 225, 0.97);
+  box-shadow: 0 5px 0 rgba(38, 38, 36, 0.13);
+  backdrop-filter: none;
+}
+
+.media-app[data-theme="retro"] .app-brand strong {
+  color: #3b3932;
+  font-family: inherit;
+}
+
+.media-app[data-theme="retro"] .library-pane {
+  border-right: 3px double #555550;
+  background:
+    repeating-linear-gradient(0deg, rgba(25, 25, 24, 0.025) 0, rgba(25, 25, 24, 0.025) 1px, transparent 1px, transparent 6px),
+    #e7e7e1;
+  box-shadow: 8px 0 0 rgba(31, 31, 29, 0.1);
+}
+
+.media-app[data-theme="retro"] .library-heading {
+  border-bottom: 3px double #777771;
+  background: #d8d8d2;
+}
+
+.media-app[data-theme="retro"] .section-kicker {
+  color: #a51f32;
+  font-family: inherit;
+}
+
+.media-app[data-theme="retro"] .library-search {
+  border: 1px solid #5d5d58;
+  border-left: 5px solid #da2c43;
+  border-radius: 0;
+  background: #efefe9;
+  box-shadow: 3px 3px 0 rgba(35, 35, 33, 0.1);
+}
+
+.media-app[data-theme="retro"] .file-row {
+  min-height: 57px;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  border-radius: 0;
+}
+
+.media-app[data-theme="retro"] .file-row:hover {
+  border-color: #969690;
+  background: #f1f1eb;
+}
+
+.media-app[data-theme="retro"] .file-row.is-active {
+  border-color: #da2c43;
+  background: #efd0d5;
+  box-shadow: inset 5px 0 0 #da2c43, 4px 4px 0 rgba(42, 42, 39, 0.1);
+}
+
+.media-app[data-theme="retro"] .file-icon {
+  border-radius: 0;
+  background: #d3d3cd;
+}
+
+.media-app[data-theme="retro"] .file-icon-folder {
+  color: #a42f3e;
+}
+
+.media-app[data-theme="retro"] .player-pane {
+  background: repeating-linear-gradient(0deg, rgba(31, 31, 29, 0.035) 0, rgba(31, 31, 29, 0.035) 1px, transparent 1px, transparent 6px);
+}
+
+.media-app[data-theme="retro"] .player-stage {
+  border: 5px double #30302d;
+  border-radius: 0;
+  background: #111413;
+  box-shadow: 10px 10px 0 rgba(28, 28, 26, 0.19), 0 0 0 2px #deded8;
+}
+
+.media-app[data-theme="retro"] .player-stage:has(.player-empty:not([hidden])) {
+  border-color: #7f8081;
+  background: #d3d4d5;
+}
+
+.media-app[data-theme="retro"] .player-empty,
+.media-app[data-theme="retro"] .player-empty > span:last-child {
+  color: #343536;
+}
+
+.media-app[data-theme="retro"] .player-empty-mark {
+  border-color: #777879;
+  color: #da2c43;
+}
+
+.media-app[data-theme="retro"] .now-playing {
+  border: 1px solid #777771;
+  border-left: 5px solid #da2c43;
+  border-radius: 0;
+  background: #e7e7e1;
+  box-shadow: 6px 6px 0 rgba(39, 39, 36, 0.11);
+}
+
+.media-app[data-theme="retro"] .media-badge {
+  border: 1px solid #b72238;
+  border-radius: 0;
+  background: #efd0d5;
+  color: #791827;
+}

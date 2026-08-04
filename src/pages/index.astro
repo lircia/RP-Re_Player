@@ -25,9 +25,10 @@ import {
 } from "@lucide/astro";
 import SiteShell from "../layouts/SiteShell.astro";
 import { getEnv } from "@lib/cloudflare";
-import { visitorTheme } from "@lib/visitor-theme";
+import { getVisitorTheme } from "@lib/theme";
 
 const env = getEnv(Astro);
+const visitorTheme = await getVisitorTheme(env);
 const introSource = (() => {
   const value = env.A?.trim();
   if (!value) return "";
@@ -39,12 +40,16 @@ const introSource = (() => {
   }
 })();
 const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSource);
+const introMaxSeconds = (() => {
+  const value = Number(env.B ?? "4.2");
+  return Number.isFinite(value) && value > 0 ? Math.min(value, 86400) : 4.2;
+})();
 ---
 
 <SiteShell title="Re-Player">
   {
     introSource && (
-      <div id="externalIntro" class="external-intro" aria-hidden="true">
+      <div id="externalIntro" class="external-intro" aria-hidden="true" data-max-seconds={introMaxSeconds || undefined}>
         {introIsVideo ? (
           <video class="external-intro-media" src={introSource} autoplay muted playsinline preload="auto" />
         ) : (
@@ -58,20 +63,30 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
       const intro = document.querySelector("#externalIntro");
       const media = intro?.querySelector(".external-intro-media");
       if (!intro || !media) return;
+      const maxSeconds = Number(intro.dataset.maxSeconds) || 0;
       let closed = false;
+      let timer = 0;
       const close = () => {
         if (closed) return;
         closed = true;
+        if (timer) window.clearTimeout(timer);
         intro.classList.add("is-leaving");
         window.setTimeout(() => intro.remove(), 260);
+      };
+      const schedule = (seconds) => {
+        if (!(seconds > 0) || timer) return;
+        timer = window.setTimeout(close, seconds * 1000);
       };
       intro.addEventListener("pointerdown", close, { once: true });
       if (media instanceof HTMLVideoElement) {
         media.addEventListener("ended", close, { once: true });
         media.addEventListener("error", close, { once: true });
-        media.play().catch(close);
+        media.addEventListener("playing", () => schedule(maxSeconds), { once: true });
+        media.play().then(() => {
+          if (!media.paused) schedule(maxSeconds);
+        }).catch(close);
       } else if (media instanceof HTMLImageElement) {
-        const show = () => window.setTimeout(close, 4200);
+        const show = () => schedule(maxSeconds || 4.2);
         media.addEventListener("error", close, { once: true });
         if (media.complete && media.naturalWidth) show();
         else media.addEventListener("load", show, { once: true });
@@ -454,6 +469,7 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
       lyricScrollTimer: number;
       audioMode: AudioMode;
       stat: MediaStat;
+      query: string;
     } = {
       path: "/root",
       items: [],
@@ -468,7 +484,8 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
       lyricManual: false,
       lyricScrollTimer: 0,
       audioMode: "one",
-      stat: { plays: 0, completions: 0, rate: 0 }
+      stat: { plays: 0, completions: 0, rate: 0 },
+      query: ""
     };
 
     const d = {
@@ -543,6 +560,8 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
       completionRate: document.querySelector<HTMLElement>("#completionRate")!
     };
     let controlTimer = 0;
+    let listRequest = 0;
+    let searchTimer = 0;
     let videoClickTimer = 0;
     let videoHoldTimer = 0;
     let videoRewindTimer = 0;
@@ -1124,8 +1143,7 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
     function render() {
       d.path.textContent = displayPath(s.path);
       d.parent.disabled = s.path === "/root";
-      const q = d.search.value.trim().toLocaleLowerCase(s.lang);
-      const items = s.items.filter((item) => !q || `${item.name} ${item.path}`.toLocaleLowerCase(s.lang).includes(q));
+      const items = s.items;
       d.count.textContent = `${items.length} ${items.length === 1 ? t("item") : t("items")}`;
       if (!items.length) {
         d.list.innerHTML = `<div class="list-state">${esc(t("empty"))}</div>`;
@@ -1136,7 +1154,7 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
           <span class="file-icon file-icon-${esc(type(item))}">${icon(item)}</span>
           <span class="file-copy">
             <strong>${esc(item.name)}</strong>
-            <small>${esc(item.artist || t(type(item) as "folder" | "video" | "audio" | "image"))}</small>
+            <small>${esc(s.query ? displayPath(item.path) : item.artist || t(type(item) as "folder" | "video" | "audio" | "image"))}</small>
           </span>
         </button>
       `).join("");
@@ -1152,19 +1170,28 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
       d.lyricsBadge.hidden = !s.current.lrc && !s.current.lrc2;
     }
 
-    async function load(path = s.path) {
+    async function load(path = s.path, query = d.search.value.trim()) {
+      const request = ++listRequest;
       setStatus(d.libraryStatus, t("loading"));
       const response = await fetch("/api/public/list", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ path })
+        body: JSON.stringify({ path, q: query })
       });
       const data = (await response.json()) as any;
+      if (request !== listRequest) return;
       if (!data.ok) throw new Error(data.details || data.error || t("loadFailed"));
       s.path = data.path || "/root";
       s.items = data.items || [];
+      s.query = data.query || "";
       setStatus(d.libraryStatus);
       render();
+    }
+
+    function clearSearch() {
+      window.clearTimeout(searchTimer);
+      d.search.value = "";
+      s.query = "";
     }
 
     async function clearMedia() {
@@ -1276,7 +1303,8 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
       const row = (event.target as HTMLElement).closest<HTMLElement>("[data-path]");
       if (!row?.dataset.path) return;
       if (row.dataset.dir !== "1") setLibraryOpen(false);
-      const action = row.dataset.dir === "1" ? load(row.dataset.path) : openItem(row.dataset.path);
+      if (row.dataset.dir === "1") clearSearch();
+      const action = row.dataset.dir === "1" ? load(row.dataset.path, "") : openItem(row.dataset.path);
       action.catch((error) => {
         if (row.dataset.dir !== "1") d.stage.dataset.signal = "interrupted";
         setStatus(row.dataset.dir === "1" ? d.libraryStatus : d.playerStatus, error.message, "error");
@@ -1285,10 +1313,17 @@ const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSourc
 
     d.parent.addEventListener("click", () => {
       const parent = s.path.split("/").filter(Boolean).slice(0, -1).join("/");
-      load(parent ? `/${parent}` : "/root").catch((error) => setStatus(d.libraryStatus, error.message, "error"));
+      clearSearch();
+      load(parent ? `/${parent}` : "/root", "").catch((error) => setStatus(d.libraryStatus, error.message, "error"));
     });
     d.refresh.addEventListener("click", () => load().catch((error) => setStatus(d.libraryStatus, error.message, "error")));
-    d.search.addEventListener("input", render);
+    d.search.addEventListener("input", () => {
+      window.clearTimeout(searchTimer);
+      const query = d.search.value.trim();
+      searchTimer = window.setTimeout(() => {
+        load(s.path, query).catch((error) => setStatus(d.libraryStatus, error.message, "error"));
+      }, 220);
+    });
     d.libraryToggle.addEventListener("click", () => setLibraryOpen(!d.app.classList.contains("is-library-open")));
     d.libraryScrim.addEventListener("click", () => setLibraryOpen(false));
     window.matchMedia("(min-width: 681px)").addEventListener("change", (event) => {

@@ -151,13 +151,54 @@ export async function allItems(env: AppEnv): Promise<PseudoItem[]> {
   return [...memory().items].sort((a, b) => a.path.localeCompare(b.path, "zh-CN"));
 }
 
-export async function listPublic(env: AppEnv, path = "/root") {
+export async function listPublic(env: AppEnv, path = "/root", query = "") {
   const current = normalizeRootPath(path);
   const items = await allItems(env);
   const children = new Map<string, PublicNode>();
+  const search = String(query || "").trim().slice(0, 100).toLocaleLowerCase();
+  const prefix = current === "/root" ? "/root/" : `${current}/`;
+
+  if (search) {
+    for (const item of items) {
+      if (!item.path.startsWith(prefix)) continue;
+      const rest = item.path.slice(current.length).replace(/^\/+/, "");
+      if (!rest) continue;
+
+      const parts = rest.split("/");
+      let folderPath = current;
+      for (const folder of parts.slice(0, -1)) {
+        folderPath = `${folderPath}/${folder}`;
+        if (folder.toLocaleLowerCase().includes(search)) {
+          children.set(folderPath, { name: folder, path: folderPath, isDir: true });
+        }
+      }
+
+      if (item.name.toLocaleLowerCase().includes(search)) {
+        children.set(item.path, {
+          name: item.name,
+          path: item.path,
+          isDir: false,
+          kind: item.kind,
+          artist: item.artist,
+          poster: item.poster,
+          sub: item.sub,
+          updatedAt: item.updatedAt
+        });
+      }
+    }
+
+    const results = [...children.values()]
+      .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.path.localeCompare(b.path, "zh-CN"));
+    return {
+      path: current,
+      query: String(query || "").trim().slice(0, 100),
+      items: results.slice(0, 300),
+      truncated: results.length > 300
+    };
+  }
 
   for (const item of items) {
-    if (!item.path.startsWith(current === "/root" ? "/root/" : `${current}/`)) continue;
+    if (!item.path.startsWith(prefix)) continue;
     const rest = item.path.slice(current.length).replace(/^\/+/, "");
     if (!rest) continue;
 
@@ -184,6 +225,7 @@ export async function listPublic(env: AppEnv, path = "/root") {
 
   return {
     path: current,
+    query: "",
     items: [...children.values()].sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name, "zh-CN"))
   };
 }

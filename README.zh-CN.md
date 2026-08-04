@@ -13,6 +13,7 @@ Re Player 是一个使用 Astro 框架、可部署到 Cloudflare Workers 的链�
 - 根据 IP 自动选择英语、简体中文或日语，并支持手动覆盖
 - 通过访客 Cookie 分别记住当前语言和每个音视频的播放进度，完播记录保留在末端
 - 手动访问 `/admin`，验证密码后进入类管理表格
+- 后台使用一个按钮切换五套 D1 持久化访客主题：默认、复古、蔚蓝、新蓝、浅灰
 - 使用 Cloudflare D1 持久化，本地无 D1 时使用内存回退
 - 可选 Umami 统计
 
@@ -27,15 +28,9 @@ npm install
 npm run local
 ```
 
-本地主题替换测试脚本位于 `S:\RP-loacl-test\switch-visitor-theme.ps1`。例如：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File S:\RP-loacl-test\switch-visitor-theme.ps1 -Theme tech -Start
-```
-
-脚本会先把项目当前的 `src/lib/visitor-theme.ts` 和 `src/styles/visitor-theme.css` 移入本地备份目录，再把所选主题模板移动进项目；整个过程不会改写主题文件内容，并可选择重新构建及启动 RP。
-
 默认管理员密码为 `masteradmin`。手动打开 `/admin` 登录；通过变量 `P` 修改密码。
+
+登录后使用左下角的访客主题按钮。该按钮依次切换默认、复古、蔚蓝、新蓝、浅灰；选择结果保存到 D1，只改变公开访客页。
 
 ## Cloudflare D1
 
@@ -48,13 +43,14 @@ database_name = "你的数据库名称"
 database_id = "你的-cloudflare-d1-database-id"
 ```
 
-RP 会自动创建并升级 `rp_pseudo_links` 和播放统计表。D1 绑定名必须保持为 `DB`。
+RP 会自动创建并升级 `rp_pseudo_links`、`rp_media_stats` 和 `rp_settings` 表。D1 绑定名必须保持为 `DB`。
 
 ## 短变量
 
 | 变量 | 用途 |
 | --- | --- |
 | `A` | 访客页打开前显示的外部媒体地址 |
+| `B` | `A` 的最大显示或播放时间，单位为秒，默认 `4.2` |
 | `N` | 网站名称 |
 | `P` | 管理员密码 |
 | `DB` | D1 绑定 |
@@ -62,6 +58,8 @@ RP 会自动创建并升级 `rp_pseudo_links` 和播放统计表。D1 绑定名�
 | `UI` | Umami 网站 ID |
 | `UH` | 可选 Umami 主机地址 |
 | `UD` | 可选 Umami 域名列表 |
+
+当 `A` 是视频时，视频自然结束或播放达到 `B` 秒后进入访客页，以先发生者为准；图片和 GIF 显示 `B` 秒。
 
 ## Umami
 

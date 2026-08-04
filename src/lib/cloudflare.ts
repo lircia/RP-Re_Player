@@ -3,6 +3,7 @@ import { env as cloudflareEnv } from "cloudflare:workers";
 
 export interface AppEnv {
   A?: string;
+  B?: string;
   N?: string;
   P?: string;
   US?: string;

@@ -3084,10 +3084,6 @@ body:has(.login-screen)::before {
   animation: none;
 }
 
-body .media-app[data-theme="blue"] .player-stage:has(.player-empty:not([hidden])) {
-  background: #f0f8ff;
-}
-
 .media-app .video-frame,
 .media-app .image-frame {
   border-radius: 9px;
@@ -3597,5 +3593,56 @@ body .media-app[data-theme="blue"] .player-stage:has(.player-empty:not([hidden])
 @media (prefers-reduced-motion: reduce) {
   .external-intro {
     transition: none;
+  }
+}
+
+.admin-theme-toggle {
+  position: fixed;
+  z-index: 45;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: max(16px, env(safe-area-inset-left));
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  max-width: 230px;
+  gap: 8px;
+  padding: 7px 11px;
+  overflow: hidden;
+  border: 1px solid #555550;
+  border-left: 5px solid #b30c32;
+  border-radius: 0;
+  background: #e7e7e1;
+  box-shadow: 4px 4px 0 rgba(20, 20, 20, 0.18);
+  color: #171717;
+  font-family: Consolas, "Courier New", "Microsoft YaHei", monospace;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-theme-toggle:hover:not(:disabled),
+.admin-theme-toggle:focus-visible {
+  border-color: #b30c32;
+  background: #f1f1eb;
+  color: #7f0b27;
+}
+
+.admin-theme-toggle:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.admin-theme-toggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 680px) {
+  .admin-theme-toggle {
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
+    max-width: min(220px, calc(100vw - 16px));
   }
 }

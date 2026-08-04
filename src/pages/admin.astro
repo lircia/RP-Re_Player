@@ -6,6 +6,7 @@ import {
   Languages,
   LogOut,
   Music2,
+  Palette,
   Plus,
   RefreshCw,
   Trash2,
@@ -202,6 +203,10 @@ const loggedIn = await isAdmin(Astro.request, env);
         <template id="tableAudio"><Music2 size={18} /></template>
         <template id="tableImage"><FileImage size={18} /></template>
         <template id="tableTrash"><Trash2 size={16} /></template>
+        <button id="visitorThemeBtn" class="admin-theme-toggle" type="button" title="Visitor theme">
+          <Palette size={16} aria-hidden="true" />
+          <span id="visitorThemeLabel">Visitor theme: Default</span>
+        </button>
       </div>
     )
   }
@@ -219,7 +224,8 @@ const loggedIn = await isAdmin(Astro.request, env);
         cancel: "Cancel", create: "Create", empty: "No pseudo mounts yet", item: "item", items: "items",
         wrongPassword: "Incorrect password.", signingIn: "Signing in...", loadFailed: "Could not load pseudo mounts.",
         createFailed: "Could not create the pseudo mount.", created: "Pseudo mount created.", delete: "Delete",
-        deleteConfirm: "Delete this pseudo mount?", deleteFailed: "Could not delete the pseudo mount."
+        deleteConfirm: "Delete this pseudo mount?", deleteFailed: "Could not delete the pseudo mount.",
+        visitorTheme: "Visitor theme", themeChanged: "Visitor theme switched", themeFailed: "Could not switch visitor theme."
       },
       zh: {
         language: "语言", console: "管理后台", signIn: "登录", signInCopy: "请输入管理员密码以继续。", password: "密码",
@@ -231,7 +237,7 @@ const loggedIn = await isAdmin(Astro.request, env);
         cancel: "取消", create: "创建", empty: "暂无伪挂载", item: "项", items: "项",
         wrongPassword: "密码错误。", signingIn: "正在登录...", loadFailed: "无法读取伪挂载。",
         createFailed: "无法创建伪挂载。", created: "伪挂载已创建。", delete: "删除", deleteConfirm: "删除此伪挂载？",
-        deleteFailed: "无法删除此伪挂载。"
+        deleteFailed: "无法删除此伪挂载。", visitorTheme: "访客主题", themeChanged: "访客主题已切换", themeFailed: "无法切换访客主题。"
       },
       ja: {
         language: "言語", console: "管理コンソール", signIn: "ログイン", signInCopy: "管理者パスワードを入力してください。",
@@ -245,14 +251,21 @@ const loggedIn = await isAdmin(Astro.request, env);
         items: "件", wrongPassword: "パスワードが正しくありません。", signingIn: "ログイン中...",
         loadFailed: "疑似マウントを読み込めませんでした。", createFailed: "疑似マウントを作成できませんでした。",
         created: "疑似マウントを作成しました。", delete: "削除", deleteConfirm: "この疑似マウントを削除しますか？",
-        deleteFailed: "疑似マウントを削除できませんでした。"
+        deleteFailed: "疑似マウントを削除できませんでした。", visitorTheme: "ビジターテーマ", themeChanged: "ビジターテーマを切り替えました", themeFailed: "ビジターテーマを切り替えられませんでした。"
       }
     } as const;
 
     type Lang = keyof typeof c;
     type Item = { id: string; name: string; path: string; url: string; kind: "video" | "audio" | "image"; poster?: string; sub?: string; lrc?: string; lrc2?: string };
+    type VisitorTheme = "blue" | "retro" | "future" | "tech" | "gray";
     let lang: Lang = "en";
     let items: Item[] = [];
+    let visitorTheme: VisitorTheme = "blue";
+    const themeNames: Record<Lang, Record<VisitorTheme, string>> = {
+      en: { blue: "Default", retro: "Retro", future: "Azure", tech: "New Blue", gray: "Light Gray" },
+      zh: { blue: "默认", retro: "复古", future: "蔚蓝", tech: "新蓝", gray: "浅灰" },
+      ja: { blue: "デフォルト", retro: "レトロ", future: "アズール", tech: "ニューブルー", gray: "ライトグレー" }
+    };
     const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
     const displayPath = (path: string) => path.replace(/^\/root(?=\/|$)/, "") || "/";
@@ -262,6 +275,15 @@ const loggedIn = await isAdmin(Astro.request, env);
       el.textContent = message;
       tone ? (el.dataset.tone = tone) : delete el.dataset.tone;
     };
+
+    function renderThemeControl() {
+      const button = document.querySelector<HTMLButtonElement>("#visitorThemeBtn");
+      const label = document.querySelector<HTMLElement>("#visitorThemeLabel");
+      if (!button || !label) return;
+      const value = `${t("visitorTheme")}: ${themeNames[lang][visitorTheme]}`;
+      label.textContent = value;
+      button.title = value;
+    }
 
     function applyLanguage() {
       document.documentElement.lang = lang === "zh" ? "zh-CN" : lang === "ja" ? "ja" : "en";
@@ -275,6 +297,7 @@ const loggedIn = await isAdmin(Astro.request, env);
       });
       document.querySelectorAll(".language-select").forEach((el) => ((el as unknown as HTMLSelectElement).value = lang));
       renderRows();
+      renderThemeControl();
     }
 
     function typeIcon(kind: Item["kind"]) {
@@ -420,11 +443,40 @@ const loggedIn = await isAdmin(Astro.request, env);
     });
 
     document.querySelector("#refreshLinks")?.addEventListener("click", () => loadLinks().catch((error) => set(document.querySelector("#adminStatus") as HTMLElement | null, error.message, "error")));
+    const themeButton = document.querySelector<HTMLButtonElement>("#visitorThemeBtn");
+    async function loadVisitorTheme() {
+      if (!themeButton) return;
+      const response = await fetch("/api/admin/theme");
+      if (response.status === 401) return location.reload();
+      const data = (await response.json()) as { ok?: boolean; theme?: VisitorTheme };
+      if (!data.ok || !data.theme) throw new Error(t("themeFailed"));
+      visitorTheme = data.theme;
+      renderThemeControl();
+    }
+    themeButton?.addEventListener("click", async () => {
+      const status = document.querySelector<HTMLElement>("#adminStatus");
+      themeButton.disabled = true;
+      try {
+        const response = await fetch("/api/admin/theme", { method: "POST" });
+        const data = (await response.json()) as { ok?: boolean; theme?: VisitorTheme };
+        if (!data.ok || !data.theme) throw new Error(t("themeFailed"));
+        visitorTheme = data.theme;
+        renderThemeControl();
+        set(status, `${t("themeChanged")}: ${themeNames[lang][visitorTheme]}`, "ok");
+      } catch (error) {
+        set(status, error instanceof Error ? error.message : t("themeFailed"), "error");
+      } finally {
+        themeButton.disabled = false;
+      }
+    });
     document.querySelector("#logoutBtn")?.addEventListener("click", async () => {
       await fetch("/api/admin/logout", { method: "POST" });
       location.reload();
     });
 
-    if (document.querySelector("#linkRows")) loadLinks().catch((error) => set(document.querySelector("#adminStatus"), error.message, "error"));
+    if (document.querySelector("#linkRows")) {
+      loadLinks().catch((error) => set(document.querySelector("#adminStatus"), error.message, "error"));
+      loadVisitorTheme().catch((error) => set(document.querySelector("#adminStatus"), error.message, "error"));
+    }
   </script>
 </SiteShell>
