@@ -51,7 +51,7 @@ RP creates and upgrades the `rp_pseudo_links`, `rp_media_stats`, and `rp_setting
 | --- | --- |
 | `A` | External media URL shown before the visitor page |
 | `B` | Maximum playback/display time for `A` and `C`, in seconds; default `4.2` |
-| `C` | Optional external audio URL played with `A` |
+| `C` | Optional external audio URL played with `A`; when set, the `A` video is muted |
 | `N` | Site name |
 | `P` | Administrator password |
 | `DB` | D1 binding |

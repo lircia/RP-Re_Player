@@ -53,14 +53,11 @@ const introMaxSeconds = (() => {
     introSource && (
       <div id="externalIntro" class="external-intro" data-max-seconds={introMaxSeconds || undefined}>
         {introIsVideo ? (
-          <video class="external-intro-media" src={introSource} autoplay playsinline preload="auto" />
+          <video class="external-intro-media" src={introSource} autoplay muted={Boolean(introAudioSource)} playsinline preload="auto" />
         ) : (
           <img class="external-intro-media" src={introSource} alt="" />
         )}
         {introAudioSource && <audio class="external-intro-audio" src={introAudioSource} autoplay preload="auto" />}
-        <button class="external-intro-start" type="button" aria-label="Play intro with sound" hidden>
-          <Volume2 size={28} aria-hidden="true" />
-        </button>
       </div>
     )
   }
@@ -69,12 +66,10 @@ const introMaxSeconds = (() => {
       const intro = document.querySelector("#externalIntro");
       const visual = intro?.querySelector(".external-intro-media");
       const music = intro?.querySelector(".external-intro-audio");
-      const startButton = intro?.querySelector(".external-intro-start");
-      if (!intro || !visual || !(startButton instanceof HTMLButtonElement)) return;
+      if (!intro || !visual) return;
       const maxSeconds = Number(intro.dataset.maxSeconds) || 0;
       const playable = [visual instanceof HTMLVideoElement ? visual : null, music instanceof HTMLAudioElement ? music : null].filter(Boolean);
       let closed = false;
-      let waitingForGesture = false;
       let starting = false;
       let timer = 0;
       const stopPlayback = () => {
@@ -98,47 +93,44 @@ const introMaxSeconds = (() => {
         if (!(seconds > 0) || timer) return;
         timer = window.setTimeout(close, seconds * 1000);
       };
-      const setWaiting = (waiting) => {
-        waitingForGesture = waiting;
-        startButton.hidden = !waiting;
-        intro.classList.toggle("is-waiting", waiting);
+      const playMusic = async () => {
+        if (!(music instanceof HTMLAudioElement)) return;
+        music.removeAttribute("muted");
+        music.muted = false;
+        music.volume = 1;
+        try {
+          await music.play();
+        } catch {
+          music.pause();
+          music.removeAttribute("src");
+          music.load();
+        }
+      };
+      const playVideo = async () => {
+        if (!(visual instanceof HTMLVideoElement)) return;
+        const useExternalAudio = music instanceof HTMLAudioElement;
+        visual.defaultMuted = useExternalAudio;
+        visual.muted = useExternalAudio;
+        if (useExternalAudio) visual.setAttribute("muted", "");
+        else visual.removeAttribute("muted");
+        try {
+          await visual.play();
+        } catch {
+          if (useExternalAudio) return;
+          visual.defaultMuted = true;
+          visual.muted = true;
+          visual.setAttribute("muted", "");
+          await visual.play().catch(close);
+        }
       };
       const startPlayback = async () => {
         if (starting || closed) return;
         starting = true;
-        const results = await Promise.allSettled(playable.map((item) => {
-          item.removeAttribute("muted");
-          if (item instanceof HTMLVideoElement) item.defaultMuted = false;
-          item.muted = false;
-          item.volume = 1;
-          return item.play();
-        }));
+        await Promise.allSettled([playVideo(), playMusic()]);
         starting = false;
-        const policyBlocked = results.some((result) => result.status === "rejected" && result.reason?.name === "NotAllowedError");
-        if (policyBlocked) {
-          playable.forEach((item) => {
-            item.pause();
-            try { item.currentTime = 0; } catch {}
-          });
-          setWaiting(true);
-          return;
-        }
-        setWaiting(false);
         schedule(maxSeconds || 4.2);
       };
-      intro.addEventListener("pointerdown", (event) => {
-        if (event.target instanceof Node && startButton.contains(event.target)) return;
-        if (waitingForGesture) {
-          event.preventDefault();
-          startPlayback();
-        } else {
-          close();
-        }
-      });
-      startButton.addEventListener("click", (event) => {
-        event.stopPropagation();
-        startPlayback();
-      });
+      intro.addEventListener("pointerdown", close, { once: true });
       if (visual instanceof HTMLVideoElement) {
         visual.addEventListener("ended", close, { once: true });
         visual.addEventListener("error", close, { once: true });

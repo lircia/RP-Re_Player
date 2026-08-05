@@ -16,14 +16,14 @@ export interface AppEnv {
 
 const persistedKeys = ["A", "B", "C", "N", "P", "US", "UI", "UH", "UD"] as const;
 type PersistedKey = (typeof persistedKeys)[number];
-const settingsCache = new WeakMap<object, Promise<Partial<Record<PersistedKey, string>>>>();
+const settingsCache = new WeakMap<object, Partial<Record<PersistedKey, string>>>();
 
 async function loadPersistedEnv(env: AppEnv) {
   if (!env.DB) return {};
   const cached = settingsCache.get(env.DB as object);
   if (cached) return cached;
 
-  const loading = (async () => {
+  try {
     await env.DB!.prepare(`
       CREATE TABLE IF NOT EXISTS rp_settings (
         key TEXT PRIMARY KEY,
@@ -51,14 +51,9 @@ async function loadPersistedEnv(env: AppEnv) {
       const key = row.key.slice(4) as PersistedKey;
       if (persistedKeys.includes(key) && row.value.trim()) stored[key] = row.value;
     }
+    settingsCache.set(env.DB as object, stored);
     return stored;
-  })();
-
-  settingsCache.set(env.DB as object, loading);
-  try {
-    return await loading;
   } catch {
-    settingsCache.delete(env.DB as object);
     return {};
   }
 }

@@ -523,12 +523,25 @@ const loggedIn = await isAdmin(Astro.request, env);
 
     document.querySelector("#refreshLinks")?.addEventListener("click", () => loadLinks().catch((error) => set(document.querySelector("#adminStatus") as HTMLElement | null, error.message, "error")));
     const themeButton = document.querySelector<HTMLButtonElement>("#visitorThemeBtn");
+    async function readThemeResponse(response: Response) {
+      const text = await response.text();
+      let data: { ok?: boolean; theme?: VisitorTheme; error?: string } = {};
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error(t("themeFailed"));
+        }
+      }
+      const theme = data.theme;
+      if (!response.ok || !data.ok || !theme) throw new Error(data.error || t("themeFailed"));
+      return { theme };
+    }
     async function loadVisitorTheme() {
       if (!themeButton) return;
       const response = await fetch("/api/admin/theme");
       if (response.status === 401) return location.reload();
-      const data = (await response.json()) as { ok?: boolean; theme?: VisitorTheme };
-      if (!data.ok || !data.theme) throw new Error(t("themeFailed"));
+      const data = await readThemeResponse(response);
       visitorTheme = data.theme;
       renderThemeControl();
     }
@@ -537,8 +550,8 @@ const loggedIn = await isAdmin(Astro.request, env);
       themeButton.disabled = true;
       try {
         const response = await fetch("/api/admin/theme", { method: "POST" });
-        const data = (await response.json()) as { ok?: boolean; theme?: VisitorTheme };
-        if (!data.ok || !data.theme) throw new Error(t("themeFailed"));
+        if (response.status === 401) return location.reload();
+        const data = await readThemeResponse(response);
         visitorTheme = data.theme;
         renderThemeControl();
         set(status, `${t("themeChanged")}: ${themeNames[lang][visitorTheme]}`, "ok");

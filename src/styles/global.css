@@ -3562,32 +3562,6 @@ body:has(.login-screen)::before {
   display: none;
 }
 
-.external-intro-start {
-  position: absolute;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 50%;
-  background: rgba(10, 10, 10, 0.72);
-  color: #ffffff;
-  box-shadow: 0 0 0 7px rgba(0, 0, 0, 0.26);
-  cursor: pointer;
-}
-
-.external-intro-start[hidden] {
-  display: none;
-}
-
-.external-intro-start:hover,
-.external-intro-start:focus-visible {
-  border-color: #da2c43;
-  background: rgba(218, 44, 67, 0.82);
-  outline: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .external-intro {
     transition: none;
