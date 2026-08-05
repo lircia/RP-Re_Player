@@ -6,7 +6,7 @@ export const GET: APIRoute = async (context) => {
   const path = context.url.searchParams.get("path");
   if (!path) return jsonError("Path is required.", 400);
 
-  const item = await getItem(getEnv(context), path);
+  const item = await getItem(await getEnv(context), path);
   if (!item?.sub || item.kind !== "video") return jsonError("Subtitle was not found.", 404);
 
   let url: URL;

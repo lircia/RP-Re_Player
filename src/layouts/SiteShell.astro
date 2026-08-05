@@ -1,18 +1,18 @@
 ---
 import "../styles/global.css";
 import "../styles/visitor-theme.css";
-import { env as workerEnv } from "cloudflare:workers";
+import { getEnv } from "@lib/cloudflare";
 
 interface Props {
   title: string;
 }
 
 const { title } = Astro.props;
-const env = workerEnv as Record<string, string | undefined>;
-const umamiSrc = env.US || import.meta.env.US;
-const umamiWebsiteId = env.UI || import.meta.env.UI;
-const umamiHostUrl = env.UH || import.meta.env.UH;
-const umamiDomains = env.UD || import.meta.env.UD;
+const env = await getEnv(Astro);
+const umamiSrc = env.US;
+const umamiWebsiteId = env.UI;
+const umamiHostUrl = env.UH;
+const umamiDomains = env.UD;
 ---
 
 <!doctype html>

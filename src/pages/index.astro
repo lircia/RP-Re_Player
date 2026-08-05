@@ -1,11 +1,11 @@
 ---
 import {
-  ArrowLeft,
   Captions,
   FastForward,
   FileImage,
   Film,
   Folder,
+  FolderUp,
   Languages,
   Music2,
   Maximize,
@@ -27,10 +27,10 @@ import SiteShell from "../layouts/SiteShell.astro";
 import { getEnv } from "@lib/cloudflare";
 import { getVisitorTheme } from "@lib/theme";
 
-const env = getEnv(Astro);
+const env = await getEnv(Astro);
 const visitorTheme = await getVisitorTheme(env);
-const introSource = (() => {
-  const value = env.A?.trim();
+const externalUrl = (input?: string) => {
+  const value = input?.trim();
   if (!value) return "";
   try {
     const url = new URL(value);
@@ -38,7 +38,9 @@ const introSource = (() => {
   } catch {
     return "";
   }
-})();
+};
+const introSource = externalUrl(env.A);
+const introAudioSource = externalUrl(env.C);
 const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSource);
 const introMaxSeconds = (() => {
   const value = Number(env.B ?? "4.2");
@@ -49,47 +51,104 @@ const introMaxSeconds = (() => {
 <SiteShell title="Re-Player">
   {
     introSource && (
-      <div id="externalIntro" class="external-intro" aria-hidden="true" data-max-seconds={introMaxSeconds || undefined}>
+      <div id="externalIntro" class="external-intro" data-max-seconds={introMaxSeconds || undefined}>
         {introIsVideo ? (
-          <video class="external-intro-media" src={introSource} autoplay muted playsinline preload="auto" />
+          <video class="external-intro-media" src={introSource} autoplay playsinline preload="auto" />
         ) : (
           <img class="external-intro-media" src={introSource} alt="" />
         )}
+        {introAudioSource && <audio class="external-intro-audio" src={introAudioSource} autoplay preload="auto" />}
+        <button class="external-intro-start" type="button" aria-label="Play intro with sound" hidden>
+          <Volume2 size={28} aria-hidden="true" />
+        </button>
       </div>
     )
   }
   <script is:inline>
     (() => {
       const intro = document.querySelector("#externalIntro");
-      const media = intro?.querySelector(".external-intro-media");
-      if (!intro || !media) return;
+      const visual = intro?.querySelector(".external-intro-media");
+      const music = intro?.querySelector(".external-intro-audio");
+      const startButton = intro?.querySelector(".external-intro-start");
+      if (!intro || !visual || !(startButton instanceof HTMLButtonElement)) return;
       const maxSeconds = Number(intro.dataset.maxSeconds) || 0;
+      const playable = [visual instanceof HTMLVideoElement ? visual : null, music instanceof HTMLAudioElement ? music : null].filter(Boolean);
       let closed = false;
+      let waitingForGesture = false;
+      let starting = false;
       let timer = 0;
+      const stopPlayback = () => {
+        playable.forEach((item) => {
+          item.pause();
+          item.removeAttribute("src");
+          item.load();
+        });
+      };
       const close = () => {
         if (closed) return;
         closed = true;
         if (timer) window.clearTimeout(timer);
         intro.classList.add("is-leaving");
-        window.setTimeout(() => intro.remove(), 260);
+        window.setTimeout(() => {
+          stopPlayback();
+          intro.remove();
+        }, 260);
       };
       const schedule = (seconds) => {
         if (!(seconds > 0) || timer) return;
         timer = window.setTimeout(close, seconds * 1000);
       };
-      intro.addEventListener("pointerdown", close, { once: true });
-      if (media instanceof HTMLVideoElement) {
-        media.addEventListener("ended", close, { once: true });
-        media.addEventListener("error", close, { once: true });
-        media.addEventListener("playing", () => schedule(maxSeconds), { once: true });
-        media.play().then(() => {
-          if (!media.paused) schedule(maxSeconds);
-        }).catch(close);
-      } else if (media instanceof HTMLImageElement) {
-        const show = () => schedule(maxSeconds || 4.2);
-        media.addEventListener("error", close, { once: true });
-        if (media.complete && media.naturalWidth) show();
-        else media.addEventListener("load", show, { once: true });
+      const setWaiting = (waiting) => {
+        waitingForGesture = waiting;
+        startButton.hidden = !waiting;
+        intro.classList.toggle("is-waiting", waiting);
+      };
+      const startPlayback = async () => {
+        if (starting || closed) return;
+        starting = true;
+        const results = await Promise.allSettled(playable.map((item) => {
+          item.removeAttribute("muted");
+          if (item instanceof HTMLVideoElement) item.defaultMuted = false;
+          item.muted = false;
+          item.volume = 1;
+          return item.play();
+        }));
+        starting = false;
+        const policyBlocked = results.some((result) => result.status === "rejected" && result.reason?.name === "NotAllowedError");
+        if (policyBlocked) {
+          playable.forEach((item) => {
+            item.pause();
+            try { item.currentTime = 0; } catch {}
+          });
+          setWaiting(true);
+          return;
+        }
+        setWaiting(false);
+        schedule(maxSeconds || 4.2);
+      };
+      intro.addEventListener("pointerdown", (event) => {
+        if (event.target instanceof Node && startButton.contains(event.target)) return;
+        if (waitingForGesture) {
+          event.preventDefault();
+          startPlayback();
+        } else {
+          close();
+        }
+      });
+      startButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        startPlayback();
+      });
+      if (visual instanceof HTMLVideoElement) {
+        visual.addEventListener("ended", close, { once: true });
+        visual.addEventListener("error", close, { once: true });
+        startPlayback();
+      } else if (visual instanceof HTMLImageElement) {
+        const show = () => playable.length ? startPlayback() : schedule(maxSeconds || 4.2);
+        visual.addEventListener("error", close, { once: true });
+        if (music instanceof HTMLAudioElement) music.addEventListener("ended", close, { once: true });
+        if (visual.complete && visual.naturalWidth) show();
+        else visual.addEventListener("load", show, { once: true });
       }
     })();
   </script>
@@ -109,9 +168,6 @@ const introMaxSeconds = (() => {
         </select>
       </label>
 
-      <button id="mobileLibraryToggle" class="icon-button mobile-library-toggle" type="button" title="Show library" aria-label="Show library" aria-controls="libraryPane" aria-expanded="false">
-        <span><ArrowLeft size={19} /></span>
-      </button>
     </header>
 
     <button id="mobileLibraryScrim" class="mobile-library-scrim" type="button" aria-label="Hide library" aria-hidden="true" tabindex="-1"></button>
@@ -125,7 +181,7 @@ const introMaxSeconds = (() => {
           </div>
           <div class="icon-actions">
             <button id="parentBtn" class="icon-button" type="button" title="Parent folder" data-i18n-title="parent">
-              <ArrowLeft size={19} />
+              <FolderUp size={19} />
               <span class="sr-only" data-i18n="parent">Parent folder</span>
             </button>
             <button id="refreshBtn" class="icon-button" type="button" title="Refresh" data-i18n-title="refresh">
@@ -492,7 +548,6 @@ const introMaxSeconds = (() => {
       app: document.querySelector<HTMLElement>(".media-app")!,
       search: document.querySelector<HTMLInputElement>("#searchInput")!,
       language: document.querySelector("#languageSelect") as unknown as HTMLSelectElement,
-      libraryToggle: document.querySelector<HTMLButtonElement>("#mobileLibraryToggle")!,
       libraryScrim: document.querySelector<HTMLButtonElement>("#mobileLibraryScrim")!,
       path: document.querySelector<HTMLElement>("#pathTitle")!,
       list: document.querySelector<HTMLElement>("#fileList")!,
@@ -800,10 +855,7 @@ const introMaxSeconds = (() => {
 
     function setLibraryOpen(open: boolean) {
       d.app.classList.toggle("is-library-open", open);
-      d.libraryToggle.ariaExpanded = String(open);
       d.libraryScrim.setAttribute("aria-hidden", String(!open));
-      const label = t(open ? "hideLibrary" : "showLibrary");
-      d.libraryToggle.title = d.libraryToggle.ariaLabel = label;
       d.libraryScrim.ariaLabel = t("hideLibrary");
     }
 
@@ -1324,8 +1376,27 @@ const introMaxSeconds = (() => {
         load(s.path, query).catch((error) => setStatus(d.libraryStatus, error.message, "error"));
       }, 220);
     });
-    d.libraryToggle.addEventListener("click", () => setLibraryOpen(!d.app.classList.contains("is-library-open")));
     d.libraryScrim.addEventListener("click", () => setLibraryOpen(false));
+    let librarySwipeStart: { x: number; y: number } | null = null;
+    document.addEventListener("pointerdown", (event) => {
+      if (!window.matchMedia("(max-width: 680px)").matches) return;
+      if (event.clientX <= 24 || d.app.classList.contains("is-library-open")) {
+        librarySwipeStart = { x: event.clientX, y: event.clientY };
+      }
+    });
+    document.addEventListener("pointerup", (event) => {
+      if (!librarySwipeStart) return;
+      const start = librarySwipeStart;
+      librarySwipeStart = null;
+      const deltaX = event.clientX - start.x;
+      const deltaY = event.clientY - start.y;
+      if (Math.abs(deltaX) < 60 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+      if (deltaX > 0 && start.x <= 24) setLibraryOpen(true);
+      if (deltaX < 0 && d.app.classList.contains("is-library-open")) setLibraryOpen(false);
+    });
+    document.addEventListener("pointercancel", () => {
+      librarySwipeStart = null;
+    });
     window.matchMedia("(min-width: 681px)").addEventListener("change", (event) => {
       if (event.matches) setLibraryOpen(false);
     });
@@ -1533,7 +1604,6 @@ const introMaxSeconds = (() => {
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && d.app.classList.contains("is-library-open")) {
         setLibraryOpen(false);
-        d.libraryToggle.focus();
         return;
       }
       if (d.videoFrame.hidden) return;

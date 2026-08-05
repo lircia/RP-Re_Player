@@ -3,7 +3,7 @@ import { getEnv, json, jsonError } from "@lib/cloudflare";
 import { listPublic } from "@lib/pseudo";
 
 export const POST: APIRoute = async (context) => {
-  const env = getEnv(context);
+  const env = await getEnv(context);
   const body = (await context.request.json().catch(() => ({}))) as Record<string, any>;
 
   try {

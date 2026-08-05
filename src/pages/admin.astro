@@ -1,7 +1,9 @@
 ---
 import {
+  ChevronDown,
   FileImage,
   Film,
+  Folder,
   FolderRoot,
   Languages,
   LogOut,
@@ -16,7 +18,7 @@ import SiteShell from "../layouts/SiteShell.astro";
 import { getEnv } from "@lib/cloudflare";
 import { isAdmin } from "@lib/admin";
 
-const env = getEnv(Astro);
+const env = await getEnv(Astro);
 const loggedIn = await isAdmin(Astro.request, env);
 ---
 
@@ -35,13 +37,13 @@ const loggedIn = await isAdmin(Astro.request, env);
         </label>
 
         <section class="login-panel">
-          <a class="login-brand" href="/" aria-label="Re Player">
+          <div class="login-brand" aria-label="Re Player">
             <span class="app-brand-mark">RP</span>
             <span>
               <strong>Re Player</strong>
               <small data-i18n="console">Admin console</small>
             </span>
-          </a>
+          </div>
           <h1 data-i18n="signIn">Sign in</h1>
           <p data-i18n="signInCopy">Enter the administrator password to continue.</p>
           <form id="loginForm" class="login-form">
@@ -57,14 +59,18 @@ const loggedIn = await isAdmin(Astro.request, env);
     ) : (
       <div class="admin-app">
         <header class="admin-topbar">
-          <a class="app-brand" href="/" aria-label="Re Player">
+          <div class="app-brand" aria-label="Re Player">
             <span class="app-brand-mark">RP</span>
             <span>
               <strong>Re Player</strong>
               <small data-i18n="console">Admin console</small>
             </span>
-          </a>
+          </div>
           <div class="admin-topbar-actions">
+            <button id="visitorThemeBtn" class="admin-theme-toggle" type="button" title="Visitor theme">
+              <Palette size={16} aria-hidden="true" />
+              <span id="visitorThemeLabel">Visitor theme: Default</span>
+            </button>
             <label class="language-box">
               <Languages size={18} aria-hidden="true" />
               <span class="sr-only" data-i18n="language">Language</span>
@@ -84,10 +90,7 @@ const loggedIn = await isAdmin(Astro.request, env);
         <div class="admin-shell">
           <aside class="admin-sidebar">
             <p class="admin-nav-label" data-i18n="storage">Storage</p>
-            <div class="admin-nav-item">
-              <FolderRoot size={18} />
-              <span data-i18n="rootDirectory">Root directory</span>
-            </div>
+            <nav id="adminTree" class="admin-tree" aria-label="Storage"></nav>
           </aside>
 
           <main class="admin-main">
@@ -203,10 +206,9 @@ const loggedIn = await isAdmin(Astro.request, env);
         <template id="tableAudio"><Music2 size={18} /></template>
         <template id="tableImage"><FileImage size={18} /></template>
         <template id="tableTrash"><Trash2 size={16} /></template>
-        <button id="visitorThemeBtn" class="admin-theme-toggle" type="button" title="Visitor theme">
-          <Palette size={16} aria-hidden="true" />
-          <span id="visitorThemeLabel">Visitor theme: Default</span>
-        </button>
+        <template id="treeRoot"><FolderRoot size={18} /></template>
+        <template id="treeFolder"><Folder size={17} /></template>
+        <template id="treeChevron"><ChevronDown size={15} /></template>
       </div>
     )
   }
@@ -260,7 +262,9 @@ const loggedIn = await isAdmin(Astro.request, env);
     type VisitorTheme = "blue" | "retro" | "future" | "tech" | "gray";
     let lang: Lang = "en";
     let items: Item[] = [];
+    let currentFolder = "/root";
     let visitorTheme: VisitorTheme = "blue";
+    const collapsedFolders = new Set<string>();
     const themeNames: Record<Lang, Record<VisitorTheme, string>> = {
       en: { blue: "Default", retro: "Retro", future: "Azure", tech: "New Blue", gray: "Light Gray" },
       zh: { blue: "默认", retro: "复古", future: "蔚蓝", tech: "新蓝", gray: "浅灰" },
@@ -270,6 +274,12 @@ const loggedIn = await isAdmin(Astro.request, env);
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
     const displayPath = (path: string) => path.replace(/^\/root(?=\/|$)/, "") || "/";
     const t = (k: keyof (typeof c)["en"]) => c[lang][k];
+    const folderOf = (path: string) => path.slice(0, path.lastIndexOf("/")) || "/root";
+    const folderName = (path: string) => path.split("/").filter(Boolean).pop() || "root";
+    const shortFolderName = (path: string) => {
+      const characters = [...folderName(path)];
+      return characters.length > 7 ? `${characters.slice(0, 7).join("")}---` : characters.join("");
+    };
     const set = (el: HTMLElement | null, message = "", tone = "") => {
       if (!el) return;
       el.textContent = message;
@@ -296,6 +306,7 @@ const loggedIn = await isAdmin(Astro.request, env);
         if (key && c[lang][key]) el.title = t(key);
       });
       document.querySelectorAll(".language-select").forEach((el) => ((el as unknown as HTMLSelectElement).value = lang));
+      renderTree();
       renderRows();
       renderThemeControl();
     }
@@ -305,17 +316,67 @@ const loggedIn = await isAdmin(Astro.request, env);
       return document.querySelector<HTMLTemplateElement>(`#${id}`)?.innerHTML || "";
     }
 
+    function directoryPaths() {
+      const paths = new Set<string>(["/root"]);
+      items.forEach((item) => {
+        const parts = folderOf(item.path).split("/").filter(Boolean);
+        let path = "";
+        parts.forEach((part) => {
+          path += `/${part}`;
+          if (path === "/root" || path.startsWith("/root/")) paths.add(path);
+        });
+      });
+      return paths;
+    }
+
+    function renderTree() {
+      const tree = document.querySelector<HTMLElement>("#adminTree");
+      if (!tree) return;
+      const paths = directoryPaths();
+      if (!paths.has(currentFolder)) currentFolder = "/root";
+      const children = new Map<string, string[]>();
+      paths.forEach((path) => {
+        if (path === "/root") return;
+        const parent = folderOf(path);
+        const siblings = children.get(parent) || [];
+        siblings.push(path);
+        children.set(parent, siblings);
+      });
+      children.forEach((siblings) => siblings.sort((a, b) => folderName(a).localeCompare(folderName(b), "zh-CN")));
+      const rootIcon = document.querySelector<HTMLTemplateElement>("#treeRoot")?.innerHTML || "";
+      const folderIcon = document.querySelector<HTMLTemplateElement>("#treeFolder")?.innerHTML || "";
+      const chevron = document.querySelector<HTMLTemplateElement>("#treeChevron")?.innerHTML || "";
+      const row = (path: string, depth: number, root = false) => {
+        const hasChildren = Boolean(children.get(path)?.length);
+        const collapsed = collapsedFolders.has(path);
+        const name = root ? t("rootDirectory") : shortFolderName(path);
+        const indent = root ? 10 : 34 + (Math.max(0, depth) % 4) * 24;
+        return `
+          <button class="admin-tree-item${currentFolder === path ? " is-active" : ""}${root ? " is-root" : ""}" type="button" data-folder="${esc(path)}" data-has-children="${hasChildren ? "1" : "0"}" style="--tree-indent:${indent}px" title="${esc(root ? t("rootDirectory") : displayPath(path))}"${hasChildren ? ` aria-expanded="${collapsed ? "false" : "true"}"` : ""}>
+            <span class="admin-tree-icon">${root ? rootIcon : folderIcon}</span>
+            <span class="admin-tree-caret${collapsed ? " is-collapsed" : ""}${hasChildren ? "" : " is-empty"}"${hasChildren ? ` data-tree-toggle="${esc(path)}"` : ""}>${hasChildren ? chevron : ""}</span>
+            <span class="admin-tree-name">${esc(name)}</span>
+          </button>`;
+      };
+      const branch = (parent: string, depth: number): string => {
+        if (collapsedFolders.has(parent)) return "";
+        return (children.get(parent) || []).map((path) => row(path, depth) + branch(path, depth + 1)).join("");
+      };
+      tree.innerHTML = row("/root", -1, true) + branch("/root", 0);
+    }
+
     function renderRows() {
       const rows = document.querySelector<HTMLElement>("#linkRows");
       const count = document.querySelector<HTMLElement>("#mountCount");
       if (!rows || !count) return;
-      count.textContent = `${items.length} ${items.length === 1 ? t("item") : t("items")}`;
-      if (!items.length) {
+      const visibleItems = items.filter((item) => folderOf(item.path) === currentFolder);
+      count.textContent = `${visibleItems.length} ${visibleItems.length === 1 ? t("item") : t("items")}`;
+      if (!visibleItems.length) {
         rows.innerHTML = `<tr><td class="empty-row" colspan="6">${esc(t("empty"))}</td></tr>`;
         return;
       }
       const trash = document.querySelector<HTMLTemplateElement>("#tableTrash")?.innerHTML || "";
-      rows.innerHTML = items.map((item) => `
+      rows.innerHTML = visibleItems.map((item) => `
         <tr>
           <td><span class="table-file">${typeIcon(item.kind)}<span>${esc(item.name)}</span></span></td>
           <td><span class="url-cell" title="${esc(displayPath(item.path))}">${esc(displayPath(item.path))}</span></td>
@@ -336,6 +397,7 @@ const loggedIn = await isAdmin(Astro.request, env);
       if (!data.ok) throw new Error(data.error || t("loadFailed"));
       items = data.items || [];
       set(status);
+      renderTree();
       renderRows();
     }
 
@@ -390,6 +452,7 @@ const loggedIn = await isAdmin(Astro.request, env);
     const lrcFields = document.querySelector<HTMLElement>("#lrcFields");
     const bilingual = document.querySelector<HTMLInputElement>("#bilingualToggle");
     const lrc2Field = document.querySelector<HTMLElement>("#lrc2Field");
+    const folderInput = form?.querySelector<HTMLInputElement>('[name="folder"]');
     const toggleFields = () => {
       if (!kind || !subField || !lrcFields || !bilingual || !lrc2Field) return;
       subField.hidden = kind.value !== "video";
@@ -403,7 +466,24 @@ const loggedIn = await isAdmin(Astro.request, env);
       if (!bilingual.checked) lrc2Field.querySelector<HTMLInputElement>("input")!.value = "";
     };
 
-    document.querySelector("#addBtn")?.addEventListener("click", () => dialog?.showModal());
+    document.querySelector("#adminTree")?.addEventListener("click", (event) => {
+      const target = event.target as HTMLElement;
+      const row = target.closest<HTMLElement>("[data-folder]");
+      const path = row?.dataset.folder;
+      if (!row || !path) return;
+      if (target.closest("[data-tree-toggle]") && row.dataset.hasChildren === "1") {
+        collapsedFolders.has(path) ? collapsedFolders.delete(path) : collapsedFolders.add(path);
+        renderTree();
+        return;
+      }
+      currentFolder = path;
+      renderTree();
+      renderRows();
+    });
+    document.querySelector("#addBtn")?.addEventListener("click", () => {
+      if (folderInput) folderInput.value = displayPath(currentFolder);
+      dialog?.showModal();
+    });
     document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => dialog?.close()));
     kind?.addEventListener("change", toggleFields);
     bilingual?.addEventListener("change", toggleFields);
@@ -421,8 +501,7 @@ const loggedIn = await isAdmin(Astro.request, env);
       const data = (await response.json()) as any;
       if (!data.ok) return set(status, data.details || data.error || t("createFailed"), "error");
       form.reset();
-      const folder = form.querySelector<HTMLInputElement>('[name="folder"]');
-      if (folder) folder.value = "/";
+      if (folderInput) folderInput.value = displayPath(currentFolder);
       toggleFields();
       set(status, t("created"), "ok");
       await loadLinks();

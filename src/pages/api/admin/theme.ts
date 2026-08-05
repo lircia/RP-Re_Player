@@ -6,14 +6,14 @@ import { getVisitorTheme, nextVisitorTheme, setVisitorTheme } from "@lib/theme";
 export const prerender = false;
 
 export const GET: APIRoute = async (context) => {
-  const env = getEnv(context);
+  const env = await getEnv(context);
   if (!(await isAdmin(context.request, env))) return jsonError("Admin login is required.", 401);
   const theme = await getVisitorTheme(env);
   return json({ ok: true, theme, persistent: Boolean(env.DB) });
 };
 
 export const POST: APIRoute = async (context) => {
-  const env = getEnv(context);
+  const env = await getEnv(context);
   if (!(await isAdmin(context.request, env))) return jsonError("Admin login is required.", 401);
   const body = await context.request.json().catch(() => ({})) as { theme?: string };
   const current = await getVisitorTheme(env);

@@ -7,7 +7,7 @@ export const GET: APIRoute = async (context) => {
   const slot = context.url.searchParams.get("n") === "2" ? 2 : 1;
   if (!path) return jsonError("Path is required.", 400);
 
-  const item = await getItem(getEnv(context), path);
+  const item = await getItem(await getEnv(context), path);
   const source = slot === 2 ? item?.lrc2 : item?.lrc;
   if (!source || item?.kind !== "audio") return jsonError("Lyrics were not found.", 404);
 

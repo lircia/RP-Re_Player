@@ -4,7 +4,7 @@ import { isAdmin } from "@lib/admin";
 import { allItems, createItem } from "@lib/pseudo";
 
 export const GET: APIRoute = async (context) => {
-  const env = getEnv(context);
+  const env = await getEnv(context);
   if (!(await isAdmin(context.request, env))) return jsonError("Admin login is required.", 401);
 
   const items = await allItems(env);
@@ -12,7 +12,7 @@ export const GET: APIRoute = async (context) => {
 };
 
 export const POST: APIRoute = async (context) => {
-  const env = getEnv(context);
+  const env = await getEnv(context);
   if (!(await isAdmin(context.request, env))) return jsonError("Admin login is required.", 401);
 
   const body = (await context.request.json().catch(() => ({}))) as Record<string, any>;

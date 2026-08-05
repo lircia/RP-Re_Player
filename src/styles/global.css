@@ -82,7 +82,6 @@ textarea:focus-visible {
   min-height: 100vh;
 }
 
-.mobile-library-toggle,
 .mobile-library-scrim {
   display: none;
 }
@@ -1004,7 +1003,7 @@ textarea:focus-visible {
 .toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
 }
 
 .admin-shell {
@@ -1434,21 +1433,6 @@ textarea:focus-visible {
     width: 76px;
   }
 
-  .mobile-library-toggle {
-    display: inline-grid;
-    justify-self: end;
-    width: 36px;
-    height: 36px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-  }
-
-  .mobile-library-toggle > span {
-    display: grid;
-    place-items: center;
-    transition: transform 180ms ease;
-  }
-
   .mobile-library-scrim {
     position: fixed;
     z-index: 24;
@@ -1494,10 +1478,6 @@ textarea:focus-visible {
   .media-app.is-library-open .mobile-library-scrim {
     opacity: 1;
     pointer-events: auto;
-  }
-
-  .media-app.is-library-open .mobile-library-toggle > span {
-    transform: rotate(180deg);
   }
 
   .library-heading {
@@ -2622,12 +2602,6 @@ textarea:focus-visible {
     box-shadow: 0 3px 0 var(--accent);
   }
 
-  .mobile-library-toggle {
-    border: 1px solid #6c6c67;
-    background: #181818;
-    color: #eeeeE8;
-  }
-
   .mobile-library-scrim {
     background: rgba(5, 5, 5, 0.68);
   }
@@ -3330,12 +3304,6 @@ body:has(.login-screen)::before {
 }
 
 @media (max-width: 680px) {
-  .media-app .mobile-library-toggle {
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--muted);
-  }
-
   .media-app .mobile-library-scrim {
     background: rgba(47, 72, 90, 0.18);
   }
@@ -3532,7 +3500,7 @@ body:has(.login-screen)::before {
   }
 
   .media-app .app-topbar {
-    grid-template-columns: minmax(0, 1fr) 76px 38px;
+    grid-template-columns: minmax(0, 1fr) 76px;
     gap: 8px;
     height: 58px;
     padding: 0 10px 0 14px;
@@ -3590,6 +3558,36 @@ body:has(.login-screen)::before {
   background: #000000;
 }
 
+.external-intro-audio {
+  display: none;
+}
+
+.external-intro-start {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 50%;
+  background: rgba(10, 10, 10, 0.72);
+  color: #ffffff;
+  box-shadow: 0 0 0 7px rgba(0, 0, 0, 0.26);
+  cursor: pointer;
+}
+
+.external-intro-start[hidden] {
+  display: none;
+}
+
+.external-intro-start:hover,
+.external-intro-start:focus-visible {
+  border-color: #da2c43;
+  background: rgba(218, 44, 67, 0.82);
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .external-intro {
     transition: none;
@@ -3639,10 +3637,107 @@ body:has(.login-screen)::before {
   text-overflow: ellipsis;
 }
 
+.admin-topbar .admin-theme-toggle {
+  position: static;
+  z-index: auto;
+  inset: auto;
+  flex: 0 1 auto;
+  margin-right: 4px;
+}
+
+.admin-tree {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-tree-item {
+  display: grid;
+  grid-template-columns: 18px 18px minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 6px 8px 6px var(--tree-indent);
+  color: #d9d9d3;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-tree-item.is-root {
+  padding-left: 10px;
+}
+
+.admin-tree-item:hover,
+.admin-tree-item:focus-visible {
+  border-color: #777771;
+  background: #2f2f2c;
+  outline: none;
+}
+
+.admin-tree-item.is-active {
+  border-color: #b30c32;
+  background: #373330;
+  box-shadow: inset 4px 0 0 #b30c32;
+  color: #ffffff;
+}
+
+.admin-tree-icon,
+.admin-tree-caret {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.admin-tree-icon {
+  color: #d2485d;
+}
+
+.admin-tree-caret {
+  color: #aaaaa4;
+}
+
+.admin-tree-caret svg {
+  transition: transform 140ms steps(2, end);
+}
+
+.admin-tree-caret.is-collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.admin-tree-caret.is-empty {
+  visibility: hidden;
+}
+
+.admin-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 680px) {
   .admin-theme-toggle {
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: max(8px, env(safe-area-inset-left));
-    max-width: min(220px, calc(100vw - 16px));
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    justify-content: center;
+    border-left-width: 1px;
+    margin-right: 4px;
+    padding: 0;
+  }
+
+  .admin-theme-toggle span {
+    display: none;
   }
 }

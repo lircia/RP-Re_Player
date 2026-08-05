@@ -30,7 +30,7 @@ npm run local
 
 The default administrator password is `masteradmin`. Open `/admin` manually to sign in. Set `P` to change the password.
 
-After signing in, use the visitor-theme button in the lower-left corner. One button cycles through Default, Retro, Azure, New Blue, and Light Gray; the selection is stored in D1 and applies to the public visitor page only.
+After signing in, use the visitor-theme button to the left of the language selector. One button cycles through Default, Retro, Azure, New Blue, and Light Gray; the selection is stored in D1 and applies to the public visitor page only.
 
 ## Cloudflare D1
 
@@ -50,7 +50,8 @@ RP creates and upgrades the `rp_pseudo_links`, `rp_media_stats`, and `rp_setting
 | Variable | Purpose |
 | --- | --- |
 | `A` | External media URL shown before the visitor page |
-| `B` | Maximum display/playback time for `A`, in seconds; default `4.2` |
+| `B` | Maximum playback/display time for `A` and `C`, in seconds; default `4.2` |
+| `C` | Optional external audio URL played with `A` |
 | `N` | Site name |
 | `P` | Administrator password |
 | `DB` | D1 binding |
@@ -59,7 +60,7 @@ RP creates and upgrades the `rp_pseudo_links`, `rp_media_stats`, and `rp_setting
 | `UH` | Optional Umami host URL |
 | `UD` | Optional Umami domain list |
 
-When `A` is a video, RP enters the visitor page when the video ends or after `B` seconds, whichever comes first. Images and GIFs remain visible for `B` seconds.
+When D1 is available, RP copies each non-empty bound short variable into `rp_settings` the first time its `env:VARIABLE` key is missing. Stored values take priority on later deployments; unbound or empty variables are not written. `keep_vars = true` also prevents Wrangler from deleting variables configured in the Cloudflare dashboard.
 
 ## Umami
 

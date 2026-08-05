@@ -4,7 +4,7 @@ import { getItem } from "@lib/pseudo";
 import { recordMediaStat, type StatEvent } from "@lib/stats";
 
 export const POST: APIRoute = async (context) => {
-  const env = getEnv(context);
+  const env = await getEnv(context);
   const body = (await context.request.json().catch(() => ({}))) as Record<string, any>;
   if (!body.path) return jsonError("Path is required.", 400);
   if (body.event !== "play" && body.event !== "complete") return jsonError("Event is invalid.", 400);

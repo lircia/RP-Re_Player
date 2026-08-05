@@ -4,7 +4,7 @@ import { getItem, publicMediaPath } from "@lib/pseudo";
 import { getMediaStat } from "@lib/stats";
 
 export const POST: APIRoute = async (context) => {
-  const env = getEnv(context);
+  const env = await getEnv(context);
   const body = (await context.request.json().catch(() => ({}))) as Record<string, any>;
   if (!body.path) return jsonError("Path is required.", 400);
 

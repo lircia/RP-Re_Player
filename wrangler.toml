@@ -1,14 +1,6 @@
 name = "rp"
 compatibility_date = "2026-07-14"
-
-[vars]
-N = "Re Player"
-P = "masteradmin"
-B = "4.2"
-US = ""
-# UI = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-# UH = "https://cloud.umami.is"
-# UD = "example.com,www.example.com"
+keep_vars = true
 
 [[d1_databases]]
 binding = "DB"

@@ -47,7 +47,7 @@ async function serve(context: APIContext, method: "GET" | "HEAD") {
   const path = rootPath(context.url);
   if (!path || path === "/root") return new Response("Not found.", { status: 404 });
 
-  const item = await getItem(getEnv(context), path);
+  const item = await getItem(await getEnv(context), path);
   if (!item) return new Response("Not found.", { status: 404 });
 
   let source: URL;
