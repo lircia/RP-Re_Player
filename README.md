@@ -43,7 +43,7 @@ database_name = "your-database-name"
 database_id = "your-cloudflare-d1-database-id"
 ```
 
-RP creates and upgrades the `rp_pseudo_links`, `rp_media_stats`, and `rp_settings` tables automatically. The D1 binding name must remain `DB`.
+RP creates and upgrades the `rp_pseudo_links`, `rp_media_stats`, `rp_settings`, and `rp_visitor_theme` tables automatically. The D1 binding name must remain `DB`.
 
 ## Short Variables
 

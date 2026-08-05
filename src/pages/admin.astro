@@ -525,7 +525,7 @@ const loggedIn = await isAdmin(Astro.request, env);
     const themeButton = document.querySelector<HTMLButtonElement>("#visitorThemeBtn");
     async function readThemeResponse(response: Response) {
       const text = await response.text();
-      let data: { ok?: boolean; theme?: VisitorTheme; error?: string } = {};
+      let data: { ok?: boolean; theme?: VisitorTheme; error?: string; details?: unknown } = {};
       if (text) {
         try {
           data = JSON.parse(text);
@@ -534,7 +534,10 @@ const loggedIn = await isAdmin(Astro.request, env);
         }
       }
       const theme = data.theme;
-      if (!response.ok || !data.ok || !theme) throw new Error(data.error || t("themeFailed"));
+      if (!response.ok || !data.ok || !theme) {
+        const details = typeof data.details === "string" ? data.details : "";
+        throw new Error([data.error || t("themeFailed"), details].filter(Boolean).join(" "));
+      }
       return { theme };
     }
     async function loadVisitorTheme() {

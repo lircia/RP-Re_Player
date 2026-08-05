@@ -43,7 +43,7 @@ database_name = "你的数据库名称"
 database_id = "你的-cloudflare-d1-database-id"
 ```
 
-RP 会自动创建并升级 `rp_pseudo_links`、`rp_media_stats` 和 `rp_settings` 表。D1 绑定名必须保持为 `DB`。
+RP 会自动创建并升级 `rp_pseudo_links`、`rp_media_stats`、`rp_settings` 和 `rp_visitor_theme` 表。D1 绑定名必须保持为 `DB`。
 
 ## 短变量
 
