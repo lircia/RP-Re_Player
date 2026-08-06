@@ -280,6 +280,10 @@ const loggedIn = await isAdmin(Astro.request, env);
       const characters = [...folderName(path)];
       return characters.length > 7 ? `${characters.slice(0, 7).join("")}---` : characters.join("");
     };
+    const isInsideFolder = (itemPath: string, folder: string) => {
+      const base = (folder || "/root").replace(/\/+$/, "") || "/root";
+      return itemPath === base || itemPath.startsWith(`${base}/`);
+    };
     const set = (el: HTMLElement | null, message = "", tone = "") => {
       if (!el) return;
       el.textContent = message;
@@ -369,7 +373,7 @@ const loggedIn = await isAdmin(Astro.request, env);
       const rows = document.querySelector<HTMLElement>("#linkRows");
       const count = document.querySelector<HTMLElement>("#mountCount");
       if (!rows || !count) return;
-      const visibleItems = items.filter((item) => folderOf(item.path) === currentFolder);
+      const visibleItems = items.filter((item) => isInsideFolder(item.path, currentFolder));
       count.textContent = `${visibleItems.length} ${visibleItems.length === 1 ? t("item") : t("items")}`;
       if (!visibleItems.length) {
         rows.innerHTML = `<tr><td class="empty-row" colspan="6">${esc(t("empty"))}</td></tr>`;

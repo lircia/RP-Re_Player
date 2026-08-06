@@ -1,5 +1,6 @@
 ---
 import {
+  ArrowLeft,
   Captions,
   FastForward,
   FileImage,
@@ -149,6 +150,10 @@ const introMaxSeconds = (() => {
       <div class="app-brand" aria-label="Re-Player">
         <strong>Re-Player</strong>
       </div>
+
+      <button id="mobileLibraryToggle" class="icon-button mobile-library-toggle" type="button" title="Show library" aria-label="Show library" aria-controls="libraryPane" aria-expanded="false" hidden disabled>
+        <ArrowLeft size={19} />
+      </button>
 
       <label class="language-box">
         <Languages size={18} aria-hidden="true" />
@@ -540,6 +545,7 @@ const introMaxSeconds = (() => {
       app: document.querySelector<HTMLElement>(".media-app")!,
       search: document.querySelector<HTMLInputElement>("#searchInput")!,
       language: document.querySelector("#languageSelect") as unknown as HTMLSelectElement,
+      libraryToggle: document.querySelector<HTMLButtonElement>("#mobileLibraryToggle")!,
       libraryScrim: document.querySelector<HTMLButtonElement>("#mobileLibraryScrim")!,
       path: document.querySelector<HTMLElement>("#pathTitle")!,
       list: document.querySelector<HTMLElement>("#fileList")!,
@@ -845,9 +851,20 @@ const introMaxSeconds = (() => {
       input.style.setProperty("--range-fill", `${Math.max(0, Math.min(100, value))}%`);
     };
 
+    const libraryMedia = window.matchMedia("(max-width: 680px)");
+    const touchMedia = window.matchMedia("(hover: none), (pointer: coarse)");
+    const isMobileLibraryAvailable = () => libraryMedia.matches && (touchMedia.matches || navigator.maxTouchPoints > 0);
     function setLibraryOpen(open: boolean) {
-      d.app.classList.toggle("is-library-open", open);
-      d.libraryScrim.setAttribute("aria-hidden", String(!open));
+      const available = isMobileLibraryAvailable();
+      const active = available && open;
+      d.app.classList.toggle("is-library-open", active);
+      d.libraryToggle.hidden = !available;
+      d.libraryToggle.disabled = !available;
+      d.libraryToggle.ariaExpanded = String(active);
+      d.libraryToggle.ariaHidden = String(!available);
+      const label = t(active ? "hideLibrary" : "showLibrary");
+      d.libraryToggle.title = d.libraryToggle.ariaLabel = label;
+      d.libraryScrim.setAttribute("aria-hidden", String(!active));
       d.libraryScrim.ariaLabel = t("hideLibrary");
     }
 
@@ -1368,10 +1385,11 @@ const introMaxSeconds = (() => {
         load(s.path, query).catch((error) => setStatus(d.libraryStatus, error.message, "error"));
       }, 220);
     });
+    d.libraryToggle.addEventListener("click", () => setLibraryOpen(!d.app.classList.contains("is-library-open")));
     d.libraryScrim.addEventListener("click", () => setLibraryOpen(false));
     let librarySwipeStart: { x: number; y: number } | null = null;
     document.addEventListener("pointerdown", (event) => {
-      if (!window.matchMedia("(max-width: 680px)").matches) return;
+      if (!isMobileLibraryAvailable()) return;
       if (event.clientX <= 24 || d.app.classList.contains("is-library-open")) {
         librarySwipeStart = { x: event.clientX, y: event.clientY };
       }
@@ -1389,9 +1407,8 @@ const introMaxSeconds = (() => {
     document.addEventListener("pointercancel", () => {
       librarySwipeStart = null;
     });
-    window.matchMedia("(min-width: 681px)").addEventListener("change", (event) => {
-      if (event.matches) setLibraryOpen(false);
-    });
+    libraryMedia.addEventListener("change", () => setLibraryOpen(d.app.classList.contains("is-library-open")));
+    touchMedia.addEventListener("change", () => setLibraryOpen(d.app.classList.contains("is-library-open")));
     d.audio.addEventListener("timeupdate", () => {
       syncLyrics();
       updateAudioControls();

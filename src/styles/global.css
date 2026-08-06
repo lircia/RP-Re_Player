@@ -86,6 +86,15 @@ textarea:focus-visible {
   display: none;
 }
 
+.mobile-library-toggle {
+  display: none;
+  pointer-events: none;
+}
+
+.mobile-library-toggle[hidden] {
+  display: none !important;
+}
+
 .app-topbar {
   position: sticky;
   z-index: 20;
@@ -2739,7 +2748,7 @@ textarea:focus-visible {
   }
 
   .media-app .app-topbar {
-    grid-template-columns: minmax(0, 1fr) 76px 38px;
+    grid-template-columns: minmax(0, 1fr) 36px 76px;
     gap: 8px;
     height: 58px;
     padding: 0 10px 0 14px;
@@ -2747,6 +2756,17 @@ textarea:focus-visible {
 
   .media-app .app-brand {
     padding-left: 0;
+  }
+
+  .media-app .mobile-library-toggle {
+    display: inline-grid;
+    justify-self: end;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    pointer-events: auto;
   }
 
   .media-app .language-box {
@@ -3500,7 +3520,7 @@ body:has(.login-screen)::before {
   }
 
   .media-app .app-topbar {
-    grid-template-columns: minmax(0, 1fr) 76px;
+    grid-template-columns: minmax(0, 1fr) 36px 76px;
     gap: 8px;
     height: 58px;
     padding: 0 10px 0 14px;
@@ -3512,7 +3532,20 @@ body:has(.login-screen)::before {
 
   .media-app .app-topbar .language-box {
     position: static;
+    justify-self: end;
     margin-right: 0;
+  }
+
+  .media-app .mobile-library-toggle {
+    display: inline-grid;
+    place-items: center;
+    justify-self: end;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    pointer-events: auto;
   }
 
   .media-app .media-workspace {
