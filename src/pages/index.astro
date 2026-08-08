@@ -28,6 +28,8 @@ import SiteShell from "../layouts/SiteShell.astro";
 import { getEnv } from "@lib/cloudflare";
 import { getVisitorTheme } from "@lib/theme";
 
+if (Astro.url.pathname === "/") return Astro.redirect("/Local", 308);
+
 const env = await getEnv(Astro);
 const visitorTheme = await getVisitorTheme(env);
 const externalUrl = (input?: string) => {
@@ -349,6 +351,7 @@ const introMaxSeconds = (() => {
   <script>
     import JASSUB from "jassub";
     import { buildLyrics, type LyricCue } from "../lib/lrc";
+    import { parentPseudoPath, pseudoPathFromVisitorUrl, visitorUrl } from "../lib/visitor-route";
 
     const c = {
       en: {
@@ -487,6 +490,7 @@ const introMaxSeconds = (() => {
 
     type Lang = keyof typeof c;
     type AudioMode = "one" | "list" | "shuffle";
+    type NavigationMode = "none" | "push" | "replace";
     type MediaStat = {
       plays: number;
       completions: number;
@@ -506,6 +510,7 @@ const introMaxSeconds = (() => {
       lrc2?: string;
       isDir?: boolean;
     };
+    type ItemPayload = { item: MediaItem; stat?: MediaStat };
 
     const s: {
       path: string;
@@ -614,6 +619,8 @@ const introMaxSeconds = (() => {
     };
     let controlTimer = 0;
     let listRequest = 0;
+    let itemRequest = 0;
+    let routeRequest = 0;
     let searchTimer = 0;
     let videoClickTimer = 0;
     let videoHoldTimer = 0;
@@ -713,6 +720,14 @@ const introMaxSeconds = (() => {
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
     const t = (k: keyof (typeof c)["en"]) => c[s.lang][k];
     const displayPath = (path: string) => path.replace(/^\/root(?=\/|$)/, "") || "/";
+    function updateVisitorUrl(path: string, mode: NavigationMode) {
+      if (mode === "none") return;
+      const next = visitorUrl(path);
+      if (location.pathname === next && !location.search && !location.hash) return;
+      const state = { rpPath: path };
+      if (mode === "replace") history.replaceState(state, "", next);
+      else history.pushState(state, "", next);
+    }
     const subtitleFontUrls = async (content: string) => {
       const characters = [...new Set([...content].filter((character) => {
         const point = character.codePointAt(0) || 0;
@@ -787,6 +802,12 @@ const introMaxSeconds = (() => {
     function setStatus(el: HTMLElement, message = "", tone = "") {
       el.textContent = message;
       tone ? (el.dataset.tone = tone) : delete el.dataset.tone;
+    }
+
+    function cancelItemLoadingFeedback() {
+      if (d.stage.dataset.signal !== "transfer") return;
+      delete d.stage.dataset.signal;
+      setStatus(d.playerStatus);
     }
 
     function renderStats() {
@@ -1231,22 +1252,42 @@ const introMaxSeconds = (() => {
       d.lyricsBadge.hidden = !s.current.lrc && !s.current.lrc2;
     }
 
-    async function load(path = s.path, query = d.search.value.trim()) {
+    async function load(path = s.path, query = d.search.value.trim(), navigation: NavigationMode = "none") {
+      if (navigation !== "none") {
+        routeRequest += 1;
+        itemRequest += 1;
+        cancelItemLoadingFeedback();
+      }
+      const route = routeRequest;
       const request = ++listRequest;
       setStatus(d.libraryStatus, t("loading"));
-      const response = await fetch("/api/public/list", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ path, q: query })
-      });
-      const data = (await response.json()) as any;
-      if (request !== listRequest) return;
+      let data: any;
+      try {
+        const response = await fetch("/api/public/list", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path, q: query })
+        });
+        data = await response.json();
+      } catch (error) {
+        if (request !== listRequest || route !== routeRequest) {
+          if (request === listRequest) setStatus(d.libraryStatus);
+          return false;
+        }
+        throw error;
+      }
+      if (request !== listRequest || route !== routeRequest) {
+        if (request === listRequest) setStatus(d.libraryStatus);
+        return false;
+      }
       if (!data.ok) throw new Error(data.details || data.error || t("loadFailed"));
       s.path = data.path || "/root";
       s.items = data.items || [];
       s.query = data.query || "";
       setStatus(d.libraryStatus);
       render();
+      updateVisitorUrl(s.path, navigation);
+      return true;
     }
 
     function clearSearch() {
@@ -1281,26 +1322,47 @@ const introMaxSeconds = (() => {
       d.empty.hidden = true;
     }
 
-    async function openItem(path: string) {
-      setStatus(d.playerStatus, t("loading"));
-      d.stage.dataset.signal = "transfer";
+    async function requestItem(path: string, allowMissing = false): Promise<ItemPayload | null> {
       const response = await fetch("/api/public/item", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ path })
       });
-      const data = (await response.json()) as any;
-      if (!data.ok) throw new Error(data.details || data.error || t("itemFailed"));
+      const data = (await response.json()) as ItemPayload & { ok?: boolean; error?: string; details?: string };
+      if (allowMissing && response.status === 404) return null;
+      if (!response.ok || !data.ok) throw new Error(data.details || data.error || t("itemFailed"));
+      return data;
+    }
+
+    async function openItem(path: string, navigation: NavigationMode = "push", prefetched?: ItemPayload) {
+      if (navigation !== "none") {
+        routeRequest += 1;
+        setStatus(d.libraryStatus);
+      }
+      const route = routeRequest;
+      const request = ++itemRequest;
+      setStatus(d.playerStatus, t("loading"));
+      d.stage.dataset.signal = "transfer";
+      let data: ItemPayload | null;
+      try {
+        data = prefetched || await requestItem(path);
+      } catch (error) {
+        if (request !== itemRequest || route !== routeRequest) return;
+        throw error;
+      }
+      if (request !== itemRequest || route !== routeRequest || !data) return;
       const item: MediaItem = data.item;
       const audioQueue = s.items.filter((entry) => !entry.isDir && entry.kind === "audio");
       const videoQueue = s.items.filter((entry) => !entry.isDir && entry.kind === "video");
       await clearMedia();
+      if (request !== itemRequest || route !== routeRequest) return;
       s.current = item;
       resetStatSession(data.stat || { plays: 0, completions: 0, rate: 0 });
       if (item.kind === "audio" && !s.audioQueue.some((entry) => entry.path === item.path)) s.audioQueue = audioQueue;
       if (item.kind === "video" && !s.videoQueue.some((entry) => entry.path === item.path)) s.videoQueue = videoQueue;
       renderCurrent();
       render();
+      updateVisitorUrl(item.path, navigation);
 
       if (item.kind === "image") {
         d.stage.dataset.mode = "image";
@@ -1365,7 +1427,7 @@ const introMaxSeconds = (() => {
       if (!row?.dataset.path) return;
       if (row.dataset.dir !== "1") setLibraryOpen(false);
       if (row.dataset.dir === "1") clearSearch();
-      const action = row.dataset.dir === "1" ? load(row.dataset.path, "") : openItem(row.dataset.path);
+      const action = row.dataset.dir === "1" ? load(row.dataset.path, "", "push") : openItem(row.dataset.path, "push");
       action.catch((error) => {
         if (row.dataset.dir !== "1") d.stage.dataset.signal = "interrupted";
         setStatus(row.dataset.dir === "1" ? d.libraryStatus : d.playerStatus, error.message, "error");
@@ -1375,7 +1437,7 @@ const introMaxSeconds = (() => {
     d.parent.addEventListener("click", () => {
       const parent = s.path.split("/").filter(Boolean).slice(0, -1).join("/");
       clearSearch();
-      load(parent ? `/${parent}` : "/root", "").catch((error) => setStatus(d.libraryStatus, error.message, "error"));
+      load(parent ? `/${parent}` : "/root", "", "push").catch((error) => setStatus(d.libraryStatus, error.message, "error"));
     });
     d.refresh.addEventListener("click", () => load().catch((error) => setStatus(d.libraryStatus, error.message, "error")));
     d.search.addEventListener("input", () => {
@@ -1651,6 +1713,46 @@ const introMaxSeconds = (() => {
       }
     }
 
+    async function restoreVisitorRoute(canonicalize = false) {
+      const request = ++routeRequest;
+      itemRequest += 1;
+      setStatus(d.libraryStatus);
+      cancelItemLoadingFeedback();
+      clearSearch();
+
+      const requestedPath = pseudoPathFromVisitorUrl(location.pathname);
+      const path = requestedPath || "/root";
+      if (!requestedPath || path === "/root") {
+        const rootLoaded = await load("/root", "", "none");
+        if (!rootLoaded || request !== routeRequest) return;
+        updateVisitorUrl("/root", !requestedPath || canonicalize ? "replace" : "none");
+        return;
+      }
+
+      const folderLoaded = await load(path, "", "none");
+      if (!folderLoaded || request !== routeRequest) return;
+      if (s.items.length) {
+        updateVisitorUrl(path, canonicalize ? "replace" : "none");
+        return;
+      }
+
+      let item: ItemPayload | null;
+      try {
+        item = await requestItem(path, true);
+      } catch (error) {
+        if (request !== routeRequest) return;
+        throw error;
+      }
+      if (request !== routeRequest) return;
+      if (item) {
+        const parentLoaded = await load(parentPseudoPath(path), "", "none");
+        if (!parentLoaded || request !== routeRequest) return;
+        await openItem(path, "none", item);
+      }
+      if (request !== routeRequest) return;
+      updateVisitorUrl(path, canonicalize ? "replace" : "none");
+    }
+
     const saved = localStorage.getItem("rp_l") || cookie.get("rp_l");
     if (saved === "zh" || saved === "ja" || saved === "en") s.lang = saved;
     if (saved === "zh" || saved === "ja" || saved === "en") {
@@ -1661,6 +1763,9 @@ const introMaxSeconds = (() => {
     applyLanguage();
     if (!saved) detectLanguage();
     window.addEventListener("pagehide", () => saveProgress(true));
-    load("/root").catch((error) => setStatus(d.libraryStatus, error.message, "error"));
+    window.addEventListener("popstate", () => {
+      restoreVisitorRoute().catch((error) => setStatus(d.libraryStatus, error.message, "error"));
+    });
+    restoreVisitorRoute(true).catch((error) => setStatus(d.libraryStatus, error.message, "error"));
   </script>
 </SiteShell>

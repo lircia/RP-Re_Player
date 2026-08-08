@@ -54,11 +54,28 @@ export function normalizeRootPath(path: string) {
 }
 
 export function safeFileName(input: string) {
-  return String(input || "untitled")
+  const value = String(input || "untitled")
     .replace(/[\\/:*?"<>|]+/g, "-")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 180);
+    .trim();
+  return [...value].slice(0, 180).join("");
+}
+
+function assertRoutableSegment(segment: string, label: string) {
+  if (!segment || segment === "." || segment === ".." || /[\\/\u0000-\u001f\u007f]/.test(segment)) {
+    throw new Error(`${label} contains a path segment that cannot be used in a public URL.`);
+  }
+  try {
+    encodeURIComponent(segment);
+  } catch {
+    throw new Error(`${label} contains invalid Unicode.`);
+  }
+}
+
+function assertRoutableFolder(folder: string) {
+  for (const segment of normalizeRootPath(folder).split("/").filter(Boolean).slice(1)) {
+    assertRoutableSegment(segment, "Folder");
+  }
 }
 
 export function publicMediaPath(path: string) {
@@ -68,7 +85,7 @@ export function publicMediaPath(path: string) {
     .filter(Boolean)
     .map((part) => encodeURIComponent(part))
     .join("/");
-  return encoded ? `/${encoded}` : "/";
+  return encoded ? `/api/public/media/${encoded}` : "/api/public/media";
 }
 
 function webUrl(input: string, label: string) {
@@ -90,6 +107,13 @@ function parentPath(path: string) {
   const parts = normalizeRootPath(path).split("/").filter(Boolean);
   parts.pop();
   return `/${parts.join("/")}` || "/root";
+}
+
+function pathConflict(items: PseudoItem[], path: string) {
+  return items.some((existing) =>
+    existing.path !== path &&
+    (existing.path.startsWith(`${path}/`) || path.startsWith(`${existing.path}/`))
+  );
 }
 
 async function ensureDb(env: AppEnv) {
@@ -257,8 +281,10 @@ export async function createItem(
   }
 ) {
   const folder = normalizeRootPath(input.folder || "/root");
+  assertRoutableFolder(folder);
   const name = safeFileName(input.name);
   if (!name) throw new Error("Name is required.");
+  assertRoutableSegment(name, "Name");
   const path = `${folder.replace(/\/+$/, "")}/${name}`;
   const now = new Date().toISOString();
   const item: PseudoItem = {
@@ -277,11 +303,28 @@ export async function createItem(
 
   if (!item.url) throw new Error("URL is required.");
 
+  const conflicts = (await allItems(env)).filter((existing) => existing.path !== path);
+  if (conflicts.some((existing) => existing.path.startsWith(`${path}/`))) {
+    throw new Error("This path is already used as a folder.");
+  }
+  if (conflicts.some((existing) => path.startsWith(`${existing.path}/`))) {
+    throw new Error("A media item cannot be used as a folder.");
+  }
+
   if (await ensureDb(env)) {
-    await env.DB!.prepare(
+    const result = await env.DB!.prepare(
       `
         INSERT INTO rp_pseudo_links (id, name, path, url, kind, poster, sub, lrc, lrc2, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM rp_pseudo_links
+          WHERE path <> ?
+            AND (
+              substr(path, 1, length(?) + 1) = ? || '/'
+              OR substr(?, 1, length(path) + 1) = path || '/'
+            )
+        )
         ON CONFLICT(path) DO UPDATE SET
           name = excluded.name,
           url = excluded.url,
@@ -304,11 +347,17 @@ export async function createItem(
         item.lrc ?? null,
         item.lrc2 ?? null,
         now,
-        now
+        now,
+        path,
+        path,
+        path,
+        path
       )
       .run();
+    if (!result.meta.changes) throw new Error("This path conflicts with another media item.");
   } else {
     const state = memory();
+    if (pathConflict(state.items, path)) throw new Error("This path conflicts with another media item.");
     state.items = [item, ...state.items.filter((existing) => existing.path !== item.path)];
   }
 
