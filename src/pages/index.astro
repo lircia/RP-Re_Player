@@ -28,7 +28,7 @@ import SiteShell from "../layouts/SiteShell.astro";
 import { getEnv } from "@lib/cloudflare";
 import { getVisitorTheme } from "@lib/theme";
 
-if (Astro.url.pathname === "/") return Astro.redirect("/Local", 308);
+const isEntry = Astro.url.pathname === "/";
 
 const env = await getEnv(Astro);
 const visitorTheme = await getVisitorTheme(env);
@@ -53,7 +53,7 @@ const introMaxSeconds = (() => {
 
 <SiteShell title="Re-Player">
   {
-    introSource && (
+    isEntry && introSource && (
       <div id="externalIntro" class="external-intro" data-max-seconds={introMaxSeconds || undefined}>
         {introIsVideo ? (
           <video class="external-intro-media" src={introSource} autoplay muted={Boolean(introAudioSource)} playsinline preload="auto" />
@@ -69,7 +69,10 @@ const introMaxSeconds = (() => {
       const intro = document.querySelector("#externalIntro");
       const visual = intro?.querySelector(".external-intro-media");
       const music = intro?.querySelector(".external-intro-audio");
-      if (!intro || !visual) return;
+      if (!intro || !visual) {
+        if (location.pathname === "/") location.replace("/Loading");
+        return;
+      }
       const maxSeconds = Number(intro.dataset.maxSeconds) || 0;
       const playable = [visual instanceof HTMLVideoElement ? visual : null, music instanceof HTMLAudioElement ? music : null].filter(Boolean);
       let closed = false;
@@ -90,6 +93,7 @@ const introMaxSeconds = (() => {
         window.setTimeout(() => {
           stopPlayback();
           intro.remove();
+          location.replace("/Loading");
         }, 260);
       };
       const schedule = (seconds) => {
@@ -147,6 +151,8 @@ const introMaxSeconds = (() => {
       }
     })();
   </script>
+  {!isEntry && (
+    <>
   <div class="media-app" data-theme={visitorTheme}>
     <header class="app-topbar">
       <div class="app-brand" aria-label="Re-Player">
@@ -1698,21 +1704,6 @@ const introMaxSeconds = (() => {
       applyLanguage();
     });
 
-    async function detectLanguage() {
-      try {
-        const response = await fetch("/api/public/geo");
-        const data = (await response.json()) as { ok?: boolean; lang?: Lang };
-        if (!data.ok || (data.lang !== "en" && data.lang !== "zh" && data.lang !== "ja")) return;
-        if (localStorage.getItem("rp_l") || cookie.get("rp_l")) return;
-        s.lang = data.lang;
-        d.language.value = s.lang;
-        cookie.set("rp_l", s.lang);
-        applyLanguage();
-      } catch {
-        // English remains the default when location detection is unavailable.
-      }
-    }
-
     async function restoreVisitorRoute(canonicalize = false) {
       const request = ++routeRequest;
       itemRequest += 1;
@@ -1753,19 +1744,16 @@ const introMaxSeconds = (() => {
       updateVisitorUrl(path, canonicalize ? "replace" : "none");
     }
 
-    const saved = localStorage.getItem("rp_l") || cookie.get("rp_l");
+    const saved = cookie.get("rp_l");
     if (saved === "zh" || saved === "ja" || saved === "en") s.lang = saved;
-    if (saved === "zh" || saved === "ja" || saved === "en") {
-      localStorage.setItem("rp_l", saved);
-      cookie.set("rp_l", saved);
-    }
     d.language.value = s.lang;
     applyLanguage();
-    if (!saved) detectLanguage();
     window.addEventListener("pagehide", () => saveProgress(true));
     window.addEventListener("popstate", () => {
       restoreVisitorRoute().catch((error) => setStatus(d.libraryStatus, error.message, "error"));
     });
     restoreVisitorRoute(true).catch((error) => setStatus(d.libraryStatus, error.message, "error"));
   </script>
+    </>
+  )}
 </SiteShell>

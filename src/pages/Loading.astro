@@ -1,0 +1,398 @@
+---
+import SiteShell from "../layouts/SiteShell.astro";
+---
+
+<SiteShell title="Loading · Re-Player">
+  <main id="loadingScreen" class="loading-screen" data-lang="en">
+    <div class="loading-scene" aria-hidden="true"></div>
+
+    <header class="loading-brand">
+      <h1 class="loading-brand-name">Re ‘<span>Player</span></h1>
+      <div class="loading-brand-meta">
+        <span class="loading-group">Deltass</span>
+      </div>
+    </header>
+
+    <nav class="loading-tools" aria-label="Settings">
+      <button id="loadingSettings" class="loading-tool" type="button" aria-disabled="true" title="Settings">
+        <span class="loading-tool-icon" aria-hidden="true">⚙</span>
+        <span class="loading-tool-label" data-i18n="settings">Settings</span>
+      </button>
+    </nav>
+
+    <nav class="loading-menu" aria-label="Loading menu">
+      <button class="loading-menu-item" type="button" data-loading-action="start">
+        <span class="loading-menu-en">Start</span>
+        <span class="loading-menu-cn" data-i18n="start">Start</span>
+      </button>
+      <button class="loading-menu-item" type="button" data-loading-action="reIn">
+        <span class="loading-menu-en">Re In</span>
+        <span class="loading-menu-cn" data-i18n="reIn">Re In</span>
+      </button>
+      <button class="loading-menu-item" type="button" data-loading-action="language" aria-expanded="false">
+        <span class="loading-menu-en">Language</span>
+        <span class="loading-menu-cn" data-i18n="language">Language</span>
+      </button>
+    </nav>
+
+    <div id="languagePopover" class="loading-language-popover" hidden>
+      <button type="button" data-language="en">English</button>
+      <button type="button" data-language="zh">简体中文</button>
+      <button type="button" data-language="ja">日本語</button>
+    </div>
+  </main>
+
+  <style>
+    :global(html),
+    :global(body) {
+      min-width: 320px;
+      height: 100%;
+      overflow: hidden;
+      background: #161719;
+    }
+
+    :global(body) {
+      margin: 0;
+    }
+
+    .loading-screen {
+      --ink: #303232;
+      --muted: #7a7d7d;
+      --paper: #fafafa;
+      --scene: #e8eaeb;
+      --accent: #d8144c;
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: 0 0 48px rgb(0 0 0 / 30%);
+      isolation: isolate;
+      font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+
+    .loading-screen[data-lang="en"] { --accent: #1f64d7; }
+    .loading-screen[data-lang="ja"] { --accent: #8d4cc7; }
+
+    .loading-scene {
+      position: absolute;
+      z-index: -1;
+      inset: 0 20.5% 0 0;
+      background: var(--scene);
+      clip-path: polygon(0 0, 97% 0, 83% 100%, 0 100%);
+    }
+
+    .loading-scene::after {
+      content: "";
+      position: absolute;
+      right: 9%;
+      bottom: 0;
+      width: 19%;
+      height: 57%;
+      background: #d5d8da;
+      clip-path: polygon(56% 0, 100% 15%, 73% 100%, 0 100%);
+    }
+
+    .loading-brand {
+      position: absolute;
+      left: 3.1%;
+      bottom: 4.6%;
+      min-width: 34%;
+    }
+
+    .loading-brand-name {
+      display: flex;
+      align-items: center;
+      gap: 0.42em;
+      margin: 0;
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: clamp(20px, 3.2vw, 58px);
+      font-weight: 300;
+      letter-spacing: 0.16em;
+      white-space: nowrap;
+    }
+
+    .loading-brand-name span {
+      display: inline-block;
+      padding: 0.06em 0.29em 0.1em 0.35em;
+      color: #fff;
+      background: var(--ink);
+      letter-spacing: 0.12em;
+    }
+
+    .loading-brand-meta {
+      display: flex;
+      align-items: flex-end;
+      margin-top: 0.8em;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: clamp(7px, 0.83vw, 15px);
+      letter-spacing: 0.34em;
+      white-space: nowrap;
+    }
+
+    .loading-group {
+      min-width: 13.5em;
+      padding-bottom: 0.3em;
+      color: var(--muted);
+      text-align: right;
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .loading-tools {
+      position: absolute;
+      z-index: 3;
+      top: 2.6%;
+      right: 0;
+    }
+
+    .loading-tool,
+    .loading-menu-item,
+    .loading-language-popover button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .loading-tool {
+      position: relative;
+      display: grid;
+      width: clamp(58px, 4.2vw, 78px);
+      min-height: clamp(38px, 5.3vh, 54px);
+      place-items: start center;
+      padding: 0;
+      border: 0;
+      color: var(--ink);
+      background: transparent;
+    }
+
+    .loading-tool-icon {
+      height: 62%;
+      font-family: "Segoe UI Symbol", sans-serif;
+      font-size: clamp(18px, 1.75vw, 30px);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .loading-tool-label {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      padding: 1px 4px 2px;
+      color: #fff;
+      font-size: clamp(7px, 0.7vw, 12px);
+      line-height: 1.2;
+      text-align: center;
+      background: var(--ink);
+    }
+
+    .loading-menu {
+      position: absolute;
+      z-index: 2;
+      top: 42%;
+      right: 0;
+      width: 20.3%;
+      display: grid;
+      gap: clamp(9px, 5vh, 52px);
+    }
+
+    .loading-menu-item {
+      position: relative;
+      width: 100%;
+      min-height: clamp(42px, 7.5vh, 78px);
+      padding: 0 7% clamp(7px, 1.2vh, 13px) 5%;
+      overflow: hidden;
+      border: 0;
+      color: var(--ink);
+      background: transparent;
+      text-align: left;
+    }
+
+    .loading-menu-item::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: clamp(7px, 1.8vh, 18px);
+      background: var(--ink);
+      transition: width 160ms ease, background-color 160ms ease;
+    }
+
+    .loading-menu-item:hover::after,
+    .loading-menu-item:focus-visible::after {
+      width: 92%;
+      background: var(--accent);
+    }
+
+    .loading-menu-en {
+      display: block;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: clamp(17px, 2.6vw, 47px);
+      font-weight: 300;
+      line-height: 0.9;
+      letter-spacing: 0.2em;
+      white-space: nowrap;
+    }
+
+    .loading-menu-cn {
+      position: absolute;
+      z-index: 1;
+      right: 6%;
+      bottom: 1px;
+      color: #fff;
+      font-size: clamp(7px, 0.72vw, 13px);
+      line-height: clamp(7px, 1.8vh, 18px);
+    }
+
+    .loading-language-popover {
+      position: absolute;
+      z-index: 5;
+      top: 77%;
+      right: 20.3%;
+      display: grid;
+      min-width: 150px;
+      padding: 8px;
+      background: rgb(250 250 250 / 96%);
+      border-left: 4px solid var(--accent);
+      box-shadow: 0 18px 50px rgb(0 0 0 / 18%);
+    }
+
+    .loading-language-popover button {
+      padding: 8px 12px;
+      border: 0;
+      color: var(--ink);
+      background: transparent;
+      text-align: left;
+    }
+
+    .loading-language-popover button:hover,
+    .loading-language-popover button:focus-visible {
+      color: #fff;
+      background: var(--accent);
+      outline: 0;
+    }
+
+    .loading-tool:focus-visible,
+    .loading-menu-item:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 640px), (max-height: 390px) {
+      .loading-brand-name { letter-spacing: 0.11em; }
+      .loading-brand-name span { letter-spacing: 0.08em; }
+      .loading-brand-meta { letter-spacing: 0.16em; }
+      .loading-menu-en { letter-spacing: 0.1em; }
+    }
+
+    @media (orientation: portrait) {
+      .loading-scene {
+        inset: 0 36% 0 0;
+        clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%);
+      }
+
+      .loading-scene::after { right: 2%; width: 28%; }
+      .loading-brand { top: 4%; bottom: auto; width: 56%; min-width: 0; }
+      .loading-brand-name { gap: 0.28em; font-size: clamp(14px, 5vw, 30px); }
+      .loading-brand-meta { font-size: clamp(7px, 2.3vw, 12px); }
+      .loading-menu { top: 31%; width: 46%; gap: clamp(12px, 4vh, 36px); }
+      .loading-menu-item { min-height: clamp(45px, 8vh, 64px); padding-left: 7%; }
+      .loading-menu-en { font-size: clamp(16px, 6vw, 27px); }
+      .loading-menu-cn { font-size: clamp(7px, 2.4vw, 11px); }
+      .loading-language-popover { top: 57%; right: 4%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.01ms !important; }
+    }
+  </style>
+
+  <script>
+    type Lang = "en" | "zh" | "ja";
+    const screen = document.querySelector<HTMLElement>("#loadingScreen")!;
+    const languageButton = document.querySelector<HTMLButtonElement>('[data-loading-action="language"]')!;
+    const languagePopover = document.querySelector<HTMLElement>("#languagePopover")!;
+    const languageCookie = "rp_l";
+    const translations: Record<Lang, { settings: string; start: string; reIn: string; language: string }> = {
+      en: { settings: "Settings", start: "Start", reIn: "Re In", language: "Language" },
+      zh: { settings: "设置", start: "开始", reIn: "重新进入", language: "语言" },
+      ja: { settings: "設定", start: "開始", reIn: "再入場", language: "言語" }
+    };
+
+    const getCookie = (name: string) => document.cookie.split("; ").find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1) || "";
+    const setCookie = (name: string, value: string) => {
+      document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    };
+    const isLang = (value: string): value is Lang => value === "en" || value === "zh" || value === "ja";
+
+    function applyLanguage(lang: Lang) {
+      screen.dataset.lang = lang;
+      document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
+      document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((element) => {
+        const key = element.dataset.i18n as keyof (typeof translations)["en"];
+        element.textContent = translations[lang][key];
+      });
+    }
+
+    async function detectLanguage(): Promise<Lang> {
+      try {
+        const response = await fetch("/api/public/geo");
+        const data = (await response.json()) as { ok?: boolean; lang?: Lang };
+        if (data.ok && data.lang && isLang(data.lang)) return data.lang;
+      } catch {
+        // English is the same fallback as the Local page used previously.
+      }
+      return "en";
+    }
+
+    const languageReady = (async () => {
+      const saved = getCookie(languageCookie);
+      const lang = isLang(saved) ? saved : await detectLanguage();
+      setCookie(languageCookie, lang);
+      applyLanguage(lang);
+      return lang;
+    })();
+
+    languageButton.addEventListener("click", () => {
+      const open = languagePopover.hidden;
+      languagePopover.hidden = !open;
+      languageButton.setAttribute("aria-expanded", String(open));
+    });
+
+    document.querySelectorAll<HTMLButtonElement>("[data-language]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const lang = button.dataset.language;
+        if (!lang || !isLang(lang)) return;
+        setCookie(languageCookie, lang);
+        applyLanguage(lang);
+        languagePopover.hidden = true;
+        languageButton.setAttribute("aria-expanded", "false");
+      });
+    });
+
+    document.querySelector('[data-loading-action="start"]')?.addEventListener("click", async () => {
+      await languageReady;
+      window.location.assign("/Local");
+    });
+
+    document.querySelector('[data-loading-action="reIn"]')?.addEventListener("click", () => {
+      window.location.assign("/");
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target as Node;
+      if (!languagePopover.hidden && !languagePopover.contains(target) && !languageButton.contains(target)) {
+        languagePopover.hidden = true;
+        languageButton.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    document.querySelector("#loadingSettings")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      // Intentionally inert: this control is part of the original visual language only.
+    });
+  </script>
+</SiteShell>
