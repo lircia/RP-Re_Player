@@ -843,6 +843,7 @@ const introMaxSeconds = (() => {
 
       const session = statSession;
       const path = s.current.path;
+      if (event === "play") trackVisitor("play", path);
       statTask = statTask.catch(() => undefined).then(async () => {
         const response = await fetch("/api/public/stat", {
           method: "POST",
@@ -861,6 +862,15 @@ const introMaxSeconds = (() => {
     function recordPlay() {
       if (statCompleted) resetStatSession();
       return recordStat("play");
+    }
+
+    function trackVisitor(event: "visit" | "directory" | "media" | "play", path: string) {
+      fetch("/api/public/track", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ event, path }),
+        keepalive: true
+      }).catch(() => undefined);
     }
 
     const formatTime = (seconds: number) => {
@@ -1293,6 +1303,7 @@ const introMaxSeconds = (() => {
       setStatus(d.libraryStatus);
       render();
       updateVisitorUrl(s.path, navigation);
+      if (navigation !== "none") trackVisitor(s.path === "/root" ? "visit" : "directory", s.path);
       return true;
     }
 
@@ -1369,6 +1380,7 @@ const introMaxSeconds = (() => {
       renderCurrent();
       render();
       updateVisitorUrl(item.path, navigation);
+      trackVisitor("media", item.path);
 
       if (item.kind === "image") {
         d.stage.dataset.mode = "image";
@@ -1752,6 +1764,7 @@ const introMaxSeconds = (() => {
     window.addEventListener("popstate", () => {
       restoreVisitorRoute().catch((error) => setStatus(d.libraryStatus, error.message, "error"));
     });
+    trackVisitor("visit", pseudoPathFromVisitorUrl(location.pathname) || "/root");
     restoreVisitorRoute(true).catch((error) => setStatus(d.libraryStatus, error.message, "error"));
   </script>
     </>

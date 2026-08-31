@@ -1,0 +1,45 @@
+---
+import SiteShell from "../../layouts/SiteShell.astro";
+import { getEnv } from "@lib/cloudflare";
+import { getItem, publicMediaPath } from "@lib/pseudo";
+import { recordVisitorEvent } from "@lib/visitor-events";
+
+const pathname = Astro.url.pathname;
+const prefix = pathname.startsWith("/Local/tree") ? "/Local/tree" : "/tree";
+const relative = pathname.slice(prefix.length).replace(/^\/+|\/+$/g, "");
+let item = null;
+try {
+  const parts = relative ? relative.split("/").map((part) => decodeURIComponent(part)) : [];
+  if (parts.length && parts.every((part) => part && part !== "." && part !== ".." && !/[\\/\u0000-\u001f\u007f]/.test(part))) {
+    item = await getItem(await getEnv(Astro), `/root/tree/${parts.join("/")}`);
+  }
+} catch {
+  item = null;
+}
+const env = await getEnv(Astro);
+if (item) void recordVisitorEvent(env, Astro.request, "media", item.path);
+const mediaUrl = item ? publicMediaPath(item.path) : "";
+---
+
+<SiteShell title={item?.name || "Tree - Re-Player"}>
+  <main class="tree-media-page">
+    {item ? (
+      item.kind === "audio" ? (
+        <audio src={mediaUrl} controls preload="metadata" />
+      ) : item.kind === "image" ? (
+        <img src={mediaUrl} alt={item.name} />
+      ) : (
+        <video src={mediaUrl} controls playsinline preload="metadata" />
+      )
+    ) : (
+      <p>Media not found.</p>
+    )}
+  </main>
+  <style>
+    :global(html), :global(body) { min-width: 0; min-height: 100%; margin: 0; background: #000; }
+    .tree-media-page { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; overflow: hidden; background: #000; }
+    .tree-media-page video, .tree-media-page audio { display: block; width: min(100vw, 100%); max-width: 100vw; max-height: 100vh; }
+    .tree-media-page img { display: block; max-width: 100vw; max-height: 100vh; width: auto; height: auto; object-fit: contain; }
+    .tree-media-page p { color: #fff; font: 16px/1.5 system-ui, sans-serif; }
+  </style>
+</SiteShell>

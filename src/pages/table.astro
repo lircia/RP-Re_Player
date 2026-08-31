@@ -1,0 +1,86 @@
+---
+import SiteShell from "../layouts/SiteShell.astro";
+import { getEnv } from "@lib/cloudflare";
+import { isAdmin } from "@lib/admin";
+import { listVisitorEvents, visitorSummary } from "@lib/visitor-events";
+
+const env = await getEnv(Astro);
+const loggedIn = await isAdmin(Astro.request, env);
+const summary = loggedIn ? await visitorSummary(env) : [];
+const events = loggedIn ? await listVisitorEvents(env, 300) : [];
+---
+
+<SiteShell title="Visitor table - Re-Player">
+  {!loggedIn ? (
+    <main class="table-login">
+      <section class="login-card">
+        <div class="eyebrow">RE-PLAYER / TABLE</div>
+        <h1>Visitor analytics</h1>
+        <p>Enter the administrator password to view visitor activity.</p>
+        <form id="tableLoginForm">
+          <input name="password" type="password" autocomplete="current-password" placeholder="Administrator password" required autofocus />
+          <button type="submit">Unlock table</button>
+          <div id="tableLoginStatus" role="status"></div>
+        </form>
+      </section>
+    </main>
+  ) : (
+    <main class="table-page">
+      <header class="table-header">
+        <div><div class="eyebrow">RE-PLAYER / TABLE</div><h1>Visitor analytics</h1></div>
+        <a href="/admin">Admin</a>
+      </header>
+      <section class="summary-grid">
+        {summary.length ? summary.map((row) => <div class="summary-card"><span>{row.event}</span><strong>{row.count}</strong></div>) : <div class="summary-card"><span>No events yet</span><strong>0</strong></div>}
+      </section>
+      <section class="event-panel">
+        <div class="event-toolbar"><strong>Recent activity</strong><button id="tableRefresh" type="button">Refresh</button></div>
+        <div class="table-scroll"><table><thead><tr><th>Time</th><th>Event</th><th>Path</th><th>IP</th><th>Country</th></tr></thead><tbody id="eventRows">
+          {events.map((row) => <tr><td>{new Date(row.createdAt).toLocaleString()}</td><td><span class={`event-${row.event}`}>{row.event}</span></td><td>{row.path}</td><td>{row.ip || "-"}</td><td>{row.country || "-"}</td></tr>)}
+          {!events.length && <tr><td colspan="5">No visitor activity recorded.</td></tr>}
+        </tbody></table></div>
+      </section>
+    </main>
+  )}
+  <script>
+    const loginForm = document.querySelector<HTMLFormElement>("#tableLoginForm");
+    loginForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const status = document.querySelector<HTMLElement>("#tableLoginStatus");
+      const password = new FormData(loginForm).get("password");
+      const response = await fetch("/api/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) });
+      if (response.ok) location.reload(); else if (status) status.textContent = "Password is incorrect.";
+    });
+    document.querySelector<HTMLButtonElement>("#tableRefresh")?.addEventListener("click", () => location.reload());
+  </script>
+  <style>
+    :global(html), :global(body) { margin: 0; min-width: 320px; min-height: 100%; background: #101214; color: #e9edf0; font-family: Inter, system-ui, sans-serif; }
+    .table-login, .table-page { min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: clamp(24px, 5vw, 72px); }
+    .table-login { display: grid; place-items: center; background: radial-gradient(circle at 15% 10%, #26313c, #101214 52%); }
+    .login-card { width: min(440px, 100%); padding: 34px; border: 1px solid #34404a; background: #171b20; box-shadow: 0 24px 80px #0008; }
+    .eyebrow { color: #68d5b0; font-size: 11px; letter-spacing: .18em; }
+    h1 { margin: 10px 0 12px; font-size: clamp(28px, 5vw, 48px); font-weight: 500; }
+    p { color: #aeb8c0; }
+    form { display: grid; gap: 12px; margin-top: 24px; }
+    input, button, a { box-sizing: border-box; min-height: 42px; border: 1px solid #3b4852; padding: 10px 14px; font: inherit; }
+    input { color: #eef4f7; background: #0f1215; }
+    button, a { color: #08110f; background: #68d5b0; cursor: pointer; text-decoration: none; text-align: center; }
+    #tableLoginStatus { min-height: 20px; color: #ff8792; }
+    .table-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; border-bottom: 1px solid #34404a; padding-bottom: 22px; }
+    .table-header h1 { margin-bottom: 0; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 24px 0; }
+    .summary-card { padding: 18px; border: 1px solid #34404a; background: #171b20; }
+    .summary-card span { display: block; color: #9aa7af; text-transform: uppercase; font-size: 11px; letter-spacing: .12em; }
+    .summary-card strong { display: block; margin-top: 8px; color: #68d5b0; font-size: 30px; font-weight: 500; }
+    .event-panel { border: 1px solid #34404a; background: #171b20; }
+    .event-toolbar { display: flex; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid #34404a; }
+    .event-toolbar button { min-height: 32px; padding: 5px 12px; }
+    .table-scroll { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    th, td { padding: 13px 16px; border-bottom: 1px solid #293139; text-align: left; white-space: nowrap; }
+    th { color: #8e9ba4; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    td { color: #d7e0e5; font-size: 13px; }
+    td span { color: #68d5b0; }
+    @media (max-width: 560px) { .table-header { align-items: start; flex-direction: column; } .login-card { padding: 24px; } }
+  </style>
+</SiteShell>
