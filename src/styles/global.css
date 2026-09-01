@@ -1027,6 +1027,10 @@ textarea:focus-visible {
   padding: 18px 12px;
 }
 
+.mobile-admin-tree-toggle {
+  display: none;
+}
+
 .admin-nav-label {
   margin: 0 10px 10px;
   color: var(--muted);
@@ -1417,6 +1421,10 @@ textarea:focus-visible {
 
   .admin-sidebar {
     display: none;
+  }
+
+  .mobile-admin-tree-toggle {
+    display: inline-grid;
   }
 }
 
@@ -3732,6 +3740,73 @@ body:has(.login-screen)::before {
 }
 
 @media (max-width: 680px) {
+  .admin-app .admin-topbar {
+    height: 60px;
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .admin-app .admin-topbar-actions {
+    gap: 6px;
+  }
+
+  .admin-app .admin-topbar {
+    min-width: 0;
+  }
+
+  .admin-app .admin-sidebar {
+    position: fixed;
+    z-index: 30;
+    top: 60px;
+    bottom: 0;
+    left: 0;
+    display: block;
+    width: min(82vw, 280px);
+    overflow: auto;
+    transform: translateX(-105%);
+    transition: transform 180ms ease;
+    box-shadow: 14px 0 32px rgba(0, 0, 0, .18);
+  }
+
+  .admin-app.is-sidebar-open .admin-sidebar {
+    transform: translateX(0);
+  }
+
+  .admin-app .admin-main {
+    padding: 16px 10px;
+  }
+
+  .admin-app .admin-page-heading {
+    gap: 10px;
+  }
+
+  .admin-app .table-file > span:last-child {
+    display: inline-block;
+    max-width: 5ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+
+  .admin-app .url-cell {
+    display: inline-block;
+    max-width: 4ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+
+  .admin-app .source-cell {
+    display: inline-block;
+    max-width: 6ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+
   .admin-theme-toggle {
     width: 36px;
     min-width: 36px;

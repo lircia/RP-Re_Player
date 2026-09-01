@@ -1,5 +1,11 @@
 ---
 import VisitorPage from "../index.astro";
+import ErrorPage from "../404.astro";
+import { pseudoPathFromVisitorUrl } from "../../lib/visitor-route";
+
+const pathname = Astro.url.pathname;
+const validLocalPath = pathname === "/Local" || pathname === "/Local/" || pseudoPathFromVisitorUrl(pathname) !== null;
+if (!validLocalPath) Astro.response.status = 404;
 ---
 
-<VisitorPage />
+{validLocalPath ? <VisitorPage /> : <ErrorPage />}

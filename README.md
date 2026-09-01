@@ -1,6 +1,6 @@
 # Re Player (RP)
 
-English | [简体中文](README.zh-CN.md)
+English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
 
 Re Player is a link-based media library that uses the Astro framework and runs on Cloudflare Workers. Visitors browse a virtual `/root` tree in the left panel and play video, audio, or images in the browser player on the right. No storage provider is mounted directly.
 

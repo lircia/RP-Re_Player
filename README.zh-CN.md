@@ -1,6 +1,6 @@
 # Re Player (RP)
 
-[English](README.md) | 简体中文
+[English](README.md) | 简体中文 | [日本語](README.ja.md)
 
 Re Player 是一个使用 Astro 框架、可部署到 Cloudflare Workers 的链接媒体库。访客在左侧浏览虚拟 `/root` 目录，在右侧网页播放器中播放视频、音频或图片；项目不会直接挂载任何存储服务。
 

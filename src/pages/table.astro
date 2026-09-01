@@ -8,79 +8,69 @@ const env = await getEnv(Astro);
 const loggedIn = await isAdmin(Astro.request, env);
 const summary = loggedIn ? await visitorSummary(env) : [];
 const events = loggedIn ? await listVisitorEvents(env, 300) : [];
+const cookie = Astro.request.headers.get("cookie") || "";
+const saved = cookie.match(/(?:^|;\s*)rp_l=([^;]+)/)?.[1] || "";
+const accept = (Astro.request.headers.get("accept-language") || "").toLowerCase();
+const initialLang = saved === "zh" || saved === "ja" || saved === "en" ? saved : accept.startsWith("zh") ? "zh" : accept.startsWith("ja") ? "ja" : "en";
 ---
 
 <SiteShell title="Visitor table - Re-Player">
   {!loggedIn ? (
-    <main class="table-login">
-      <section class="login-card">
-        <div class="eyebrow">RE-PLAYER / TABLE</div>
-        <h1>Visitor analytics</h1>
-        <p>Enter the administrator password to view visitor activity.</p>
-        <form id="tableLoginForm">
-          <input name="password" type="password" autocomplete="current-password" placeholder="Administrator password" required autofocus />
-          <button type="submit">Unlock table</button>
-          <div id="tableLoginStatus" role="status"></div>
-        </form>
+    <main id="tablePage" class="table-login" data-lang={initialLang}>
+      <section class="login-card"><div class="eyebrow">RE-PLAYER / TABLE</div><h1 data-i18n="title"></h1><p data-i18n="loginCopy"></p>
+        <form id="tableLoginForm"><input name="password" type="password" autocomplete="current-password" data-i18n-placeholder="password" required autofocus /><button type="submit" data-i18n="unlock"></button><div id="tableLoginStatus" role="status"></div></form>
       </section>
     </main>
   ) : (
-    <main class="table-page">
-      <header class="table-header">
-        <div><div class="eyebrow">RE-PLAYER / TABLE</div><h1>Visitor analytics</h1></div>
-        <a href="/admin">Admin</a>
-      </header>
-      <section class="summary-grid">
-        {summary.length ? summary.map((row) => <div class="summary-card"><span>{row.event}</span><strong>{row.count}</strong></div>) : <div class="summary-card"><span>No events yet</span><strong>0</strong></div>}
+    <main id="tablePage" class="table-page" data-lang={initialLang}>
+      <header class="table-header"><div><div class="eyebrow">RE-PLAYER / TABLE</div><h1 data-i18n="title"></h1></div><a href="/admin" data-i18n="admin"></a></header>
+      <section class="summary-grid" id="summaryGrid"></section>
+      <section class="event-panel"><div class="event-toolbar"><strong data-i18n="recent"></strong><button id="tableRefresh" type="button" data-i18n="refresh"></button></div>
+        <div class="table-scroll"><table><thead><tr><th data-i18n="time"></th><th data-i18n="event"></th><th data-i18n="path"></th><th>IP</th><th data-i18n="country"></th></tr></thead><tbody id="eventRows"></tbody></table></div>
       </section>
-      <section class="event-panel">
-        <div class="event-toolbar"><strong>Recent activity</strong><button id="tableRefresh" type="button">Refresh</button></div>
-        <div class="table-scroll"><table><thead><tr><th>Time</th><th>Event</th><th>Path</th><th>IP</th><th>Country</th></tr></thead><tbody id="eventRows">
-          {events.map((row) => <tr><td>{new Date(row.createdAt).toLocaleString()}</td><td><span class={`event-${row.event}`}>{row.event}</span></td><td>{row.path}</td><td>{row.ip || "-"}</td><td>{row.country || "-"}</td></tr>)}
-          {!events.length && <tr><td colspan="5">No visitor activity recorded.</td></tr>}
-        </tbody></table></div>
-      </section>
+      <script is:inline type="application/json" id="tableData" set:html={JSON.stringify({ summary, events })}></script>
     </main>
   )}
-  <script>
-    const loginForm = document.querySelector<HTMLFormElement>("#tableLoginForm");
-    loginForm?.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const status = document.querySelector<HTMLElement>("#tableLoginStatus");
-      const password = new FormData(loginForm).get("password");
-      const response = await fetch("/api/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) });
-      if (response.ok) location.reload(); else if (status) status.textContent = "Password is incorrect.";
-    });
-    document.querySelector<HTMLButtonElement>("#tableRefresh")?.addEventListener("click", () => location.reload());
+  <script is:inline>
+    (() => {
+      const page = document.querySelector("#tablePage"); if (!page) return;
+      const messages = {
+        en: { title: "Visitor analytics", loginCopy: "Enter the administrator password to view visitor activity.", password: "Administrator password", unlock: "Unlock table", admin: "Admin", recent: "Recent activity", refresh: "Refresh", time: "Time", event: "Event", path: "Path", country: "Country", empty: "No visitor activity recorded.", wrong: "Password is incorrect.", events: { visit: "visit", directory: "directory", media: "media", play: "play" } },
+        zh: { title: "访客统计", loginCopy: "请输入管理员密码查看访客活动。", password: "管理员密码", unlock: "解锁统计表", admin: "管理后台", recent: "最近活动", refresh: "刷新", time: "时间", event: "事件", path: "路径", country: "地区", empty: "暂无访客活动记录。", wrong: "密码错误。", events: { visit: "访问", directory: "目录", media: "媒体", play: "播放" } },
+        ja: { title: "ほうもんしゃ とうけい", loginCopy: "かんりしゃ パスワードを いれて かつどうを みます。", password: "かんりしゃ パスワード", unlock: "とうけいを ひらく", admin: "かんり がめん", recent: "さいきんの かつどう", refresh: "こうしん", time: "じかん", event: "イベント", path: "パス", country: "くに", empty: "ほうもん きろくは ありません。", wrong: "パスワードが ちがいます。", events: { visit: "ほうもん", directory: "ディレクトリ", media: "メディア", play: "さいせい" } }
+      };
+      const valid = (value) => value === "zh" || value === "ja" || value === "en";
+      const cookieValue = document.cookie.split("; ").find((part) => part.startsWith("rp_l="))?.slice(5) || "";
+      const browser = (navigator.language || "").toLowerCase();
+      let lang = valid(cookieValue) ? cookieValue : browser.startsWith("zh") ? "zh" : browser.startsWith("ja") ? "ja" : page.dataset.lang || "en";
+      const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[char]));
+      const formatTime = (value, currentLang) => {
+        const date = new Date(value);
+        // Database timestamps are UTC (+0); this correction is display-only and is never written back.
+        const offset = currentLang === "zh" ? 8 : currentLang === "ja" ? 7 : 0;
+        const adjusted = new Date(date.getTime() + offset * 60 * 60 * 1000);
+        return new Intl.DateTimeFormat(currentLang === "zh" ? "zh-CN" : currentLang === "ja" ? "ja-JP" : "en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(adjusted);
+      };
+      const apply = () => {
+        const t = messages[lang] || messages.en; page.dataset.lang = lang; document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
+        page.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t[el.dataset.i18n] || ""; }); page.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t[el.dataset.i18nPlaceholder] || ""; });
+        const dataEl = document.querySelector("#tableData"); if (!dataEl) return; const data = JSON.parse(dataEl.textContent || "{}");
+        const summaryGrid = document.querySelector("#summaryGrid"); if (summaryGrid) summaryGrid.innerHTML = (data.summary?.length ? data.summary : [{ event: "", count: 0 }]).map((row) => `<div class="summary-card"><span>${t.events[row.event] || (row.event ? row.event : t.empty)}</span><strong>${row.count}</strong></div>`).join("");
+        const rows = document.querySelector("#eventRows"); if (!rows) return; rows.innerHTML = data.events?.length ? data.events.map((row) => `<tr><td>${formatTime(row.createdAt, lang)}</td><td><span>${t.events[row.event] || escapeHtml(row.event)}</span></td><td>${escapeHtml(row.path)}</td><td>${escapeHtml(row.ip || "-")}</td><td>${escapeHtml(row.country || "-")}</td></tr>`).join("") : `<tr><td colspan="5">${t.empty}</td></tr>`;
+      };
+      apply();
+      if (!valid(cookieValue)) fetch("/api/public/geo").then((response) => response.json()).then((data) => { if (data?.ok && valid(data.lang)) { lang = data.lang; document.cookie = `rp_l=${encodeURIComponent(lang)}; Path=/; Max-Age=31536000; SameSite=Lax`; apply(); } }).catch(() => undefined);
+      const form = document.querySelector("#tableLoginForm"); form?.addEventListener("submit", async (event) => { event.preventDefault(); const password = new FormData(form).get("password"); const response = await fetch("/api/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) }); if (response.ok) location.reload(); else document.querySelector("#tableLoginStatus").textContent = (messages[lang] || messages.en).wrong; });
+      document.querySelector("#tableRefresh")?.addEventListener("click", () => location.reload());
+    })();
   </script>
   <style>
     :global(html), :global(body) { margin: 0; min-width: 320px; min-height: 100%; background: #101214; color: #e9edf0; font-family: Inter, system-ui, sans-serif; }
-    .table-login, .table-page { min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: clamp(24px, 5vw, 72px); }
-    .table-login { display: grid; place-items: center; background: radial-gradient(circle at 15% 10%, #26313c, #101214 52%); }
-    .login-card { width: min(440px, 100%); padding: 34px; border: 1px solid #34404a; background: #171b20; box-shadow: 0 24px 80px #0008; }
-    .eyebrow { color: #68d5b0; font-size: 11px; letter-spacing: .18em; }
-    h1 { margin: 10px 0 12px; font-size: clamp(28px, 5vw, 48px); font-weight: 500; }
-    p { color: #aeb8c0; }
-    form { display: grid; gap: 12px; margin-top: 24px; }
-    input, button, a { box-sizing: border-box; min-height: 42px; border: 1px solid #3b4852; padding: 10px 14px; font: inherit; }
-    input { color: #eef4f7; background: #0f1215; }
-    button, a { color: #08110f; background: #68d5b0; cursor: pointer; text-decoration: none; text-align: center; }
-    #tableLoginStatus { min-height: 20px; color: #ff8792; }
-    .table-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; border-bottom: 1px solid #34404a; padding-bottom: 22px; }
-    .table-header h1 { margin-bottom: 0; }
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 24px 0; }
-    .summary-card { padding: 18px; border: 1px solid #34404a; background: #171b20; }
-    .summary-card span { display: block; color: #9aa7af; text-transform: uppercase; font-size: 11px; letter-spacing: .12em; }
-    .summary-card strong { display: block; margin-top: 8px; color: #68d5b0; font-size: 30px; font-weight: 500; }
-    .event-panel { border: 1px solid #34404a; background: #171b20; }
-    .event-toolbar { display: flex; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid #34404a; }
-    .event-toolbar button { min-height: 32px; padding: 5px 12px; }
-    .table-scroll { overflow: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 700px; }
-    th, td { padding: 13px 16px; border-bottom: 1px solid #293139; text-align: left; white-space: nowrap; }
-    th { color: #8e9ba4; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
-    td { color: #d7e0e5; font-size: 13px; }
-    td span { color: #68d5b0; }
+    .table-login, .table-page { min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: clamp(24px, 5vw, 72px); } .table-login { display: grid; place-items: center; background: radial-gradient(circle at 15% 10%, #26313c, #101214 52%); }
+    .login-card { width: min(440px, 100%); padding: 34px; border: 1px solid #34404a; background: #171b20; box-shadow: 0 24px 80px #0008; } .eyebrow { color: #68d5b0; font-size: 11px; letter-spacing: .18em; } h1 { margin: 10px 0 12px; font-size: clamp(28px, 5vw, 48px); font-weight: 500; } p { color: #aeb8c0; }
+    form { display: grid; gap: 12px; margin-top: 24px; } input, button, a { box-sizing: border-box; min-height: 42px; border: 1px solid #3b4852; padding: 10px 14px; font: inherit; } input { color: #eef4f7; background: #0f1215; } button, a { color: #08110f; background: #68d5b0; cursor: pointer; text-decoration: none; text-align: center; } #tableLoginStatus { min-height: 20px; color: #ff8792; }
+    .table-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; border-bottom: 1px solid #34404a; padding-bottom: 22px; } .table-header h1 { margin-bottom: 0; } .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 24px 0; } .summary-card { padding: 18px; border: 1px solid #34404a; background: #171b20; } .summary-card span { display: block; color: #9aa7af; text-transform: uppercase; font-size: 11px; letter-spacing: .12em; } .summary-card strong { display: block; margin-top: 8px; color: #68d5b0; font-size: 30px; font-weight: 500; }
+    .event-panel { border: 1px solid #34404a; background: #171b20; } .event-toolbar { display: flex; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid #34404a; } .event-toolbar button { min-height: 32px; padding: 5px 12px; } .table-scroll { overflow: auto; } table { width: 100%; border-collapse: collapse; min-width: 700px; } th, td { padding: 13px 16px; border-bottom: 1px solid #293139; text-align: left; white-space: nowrap; } th { color: #8e9ba4; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; } td { color: #d7e0e5; font-size: 13px; } td span { color: #68d5b0; }
     @media (max-width: 560px) { .table-header { align-items: start; flex-direction: column; } .login-card { padding: 24px; } }
   </style>
 </SiteShell>

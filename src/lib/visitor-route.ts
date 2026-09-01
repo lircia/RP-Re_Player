@@ -1,13 +1,13 @@
 export const VISITOR_BASE_PATH = "/Local";
 export const VISITOR_MOUNT_PATH = `${VISITOR_BASE_PATH}/Pash`;
-export const VISITOR_TREE_PATH = `${VISITOR_BASE_PATH}/tree`;
+export const VISITOR_TREE_PATH = "/Tree";
 
 export function visitorUrl(path: string) {
   const relative = String(path || "/root")
     .replace(/^\/root(?=\/|$)/, "")
     .replace(/^\/+|\/+$/g, "");
   if (!relative) return VISITOR_BASE_PATH;
-  if (relative === "tree" || relative.startsWith("tree/")) {
+  if (relative.toLocaleLowerCase() === "tree" || relative.toLocaleLowerCase().startsWith("tree/")) {
     const treeRelative = relative.slice("tree".length).replace(/^\/+/, "");
     return treeRelative
       ? `${VISITOR_TREE_PATH}/${treeRelative.split("/").map((part) => encodeURIComponent(part)).join("/")}`

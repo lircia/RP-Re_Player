@@ -29,6 +29,8 @@ import { getEnv } from "@lib/cloudflare";
 import { getVisitorTheme } from "@lib/theme";
 
 const isEntry = Astro.url.pathname === "/";
+const mobileEntry = /Android|iPhone|iPad|iPod|Windows Phone|Mobi/i.test(Astro.request.headers.get("user-agent") || "");
+if (isEntry && mobileEntry) return Astro.redirect("/Local", 302);
 
 const env = await getEnv(Astro);
 const visitorTheme = await getVisitorTheme(env);
@@ -53,7 +55,7 @@ const introMaxSeconds = (() => {
 
 <SiteShell title="Re-Player">
   {
-    isEntry && introSource && (
+    isEntry && !mobileEntry && introSource && (
       <div id="externalIntro" class="external-intro" data-max-seconds={introMaxSeconds || undefined}>
         {introIsVideo ? (
           <video class="external-intro-media" src={introSource} autoplay muted={Boolean(introAudioSource)} playsinline preload="auto" />
@@ -70,7 +72,7 @@ const introMaxSeconds = (() => {
       const visual = intro?.querySelector(".external-intro-media");
       const music = intro?.querySelector(".external-intro-audio");
       if (!intro || !visual) {
-        if (location.pathname === "/") location.replace("/Loading");
+        if (location.pathname === "/") location.replace(/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "/Local" : "/Loading");
         return;
       }
       const maxSeconds = Number(intro.dataset.maxSeconds) || 0;

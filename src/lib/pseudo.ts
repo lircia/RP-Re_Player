@@ -178,12 +178,14 @@ export async function allItems(env: AppEnv): Promise<PseudoItem[]> {
 export async function listPublic(env: AppEnv, path = "/root", query = "") {
   const current = normalizeRootPath(path);
   const items = await allItems(env);
+  // The Tree mount is a separate native-player entry and is intentionally hidden from Local.
+  const visibleItems = items.filter((item) => !(item.path === "/root/tree" || item.path.startsWith("/root/tree/")));
   const children = new Map<string, PublicNode>();
   const search = String(query || "").trim().slice(0, 100).toLocaleLowerCase();
   const prefix = current === "/root" ? "/root/" : `${current}/`;
 
   if (search) {
-    for (const item of items) {
+    for (const item of visibleItems) {
       if (!item.path.startsWith(prefix)) continue;
       const rest = item.path.slice(current.length).replace(/^\/+/, "");
       if (!rest) continue;
@@ -221,7 +223,7 @@ export async function listPublic(env: AppEnv, path = "/root", query = "") {
     };
   }
 
-  for (const item of items) {
+  for (const item of visibleItems) {
     if (!item.path.startsWith(prefix)) continue;
     const rest = item.path.slice(current.length).replace(/^\/+/, "");
     if (!rest) continue;

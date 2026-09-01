@@ -5,7 +5,7 @@ import { getItem, publicMediaPath } from "@lib/pseudo";
 import { recordVisitorEvent } from "@lib/visitor-events";
 
 const pathname = Astro.url.pathname;
-const prefix = pathname.startsWith("/Local/tree") ? "/Local/tree" : "/tree";
+const prefix = pathname.startsWith("/Tree") ? "/Tree" : "/tree";
 const relative = pathname.slice(prefix.length).replace(/^\/+|\/+$/g, "");
 let item = null;
 try {
@@ -24,16 +24,8 @@ const mediaUrl = item ? publicMediaPath(item.path) : "";
 <SiteShell title={item?.name || "Tree - Re-Player"}>
   <main class="tree-media-page">
     {item ? (
-      item.kind === "audio" ? (
-        <audio src={mediaUrl} controls preload="metadata" />
-      ) : item.kind === "image" ? (
-        <img src={mediaUrl} alt={item.name} />
-      ) : (
-        <video src={mediaUrl} controls playsinline preload="metadata" />
-      )
-    ) : (
-      <p>Media not found.</p>
-    )}
+      item.kind === "audio" ? <audio src={mediaUrl} controls preload="metadata" /> : item.kind === "image" ? <img src={mediaUrl} alt={item.name} /> : <video src={mediaUrl} controls playsinline preload="metadata" />
+    ) : <p>Media not found.</p>}
   </main>
   <style>
     :global(html), :global(body) { min-width: 0; min-height: 100%; margin: 0; background: #000; }

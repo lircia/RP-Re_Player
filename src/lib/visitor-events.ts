@@ -61,12 +61,13 @@ async function ensureDb(env: AppEnv) {
 
 export async function recordVisitorEvent(env: AppEnv, request: Request, event: VisitorEvent, path: string) {
   const normalizedPath = String(path || "/").slice(0, 500);
+  const ip = clientIp(request);
   const row: VisitorEventRow = {
     id: crypto.randomUUID(),
     event,
     path: normalizedPath,
-    ip: clientIp(request),
-    country: await countryFor(request, clientIp(request)),
+    ip,
+    country: await countryFor(request, ip),
     createdAt: new Date().toISOString()
   };
   if (await ensureDb(env)) {

@@ -67,6 +67,7 @@ const loggedIn = await isAdmin(Astro.request, env);
             </span>
           </div>
           <div class="admin-topbar-actions">
+            <button id="mobileAdminTreeToggle" class="icon-button mobile-admin-tree-toggle" type="button" aria-label="Open storage" aria-controls="adminSidebar" aria-expanded="false"><Folder size={18} /></button>
             <button id="visitorThemeBtn" class="admin-theme-toggle" type="button" title="Visitor theme">
               <Palette size={16} aria-hidden="true" />
               <span id="visitorThemeLabel">Visitor theme: Default</span>
@@ -88,7 +89,7 @@ const loggedIn = await isAdmin(Astro.request, env);
         </header>
 
         <div class="admin-shell">
-          <aside class="admin-sidebar">
+          <aside id="adminSidebar" class="admin-sidebar">
             <p class="admin-nav-label" data-i18n="storage">Storage</p>
             <nav id="adminTree" class="admin-tree" aria-label="Storage"></nav>
           </aside>
@@ -383,10 +384,10 @@ const loggedIn = await isAdmin(Astro.request, env);
       rows.innerHTML = visibleItems.map((item) => `
         <tr>
           <td><span class="table-file">${typeIcon(item.kind)}<span>${esc(item.name)}</span></span></td>
-          <td><span class="url-cell" title="${esc(displayPath(item.path))}">${esc(displayPath(item.path))}</span></td>
+          <td><span class="url-cell path-cell" title="${esc(displayPath(item.path))}">${esc(displayPath(item.path))}</span></td>
           <td><span class="type-chip">${esc(t(item.kind))}</span></td>
           <td>${item.sub ? '<span class="type-chip">ASS</span>' : item.lrc ? `<span class="type-chip">LRC${item.lrc2 ? " x2" : ""}</span>` : '<span class="url-cell">-</span>'}</td>
-          <td><a class="url-cell" href="${esc(item.url)}" title="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.url)}</a></td>
+          <td><a class="url-cell source-cell" href="${esc(item.url)}" title="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.url)}</a></td>
           <td><span class="row-actions"><button class="icon-button danger-button" type="button" data-delete="${esc(item.id)}" title="${esc(t("delete"))}">${trash}<span class="sr-only">${esc(t("delete"))}</span></button></span></td>
         </tr>
       `).join("");
@@ -483,6 +484,19 @@ const loggedIn = await isAdmin(Astro.request, env);
       currentFolder = path;
       renderTree();
       renderRows();
+    });
+    const mobileTreeToggle = document.querySelector<HTMLButtonElement>("#mobileAdminTreeToggle");
+    const adminApp = document.querySelector<HTMLElement>(".admin-app");
+    mobileTreeToggle?.addEventListener("click", () => {
+      const open = !adminApp?.classList.contains("is-sidebar-open");
+      adminApp?.classList.toggle("is-sidebar-open", open);
+      mobileTreeToggle.setAttribute("aria-expanded", String(open));
+    });
+    document.querySelector("#adminSidebar")?.addEventListener("click", (event) => {
+      if ((event.target as HTMLElement).closest("[data-folder]")) {
+        adminApp?.classList.remove("is-sidebar-open");
+        mobileTreeToggle?.setAttribute("aria-expanded", "false");
+      }
     });
     document.querySelector("#addBtn")?.addEventListener("click", () => {
       if (folderInput) folderInput.value = displayPath(currentFolder);
