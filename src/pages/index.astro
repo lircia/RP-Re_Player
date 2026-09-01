@@ -28,9 +28,8 @@ import SiteShell from "../layouts/SiteShell.astro";
 import { getEnv } from "@lib/cloudflare";
 import { getVisitorTheme } from "@lib/theme";
 
-const isEntry = Astro.url.pathname === "/";
-const mobileEntry = /Android|iPhone|iPad|iPod|Windows Phone|Mobi/i.test(Astro.request.headers.get("user-agent") || "");
-if (isEntry && mobileEntry) return Astro.redirect("/Local", 302);
+const isEntry = Astro.url.pathname === "/re";
+if (Astro.url.pathname === "/") return Astro.redirect("/re", 302);
 
 const env = await getEnv(Astro);
 const visitorTheme = await getVisitorTheme(env);
@@ -55,7 +54,7 @@ const introMaxSeconds = (() => {
 
 <SiteShell title="Re-Player">
   {
-    isEntry && !mobileEntry && introSource && (
+    isEntry && introSource && (
       <div id="externalIntro" class="external-intro" data-max-seconds={introMaxSeconds || undefined}>
         {introIsVideo ? (
           <video class="external-intro-media" src={introSource} autoplay muted={Boolean(introAudioSource)} playsinline preload="auto" />
@@ -72,7 +71,7 @@ const introMaxSeconds = (() => {
       const visual = intro?.querySelector(".external-intro-media");
       const music = intro?.querySelector(".external-intro-audio");
       if (!intro || !visual) {
-        if (location.pathname === "/") location.replace(/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "/Local" : "/Loading");
+        if (location.pathname === "/re") location.replace(/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "/Local" : "/Loading");
         return;
       }
       const maxSeconds = Number(intro.dataset.maxSeconds) || 0;
@@ -95,7 +94,7 @@ const introMaxSeconds = (() => {
         window.setTimeout(() => {
           stopPlayback();
           intro.remove();
-          location.replace("/Loading");
+          location.replace(/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "/Local" : "/Loading");
         }, 260);
       };
       const schedule = (seconds) => {
