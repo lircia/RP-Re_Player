@@ -7,7 +7,9 @@ import SiteShell from "../layouts/SiteShell.astro";
     <div class="loading-scene" aria-hidden="true"></div>
 
     <header class="loading-brand">
-      <h1 class="loading-brand-name">Re ‘<span>Player</span></h1>
+      <a class="loading-brand-link" href="https://github.com/ishiass/RP_Re-Player" target="_blank" rel="noreferrer">
+        <h1 class="loading-brand-name">Re · <span>Player</span></h1>
+      </a>
       <div class="loading-brand-meta">
         <span class="loading-group">Deltass</span>
       </div>
@@ -115,6 +117,17 @@ import SiteShell from "../layouts/SiteShell.astro";
       white-space: nowrap;
     }
 
+    .loading-brand-link {
+      display: inline-block;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .loading-brand-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 5px;
+    }
+
     .loading-brand-name span {
       display: inline-block;
       padding: 0.06em 0.29em 0.1em 0.35em;
@@ -191,7 +204,8 @@ import SiteShell from "../layouts/SiteShell.astro";
     .loading-menu {
       position: absolute;
       z-index: 2;
-      top: 42%;
+      top: auto;
+      bottom: clamp(12px, 2vh, 28px);
       right: 0;
       width: 20.3%;
       display: grid;
@@ -298,7 +312,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       .loading-brand { top: 4%; bottom: auto; width: 56%; min-width: 0; }
       .loading-brand-name { gap: 0.28em; font-size: clamp(14px, 5vw, 30px); }
       .loading-brand-meta { font-size: clamp(7px, 2.3vw, 12px); }
-      .loading-menu { top: 31%; width: 46%; gap: clamp(12px, 4vh, 36px); }
+      .loading-menu { top: auto; bottom: 8%; width: 46%; gap: clamp(12px, 4vh, 36px); }
       .loading-menu-item { min-height: clamp(45px, 8vh, 64px); padding-left: 7%; }
       .loading-menu-en { font-size: clamp(16px, 6vw, 27px); }
       .loading-menu-cn { font-size: clamp(7px, 2.4vw, 11px); }
@@ -336,7 +350,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       }
 
       .loading-brand-meta { font-size: clamp(7px, 0.83vw, 12px); }
-      .loading-menu { top: 42%; width: 20.3%; gap: clamp(9px, 5vh, 34px); }
+      .loading-menu { top: auto; bottom: 10%; width: 20.3%; gap: clamp(9px, 5vh, 34px); }
       .loading-menu-item { min-height: clamp(42px, 7.5vh, 62px); padding-left: 5%; }
       .loading-menu-en { font-size: clamp(17px, 2.6vw, 30px); }
       .loading-menu-cn { font-size: clamp(7px, 0.72vw, 11px); }

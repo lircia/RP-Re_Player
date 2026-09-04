@@ -7,23 +7,29 @@ const accept = (Astro.request.headers.get("accept-language") || "").toLowerCase(
 const initialLang = saved === "zh" || saved === "ja" || saved === "en" ? saved : accept.startsWith("zh") ? "zh" : accept.startsWith("ja") ? "ja" : "en";
 const currentPath = Astro.url.pathname;
 const initialMessage = initialLang === "zh" ? "此页面已被神秘拦截" : initialLang === "ja" ? "このページは和歌山に配布されました" : "404:Not found";
-const initialHome = initialLang === "zh" ? "返回 Local" : initialLang === "ja" ? "Localへ戻る" : "Back to Local";
+const initialEnglish = initialLang === "en";
 ---
 
 <SiteShell title="404 - Re-Player">
   <main id="errorPage" class="error-page" data-lang={initialLang} data-path={currentPath}>
-    <div class="error-mark">404</div>
-    <p id="errorMessage" class="error-message">{initialMessage}</p>
-    <p id="errorTree" class="error-tree">Trees: {currentPath}</p>
-    <a href="/Local" id="errorHome">{initialHome}</a>
+    <svg class="error-logo" viewBox="0 0 96 120" role="img" aria-label="Re-Player">
+      <path fill="#F7F7F7" d="M11 73 34 11h27l24 62-19-9-9-32-11 32z"/>
+      <path fill="#AFEEEE" d="M34 73c9 6 20 6 30 0 1 16-4 29-15 36-11-6-17-19-15-36Z"/>
+      <path fill="#7FD8DE" d="M40 78c6 4 13 4 20 1-1 10-4 17-10 22-6-4-10-11-10-23Z"/>
+    </svg>
+    <p id="errorMessage" class="error-message">
+      <span id="errorCode" class="error-code" hidden={!initialEnglish}>404:</span>
+      <span id="errorCopy">{initialEnglish ? "Not found" : initialMessage}</span>
+    </p>
+    <p id="errorTree" class="error-path">Path: {currentPath}</p>
   </main>
   <script is:inline>
     (() => {
       const page = document.querySelector<HTMLElement>("#errorPage");
-      const message = document.querySelector<HTMLElement>("#errorMessage");
+      const code = document.querySelector<HTMLElement>("#errorCode");
+      const copy = document.querySelector<HTMLElement>("#errorCopy");
       const tree = document.querySelector<HTMLElement>("#errorTree");
-      const home = document.querySelector<HTMLAnchorElement>("#errorHome");
-      if (!page || !message || !tree || !home) return;
+      if (!page || !code || !copy || !tree) return;
       const saved = document.cookie.split("; ").find((part) => part.startsWith("rp_l="))?.slice(5) || "";
       const browser = (navigator.language || "").toLowerCase();
       const valid = (value) => value === "zh" || value === "ja" || value === "en";
@@ -31,12 +37,14 @@ const initialHome = initialLang === "zh" ? "返回 Local" : initialLang === "ja"
         page.dataset.lang = lang;
         document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
         const messages = {
-          zh: ["此页面已被神秘拦截", "Trees: "+page.dataset.path, "返回 Local"],
-          ja: ["このページは和歌山に配布されました", "Trees: "+page.dataset.path, "Localへ戻る"],
-          en: ["404:Not found", "Trees: "+page.dataset.path, "Back to Local"]
+          zh: "此页面已被神秘拦截",
+          ja: "このページは和歌山に配布されました",
+          en: "Not found"
         };
         const text = messages[lang] || messages.en;
-        message.textContent = text[0]; tree.textContent = text[1]; home.textContent = text[2];
+        code.hidden = lang !== "en";
+        copy.textContent = text;
+        tree.textContent = "Path: " + page.dataset.path;
       };
       const localLang = valid(saved) ? saved : browser.startsWith("zh") ? "zh" : browser.startsWith("ja") ? "ja" : "en";
       apply(localLang);
@@ -46,11 +54,11 @@ const initialHome = initialLang === "zh" ? "返回 Local" : initialLang === "ja"
     })();
   </script>
   <style>
-    :global(html), :global(body) { margin: 0; min-height: 100%; background: #101214; }
-    .error-page { min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 24px; box-sizing: border-box; color: #eaf1f0; background: radial-gradient(circle at 20% 15%, #233b39, #101214 55%); font-family: Inter, system-ui, sans-serif; text-align: center; }
-    .error-mark { color: #68d5b0; font-size: clamp(68px, 18vw, 180px); line-height: .8; letter-spacing: -.08em; font-weight: 700; }
-    .error-message { margin: 0; font-size: clamp(20px, 4vw, 42px); }
-    .error-tree { margin: 0; color: #9eafb0; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
-    .error-page a { color: #101614; background: #68d5b0; padding: 10px 18px; text-decoration: none; }
+    :global(html), :global(body) { margin: 0; min-height: 100%; background: #17171A; }
+    .error-page { min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 14px; padding: 24px; box-sizing: border-box; color: #F7F7F7; background: #17171A; font-family: Inter, system-ui, sans-serif; text-align: center; }
+    .error-logo { display: block; width: clamp(72px, 8vw, 104px); height: auto; margin-bottom: 4px; }
+    .error-message { display: flex; align-items: baseline; gap: .22em; margin: 0; font-size: clamp(23px, 2.5vw, 38px); font-weight: 700; line-height: 1.1; }
+    .error-code { color: #B8B4FF; }
+    .error-path { margin: 0; padding: 6px 9px; border: 1px solid #3D3D42; border-radius: 3px; color: #C6C7CB; background: #202023; font: 13px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
   </style>
 </SiteShell>
