@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Re Player">
-  <rect width="64" height="64" fill="#111111"/>
-  <rect x="5" y="5" width="54" height="54" fill="none" stroke="#d7d7d1" stroke-width="2"/>
-  <circle cx="32" cy="32" r="18" fill="none" stroke="#d7d7d1" stroke-width="2"/>
-  <circle cx="32" cy="32" r="10" fill="none" stroke="#ff174f" stroke-width="3"/>
-  <path d="M32 8v48M8 32h48" stroke="#555550"/>
-  <path d="m28 24 13 8-13 8V24Z" fill="#ff174f"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Orbit star">
+  <rect width="64" height="64" rx="14" fill="#ADD8E6"/>
+  <ellipse cx="32" cy="32" rx="25" ry="11" fill="none" stroke="#5B9BD5" stroke-width="2" transform="rotate(-25 32 32)"/>
+  <ellipse cx="32" cy="32" rx="25" ry="11" fill="none" stroke="#B0E0E6" stroke-width="2" transform="rotate(25 32 32)"/>
+  <path d="M32 12 35.5 28.5 47 32l-11.5 3.5L32 52l-3.5-16.5L17 32l11.5-3.5Z" fill="#D4F1F4" stroke="#B0E0E6" stroke-width="2" stroke-linejoin="round"/>
 </svg>

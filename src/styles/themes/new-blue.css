@@ -126,3 +126,83 @@ body:has(.media-app[data-theme="tech"]) {
   background: #dcecf6;
   color: #145887;
 }
+
+/* Tech icon system: compact blue instrument-panel controls with circuit-like edges. */
+.media-app[data-theme="tech"] .icon-button,
+.media-app[data-theme="tech"] .player-control {
+  position: relative;
+  border: 1px solid #8fb8d4;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #ffffff 0%, #e7f3fb 100%);
+  color: #145887;
+  box-shadow: 2px 2px 0 rgba(45, 134, 199, .16);
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.media-app[data-theme="tech"] .icon-button::before,
+.media-app[data-theme="tech"] .player-control::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  border: 1px solid rgba(45, 134, 199, .18);
+  border-radius: 1px;
+}
+
+.media-app[data-theme="tech"] .icon-button:hover,
+.media-app[data-theme="tech"] .icon-button:focus-visible,
+.media-app[data-theme="tech"] .player-control:hover,
+.media-app[data-theme="tech"] .player-control:focus-visible {
+  border-color: #2d86c7;
+  background: #d8ebf7;
+  color: #0c4d79;
+  transform: translate(-1px, -1px);
+  outline: none;
+}
+
+.media-app[data-theme="tech"] .icon-button:active,
+.media-app[data-theme="tech"] .player-control:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+.media-app[data-theme="tech"] .icon-button svg,
+.media-app[data-theme="tech"] .player-control svg {
+  position: relative;
+  z-index: 1;
+  stroke-width: 1.8;
+}
+
+.media-app[data-theme="tech"] .file-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #9fc8e3;
+  border-radius: 3px;
+  background: linear-gradient(145deg, #ffffff, #e0eff8);
+  color: #2d86c7;
+  box-shadow: 2px 2px 0 rgba(45, 134, 199, .12);
+}
+
+.media-app[data-theme="tech"] .file-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.9;
+}
+
+.media-app[data-theme="tech"] .file-icon-video { color: #176da1; }
+.media-app[data-theme="tech"] .file-icon-audio { color: #267e91; }
+.media-app[data-theme="tech"] .file-icon-image { color: #4471a3; }
+
+.media-app[data-theme="tech"] .language-box {
+  border: 1px solid #8fb8d4;
+  border-radius: 3px;
+  background: #f5fbff;
+  box-shadow: 2px 2px 0 rgba(45, 134, 199, .12);
+}
+
+.media-app[data-theme="tech"] .language-box > svg {
+  color: #2d86c7;
+  stroke-width: 1.8;
+}

@@ -1022,7 +1022,7 @@ const introMaxSeconds = (() => {
     function updateVideoControls() {
       const paused = d.video.paused;
       const muted = d.video.muted || d.video.volume === 0;
-      const fullscreen = document.fullscreenElement === d.videoFrame;
+      const fullscreen = isVideoFullscreen();
       const duration = Number.isFinite(d.video.duration) ? d.video.duration : 0;
       const rate = d.video.playbackRate || 1;
       d.videoFrame.dataset.playing = paused ? "0" : "1";
@@ -1211,10 +1211,34 @@ const introMaxSeconds = (() => {
       renderLyrics(primary && other ? buildLyrics(primary, other) : buildLyrics(primary || other || ""));
     }
 
+    type WebkitVideo = HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+      webkitExitFullscreen?: () => void;
+      webkitDisplayingFullscreen?: boolean;
+    };
+    type WebkitDocument = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void };
+    const webkitVideo = d.video as WebkitVideo;
+    const webkitDocument = document as WebkitDocument;
+    function isVideoFullscreen() {
+      return document.fullscreenElement === d.videoFrame || webkitDocument.webkitFullscreenElement === d.videoFrame || Boolean(webkitVideo.webkitDisplayingFullscreen);
+    }
+
     async function toggleFullscreen() {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await d.videoFrame.requestFullscreen();
-      d.videoFrame.focus({ preventScroll: true });
+      if (document.fullscreenElement || webkitDocument.webkitFullscreenElement || webkitVideo.webkitDisplayingFullscreen) {
+        if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
+        else webkitDocument.webkitExitFullscreen?.();
+      } else {
+        try {
+          if (d.videoFrame.requestFullscreen) await d.videoFrame.requestFullscreen();
+          else throw new Error("Fullscreen API unavailable");
+        } catch {
+          // iPadOS Safari exposes fullscreen on the video element rather than its custom container.
+          if (webkitVideo.webkitEnterFullscreen) webkitVideo.webkitEnterFullscreen();
+          else if ((d.videoFrame as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) await (d.videoFrame as HTMLElement & { webkitRequestFullscreen: () => Promise<void> }).webkitRequestFullscreen();
+          else throw new Error("Fullscreen is unavailable on this browser");
+        }
+      }
+      if (!webkitVideo.webkitDisplayingFullscreen) d.videoFrame.focus({ preventScroll: true });
     }
 
     function applyLanguage() {
@@ -1629,7 +1653,7 @@ const introMaxSeconds = (() => {
     d.videoControls.addEventListener("pointerenter", () => showControls());
     d.videoControls.addEventListener("pointerleave", () => scheduleControls());
     d.videoControls.addEventListener("click", () => showControls());
-    d.videoControls.addEventListener("focusin", () => showControls(document.fullscreenElement !== d.videoFrame));
+    d.videoControls.addEventListener("focusin", () => showControls(!isVideoFullscreen()));
     d.videoControls.addEventListener("focusout", () => showControls());
     d.seek.addEventListener("pointerdown", () => {
       seeking = true;
@@ -1691,6 +1715,12 @@ const introMaxSeconds = (() => {
       showControls();
       s.ass?.resize(true).catch(() => undefined);
     });
+    ["webkitbeginfullscreen", "webkitendfullscreen"].forEach((event) => {
+      d.video.addEventListener(event, () => {
+        updateVideoControls();
+        s.ass?.resize(true).catch(() => undefined);
+      });
+    });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && d.app.classList.contains("is-library-open")) {
         setLibraryOpen(false);
@@ -1698,7 +1728,7 @@ const introMaxSeconds = (() => {
       }
       if (d.videoFrame.hidden) return;
       const active = document.activeElement;
-      const controlsPlayer = document.fullscreenElement === d.videoFrame || active === d.videoFrame || (active instanceof Node && d.videoFrame.contains(active));
+      const controlsPlayer = isVideoFullscreen() || active === d.videoFrame || (active instanceof Node && d.videoFrame.contains(active));
       if (!controlsPlayer || active instanceof HTMLInputElement) return;
       const key = event.key.toLowerCase();
       if (key === " " || key === "k") togglePlay();
