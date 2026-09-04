@@ -288,7 +288,7 @@ import SiteShell from "../layouts/SiteShell.astro";
       .loading-menu-en { letter-spacing: 0.1em; }
     }
 
-    @media (orientation: portrait) {
+    @media (orientation: portrait) and (min-width: 641px) {
       .loading-scene {
         inset: 0 36% 0 0;
         clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%);
@@ -303,6 +303,44 @@ import SiteShell from "../layouts/SiteShell.astro";
       .loading-menu-en { font-size: clamp(16px, 6vw, 27px); }
       .loading-menu-cn { font-size: clamp(7px, 2.4vw, 11px); }
       .loading-language-popover { top: 57%; right: 4%; }
+    }
+
+    /* Phones use the Loading route only when opened directly; keep its canvas landscape. */
+    @media (max-width: 640px) and (orientation: portrait) {
+      .loading-screen {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 100vh;
+        height: 100vw;
+        transform: translate(-50%, -50%) rotate(90deg);
+        transform-origin: center;
+      }
+
+      .loading-scene {
+        inset: 0 20.5% 0 0;
+        clip-path: polygon(0 0, 97% 0, 83% 100%, 0 100%);
+      }
+
+      .loading-brand {
+        left: 3.1%;
+        bottom: 4.6%;
+        top: auto;
+        width: auto;
+        min-width: 34%;
+      }
+
+      .loading-brand-name {
+        gap: 0.28em;
+        font-size: clamp(20px, 3.2vw, 34px);
+      }
+
+      .loading-brand-meta { font-size: clamp(7px, 0.83vw, 12px); }
+      .loading-menu { top: 42%; width: 20.3%; gap: clamp(9px, 5vh, 34px); }
+      .loading-menu-item { min-height: clamp(42px, 7.5vh, 62px); padding-left: 5%; }
+      .loading-menu-en { font-size: clamp(17px, 2.6vw, 30px); }
+      .loading-menu-cn { font-size: clamp(7px, 0.72vw, 11px); }
+      .loading-language-popover { top: 77%; right: 20.3%; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -379,7 +417,7 @@ import SiteShell from "../layouts/SiteShell.astro";
     });
 
     document.querySelector('[data-loading-action="reIn"]')?.addEventListener("click", () => {
-      window.location.assign("/re");
+      window.location.assign("/Re");
     });
 
     document.addEventListener("click", (event) => {
