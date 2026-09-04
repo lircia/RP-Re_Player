@@ -28,8 +28,8 @@ import SiteShell from "../layouts/SiteShell.astro";
 import { getEnv } from "@lib/cloudflare";
 import { getVisitorTheme } from "@lib/theme";
 
-const isEntry = Astro.url.pathname === "/re";
-if (Astro.url.pathname === "/") return Astro.redirect("/re", 302);
+const isEntry = Astro.url.pathname === "/Re";
+if (Astro.url.pathname === "/") return Astro.redirect("/Re", 302);
 
 const env = await getEnv(Astro);
 const visitorTheme = await getVisitorTheme(env);
@@ -71,7 +71,7 @@ const introMaxSeconds = (() => {
       const visual = intro?.querySelector(".external-intro-media");
       const music = intro?.querySelector(".external-intro-audio");
       if (!intro || !visual) {
-        if (location.pathname === "/re") location.replace(/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "/Local" : "/Loading");
+        if (location.pathname === "/Re") location.replace(/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? "/Local" : "/Loading");
         return;
       }
       const maxSeconds = Number(intro.dataset.maxSeconds) || 0;
