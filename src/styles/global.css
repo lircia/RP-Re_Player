@@ -2891,10 +2891,10 @@ body:has(.login-screen)::before {
 }
 
 .media-app .app-topbar .app-brand strong {
-  color: #F0F8FF;
+  color: #A5F2F3;
   padding: 4px 8px;
   border-radius: 3px;
-  background: #145887;
+  background: #FFFFFF;
   font-family: inherit;
   font-size: 18px;
   font-weight: 800;
