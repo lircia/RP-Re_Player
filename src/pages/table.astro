@@ -63,23 +63,33 @@ const initialLang = saved === "zh" || saved === "ja" || saved === "en" ? saved :
           const start = Array.from(segment.slice(0, extension.index)).length;
           protectedRanges.push([start, chars.length]);
         }
-        const protectedLength = protectedRanges.reduce((total, [from, to]) => total + to - from, 0);
-        const actualLength = chars.length - protectedLength;
-        const removeCount = actualLength > 15 ? 11 : actualLength > 11 ? 7 : actualLength >= 6 ? 3 : 0;
-        if (!removeCount) return segment;
         const isProtected = (index) => protectedRanges.some(([from, to]) => index >= from && index < to);
         const removable = chars.map((_, index) => index).filter((index) => !isProtected(index));
-        if (removable.length < removeCount) return segment;
-        const middle = Math.floor((chars.length - removeCount) / 2);
-        for (let distance = 0; distance <= chars.length; distance += 1) {
-          const candidates = distance === 0 ? [middle] : [middle - distance, middle + distance];
-          for (const start of candidates) {
-            if (start < 0 || start + removeCount > chars.length) continue;
-            if (!Array.from({ length: removeCount }, (_, index) => start + index).every((index) => !isProtected(index))) continue;
-            return `${chars.slice(0, start).join("")}...${chars.slice(start + removeCount).join("")}`;
+        const removeCount = removable.length > 15
+          ? removable.length - 4
+          : removable.length > 11
+            ? 7
+            : removable.length >= 6
+              ? 3
+              : 0;
+        if (!removeCount) return segment;
+
+        const firstHidden = Math.floor((removable.length - removeCount) / 2);
+        const lastHidden = firstHidden + removeCount - 1;
+        const hidden = new Set(removable.slice(firstHidden, lastHidden + 1));
+        const output = [];
+        let ellipsisAdded = false;
+        for (let index = 0; index < chars.length; index += 1) {
+          if (hidden.has(index)) {
+            if (!ellipsisAdded) {
+              output.push("...");
+              ellipsisAdded = true;
+            }
+            continue;
           }
+          output.push(chars[index]);
         }
-        return segment;
+        return output.join("");
       };
       const compactPath = (value) => displayPath(value).split("/").map((segment) => compactSegment(segment)).join("/");
       const displayRegion = (value, country) => {
