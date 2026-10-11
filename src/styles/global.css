@@ -3159,6 +3159,11 @@ body:has(.login-screen)::before {
   animation: none;
 }
 
+.media-app .player-stage:has(.player-empty:not([hidden])),
+.media-app .player-stage:has(.file-frame:not([hidden])) {
+  background: var(--page);
+}
+
 .media-app .player-stage::before,
 .media-app .player-stage::after {
   content: none;
