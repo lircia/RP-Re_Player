@@ -96,7 +96,7 @@ body:has(.media-app[data-theme="gray"]) {
 
 .media-app[data-theme="gray"] .player-stage:has(.player-empty:not([hidden])) {
   border-color: #c7d0d4;
-  background: #dbd7d2;
+  background: var(--page);
 }
 
 .media-app[data-theme="gray"] .player-empty,

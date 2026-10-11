@@ -105,7 +105,7 @@ body:has(.media-app[data-theme="retro"]) {
 
 .media-app[data-theme="retro"] .player-stage:has(.player-empty:not([hidden])) {
   border-color: #7f8081;
-  background: #dbd7d2;
+  background: var(--page);
 }
 
 .media-app[data-theme="retro"] .player-empty,

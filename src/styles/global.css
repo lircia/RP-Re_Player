@@ -3073,6 +3073,7 @@ body:has(.login-screen)::before {
 
 .media-app .file-description {
   min-width: 0;
+  font-size: clamp(0.9rem, 1.35vw, 1.08rem);
   line-height: 1.75;
   overflow-wrap: anywhere;
 }
@@ -3115,6 +3116,24 @@ body:has(.login-screen)::before {
 
 .media-app .file-row.is-active .file-icon {
   border-color: transparent;
+}
+
+.media-app .library-pane .file-row.is-played {
+  border: 1px solid rgba(215, 234, 247, 0.72);
+  background: rgba(247, 251, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56), 0 5px 18px rgba(72, 112, 143, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.media-app .library-pane .file-row.is-played:hover {
+  border-color: rgba(184, 222, 244, 0.9);
+  background: rgba(247, 251, 255, 0.46);
+}
+
+.media-app .library-pane .file-row.is-active.is-played {
+  border-color: rgba(184, 222, 244, 0.94);
+  background: rgba(184, 222, 244, 0.26);
+  box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.62), 0 5px 18px rgba(72, 112, 143, 0.1);
 }
 
 .media-app .file-copy strong {

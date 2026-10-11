@@ -100,7 +100,7 @@ body:has(.media-app[data-theme="tech"]) {
 
 .media-app[data-theme="tech"] .player-stage:has(.player-empty:not([hidden])) {
   border-color: #9fc8e3;
-  background: #e6f4ff;
+  background: var(--page);
 }
 
 .media-app[data-theme="tech"] .player-empty,

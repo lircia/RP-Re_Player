@@ -101,7 +101,7 @@ body:has(.media-app[data-theme="future"]) {
 
 .media-app[data-theme="future"] .player-stage:has(.player-empty:not([hidden])) {
   border-color: #c5ddea;
-  background: #f0f8ff;
+  background: var(--page);
 }
 
 .media-app[data-theme="future"] .player-empty,

@@ -100,7 +100,7 @@ body:has(.media-app[data-theme="blue"]) {
 
 .media-app[data-theme="blue"] .player-stage:has(.player-empty:not([hidden])) {
   border-color: #c5ddea;
-  background: #f0f8ff;
+  background: var(--page);
   box-shadow: 0 20px 48px rgba(79, 139, 170, 0.11);
 }
 
