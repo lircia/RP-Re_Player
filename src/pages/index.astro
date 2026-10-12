@@ -675,6 +675,7 @@ const introMaxSeconds = (() => {
     let lyricFrame = 0;
     let itemAbortController: AbortController | null = null;
     let subtitleAbortController: AbortController | null = null;
+    let subtitleSelectionTouched = false;
     let statSession = 0;
     let statPlayed = false;
     let statProgress = 0;
@@ -1599,7 +1600,13 @@ const introMaxSeconds = (() => {
       return `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}.${String(centiseconds % 100).padStart(2, "0")}`;
     }
 
-    async function parseEmbeddedVideoSubtitles(item: MediaItem, request: number, route: number, signal: AbortSignal): Promise<EmbeddedSubtitle[]> {
+    async function parseEmbeddedVideoSubtitles(
+      item: MediaItem,
+      request: number,
+      route: number,
+      signal: AbortSignal,
+      onTracks?: (tracks: EmbeddedSubtitle[]) => void
+    ): Promise<EmbeddedSubtitle[]> {
       if (!/\.mkv(?:$|[?#])/i.test(item.name) || !item.url) return [];
       const response = await fetch(item.url, { signal });
       if (!response.ok || !response.body) return [];
@@ -1642,6 +1649,15 @@ const introMaxSeconds = (() => {
               language: currentTrack.language || "",
               default: currentTrack.default !== false
             });
+            const available = [...tracks.values()]
+              .filter((track) => track.type === 17 && /^S_TEXT\/ASS$/i.test(track.codec) && track.privateData)
+              .map((track, index) => ({
+                value: `embedded:${track.number}`,
+                label: track.name.trim() || track.language.trim() || `${t("subtitleTrack")} ${index + 1}`,
+                raw: "",
+                isDefault: track.default
+              }));
+            if (available.length && isCurrentItemLoad(request, route, signal)) onTracks?.(available);
             currentTrack = null;
           }
           return;
@@ -1767,6 +1783,7 @@ const introMaxSeconds = (() => {
       const request = itemRequest;
       const route = routeRequest;
       s.subtitleSelection = value;
+      subtitleSelectionTouched = true;
       renderSubtitleOptions();
       try {
         await loadSelectedVideoSubtitle(s.current, request, route, controller.signal);
@@ -1862,18 +1879,23 @@ const introMaxSeconds = (() => {
         d.video.load();
         updateVideoControls();
         showControls();
-        const subtitleController = new AbortController();
-        subtitleAbortController = subtitleController;
+        subtitleSelectionTouched = false;
         let embedded: EmbeddedSubtitle[] = [];
         try {
-          embedded = await parseEmbeddedVideoSubtitles(item, request, route, subtitleController.signal);
+          embedded = await parseEmbeddedVideoSubtitles(item, request, route, itemController.signal, (available) => {
+            s.embeddedSubtitles = available;
+            renderSubtitleOptions();
+          });
         } catch {
           // Embedded subtitles are optional; the video remains playable if parsing fails.
         }
-        if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
+        if (!isCurrentItemLoad(request, route, itemController.signal)) return;
         s.embeddedSubtitles = embedded;
-        if (!item.sub) s.subtitleSelection = preferredEmbeddedSubtitle()?.value || "off";
+        if (!item.sub && !subtitleSelectionTouched) s.subtitleSelection = preferredEmbeddedSubtitle()?.value || "off";
         renderSubtitleOptions();
+        subtitleAbortController?.abort();
+        const subtitleController = new AbortController();
+        subtitleAbortController = subtitleController;
         try {
           await loadSelectedVideoSubtitle(item, request, route, subtitleController.signal);
         } catch {
