@@ -17,6 +17,7 @@
     "@astrojs/cloudflare": "latest",
     "@lucide/astro": "^1.24.0",
     "astro": "latest",
+    "ebml": "^3.0.0",
     "jassub": "^2.5.7",
     "typescript": "latest"
   },

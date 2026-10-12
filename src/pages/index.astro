@@ -358,6 +358,7 @@ const introMaxSeconds = (() => {
 
   <script>
     import JASSUB from "jassub";
+    import { Decoder as EbmlDecoder } from "ebml/lib/ebml.esm.js";
     import { buildLyrics, type LyricCue, type LyricWord } from "../lib/lrc";
     import { publicCoverPath } from "../lib/pseudo";
     import { parentPseudoPath, pseudoPathFromVisitorUrl, visitorUrl } from "../lib/visitor-route";
@@ -649,6 +650,7 @@ const introMaxSeconds = (() => {
     let subtitleAbortController: AbortController | null = null;
     let statSession = 0;
     let statPlayed = false;
+    let statProgress = 0;
     let progressStamp = 0;
     const cookie = {
       get(name: string) {
@@ -926,18 +928,23 @@ const introMaxSeconds = (() => {
       statSession += 1;
       statPlayed = false;
       statCompleted = false;
+      statProgress = 0;
       if (stat) s.stat = stat;
       renderStats();
     }
 
-    function recordStat(event: "play" | "complete") {
+    function recordStat(event: "play" | "complete" | "progress", progress = 0) {
       if (!s.current) return Promise.resolve();
       if (event === "play") {
         if (statPlayed) return statTask;
         statPlayed = true;
-      } else {
+      } else if (event === "complete") {
         if (statCompleted) return statTask;
         statCompleted = true;
+      } else {
+        const next = Math.min(1, Math.max(0, progress));
+        if (next <= statProgress) return statTask;
+        statProgress = next;
       }
 
       const session = statSession;
@@ -947,7 +954,7 @@ const introMaxSeconds = (() => {
         const response = await fetch("/api/public/stat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ path, event })
+          body: JSON.stringify({ path, event, progress: event === "progress" ? progress : undefined })
         });
         const data = (await response.json()) as { ok?: boolean; stat?: MediaStat };
         if (!response.ok || !data.ok || !data.stat) return;
@@ -956,6 +963,13 @@ const introMaxSeconds = (() => {
         renderStats();
       }).catch(() => undefined);
       return statTask;
+    }
+
+    function recordProgress(media: HTMLMediaElement) {
+      const duration = Number.isFinite(media.duration) && media.duration > 0 ? media.duration : 0;
+      if (!duration || !s.current || !isProgressTracked(s.current)) return;
+      const progress = media.currentTime / duration;
+      if (progress > statProgress && progress > 0.5) recordStat("progress", progress);
     }
 
     function recordPlay() {
@@ -1492,14 +1506,8 @@ const introMaxSeconds = (() => {
       return request === itemRequest && route === routeRequest && !signal.aborted;
     }
 
-    async function loadVideoSubtitle(item: MediaItem, request: number, route: number, signal: AbortSignal) {
-      if (!item.sub) return;
-      const subUrl = `/api/public/sub?path=${encodeURIComponent(item.path)}`;
-      const response = await fetch(subUrl, { signal });
-      if (!response.ok) throw new Error("Subtitle request failed.");
-      const rawSubtitle = await response.text();
-      if (!isCurrentItemLoad(request, route, signal)) return;
-
+    async function installVideoSubtitle(rawSubtitle: string, request: number, route: number, signal: AbortSignal) {
+      if (!rawSubtitle.trim() || !isCurrentItemLoad(request, route, signal)) return;
       const subContent = normalizeAssFonts(rawSubtitle, "Noto Sans SC");
       let ass: JASSUB | null = null;
       try {
@@ -1534,6 +1542,110 @@ const introMaxSeconds = (() => {
         }
         throw error;
       }
+    }
+
+    function textFromEbml(value: unknown) {
+      if (typeof value === "string") return value;
+      if (value instanceof Uint8Array) return new TextDecoder().decode(value);
+      return value && typeof (value as { toString?: () => string }).toString === "function"
+        ? (value as { toString: () => string }).toString()
+        : "";
+    }
+
+    function assTime(seconds: number) {
+      const centiseconds = Math.max(0, Math.floor((Number(seconds) || 0) * 100));
+      const hours = Math.floor(centiseconds / 360000);
+      const minutes = Math.floor((centiseconds % 360000) / 6000);
+      const rest = Math.floor((centiseconds % 6000) / 100);
+      return `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}.${String(centiseconds % 100).padStart(2, "0")}`;
+    }
+
+    async function loadEmbeddedVideoSubtitle(item: MediaItem, request: number, route: number, signal: AbortSignal) {
+      if (item.sub || !/\.mkv(?:$|[?#])/i.test(item.name) || !item.url) return false;
+      const response = await fetch(item.url, { signal });
+      if (!response.ok) return false;
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (!isCurrentItemLoad(request, route, signal)) return false;
+
+      type Track = { number: number; type: number; codec: string; privateData: string; name: string; language: string; default: boolean };
+      type Cue = { track: number; at: number; duration: number; payload: string };
+      const tracks = new Map<number, Track>();
+      const cues: Cue[] = [];
+      const decoder = new EbmlDecoder();
+      let scale = 1_000_000;
+      let clusterTime = 0;
+      let currentTrack: Partial<Track> | null = null;
+      let pendingGroup: { track: number; relative: number; payload: string; duration?: number } | null = null;
+      decoder.on("data", (entry: [string, Record<string, any>]) => {
+        const [kind, tag] = entry;
+        if (tag.name === "TrackEntry" && kind === "start") {
+          currentTrack = {};
+          return;
+        }
+        if (currentTrack) {
+          if (tag.name === "TrackNumber") currentTrack.number = Number(tag.value);
+          else if (tag.name === "TrackType") currentTrack.type = Number(tag.value);
+          else if (tag.name === "CodecID") currentTrack.codec = textFromEbml(tag.value);
+          else if (tag.name === "CodecPrivate") currentTrack.privateData = textFromEbml(tag.data);
+          else if (tag.name === "Name") currentTrack.name = textFromEbml(tag.value);
+          else if (tag.name === "Language") currentTrack.language = textFromEbml(tag.value);
+          else if (tag.name === "FlagDefault") currentTrack.default = Boolean(tag.value);
+          if (tag.name === "TrackEntry" && kind === "end" && currentTrack.number) {
+            tracks.set(currentTrack.number, {
+              number: currentTrack.number,
+              type: currentTrack.type || 0,
+              codec: currentTrack.codec || "",
+              privateData: currentTrack.privateData || "",
+              name: currentTrack.name || "",
+              language: currentTrack.language || "",
+              default: currentTrack.default !== false
+            });
+            currentTrack = null;
+          }
+          return;
+        }
+        if (tag.name === "TimecodeScale") scale = Number(tag.value) || scale;
+        else if (tag.name === "Timecode") clusterTime = Number(tag.value) || 0;
+        else if (tag.name === "Block" && kind === "tag") {
+          pendingGroup = { track: Number(tag.track), relative: Number(tag.value) || 0, payload: textFromEbml(tag.payload) };
+        } else if (tag.name === "BlockDuration" && pendingGroup) {
+          pendingGroup.duration = Number(tag.value) || 0;
+        } else if (tag.name === "BlockGroup" && kind === "end" && pendingGroup) {
+          cues.push({ track: pendingGroup.track, at: (clusterTime + pendingGroup.relative) * scale / 1_000_000, duration: (pendingGroup.duration || 0) * scale / 1_000_000, payload: pendingGroup.payload });
+          pendingGroup = null;
+        }
+      });
+      decoder.write(bytes);
+      decoder.end();
+
+      const subtitleTracks = [...tracks.values()].filter((track) => track.type === 17 && track.codec === "S_TEXT/ASS" && track.privateData);
+      if (!subtitleTracks.length) return false;
+      const preferred = subtitleTracks.find((track) => /chs|简|中文|zh/i.test(`${track.name} ${track.language}`))
+        || subtitleTracks.find((track) => track.default)
+        || subtitleTracks[0];
+      const selected = cues.filter((cue) => cue.track === preferred.number).sort((a, b) => a.at - b.at);
+      const events = selected.map((cue, index) => {
+        const fields = cue.payload.split(",");
+        if (fields.length < 9) return "";
+        const end = cue.duration > 0 ? cue.at + cue.duration : selected[index + 1]?.at || cue.at + 3;
+        return `Dialogue: ${fields[1]},${assTime(cue.at)},${assTime(end)},${fields.slice(2).join(",")}`;
+      }).filter(Boolean);
+      if (!events.length || !isCurrentItemLoad(request, route, signal)) return false;
+      const script = preferred.privateData
+        .replace(/^\uFEFF/, "")
+        .replace(/\r\n?/g, "\n")
+        .replace(/\n\[Events\][\s\S]*$/i, "")
+        .trimEnd();
+      await installVideoSubtitle(`${script}\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}`, request, route, signal);
+      return true;
+    }
+
+    async function loadVideoSubtitle(item: MediaItem, request: number, route: number, signal: AbortSignal) {
+      if (!item.sub) return;
+      const subUrl = `/api/public/sub?path=${encodeURIComponent(item.path)}`;
+      const response = await fetch(subUrl, { signal });
+      if (!response.ok) throw new Error("Subtitle request failed.");
+      await installVideoSubtitle(await response.text(), request, route, signal);
     }
 
     async function startVideoPlayback(request: number, route: number, signal: AbortSignal) {
@@ -1622,6 +1734,14 @@ const introMaxSeconds = (() => {
         showControls();
         if (!item.sub) {
           delete d.videoFrame.dataset.subtitleReady;
+          const subtitleController = new AbortController();
+          subtitleAbortController = subtitleController;
+          try {
+            await loadEmbeddedVideoSubtitle(item, request, route, subtitleController.signal);
+          } catch {
+            // Embedded subtitles are optional; the video remains playable if parsing fails.
+          }
+          if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
           videoPlaybackStarted = await startVideoPlayback(request, route, itemController.signal);
         } else {
           const subtitleController = new AbortController();
@@ -1696,6 +1816,7 @@ const introMaxSeconds = (() => {
       syncLyrics();
       updateAudioControls();
       saveProgress();
+      recordProgress(d.audio);
     });
     d.audio.addEventListener("seeked", () => syncLyrics(true));
     ["play", "pause", "durationchange", "loadedmetadata", "volumechange"].forEach((event) => {
@@ -1850,7 +1971,10 @@ const introMaxSeconds = (() => {
       d.video.addEventListener(event, () => {
         const controlsHidden = d.videoFrame.classList.contains("controls-hidden");
         updateVideoControls();
-        if (event === "timeupdate") saveProgress();
+        if (event === "timeupdate") {
+          saveProgress();
+          recordProgress(d.video);
+        }
         if (event === "play") {
           scheduleControls();
           recordPlay();
