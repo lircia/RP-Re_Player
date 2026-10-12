@@ -335,6 +335,12 @@ const introMaxSeconds = (() => {
               <span id="lyricsBadge" class="media-badge subtitle-badge" hidden>
                 <Music2 size={14} /> LRC
               </span>
+              <label id="subtitleSelector" class="subtitle-selector" hidden>
+                <span class="sr-only" data-i18n="subtitleTrack">Subtitle</span>
+                <select id="subtitleSelect" aria-label="Subtitle">
+                  <option value="off" data-i18n="subtitleOff">Off</option>
+                </select>
+              </label>
             </div>
             <h2 id="mediaTitle" data-i18n="nothingSelected">Nothing selected</h2>
             <p id="mediaPath">/</p>
@@ -386,6 +392,9 @@ const introMaxSeconds = (() => {
         loadFailed: "Could not load this folder.",
         itemFailed: "Could not open this media.",
         subFailed: "The ASS subtitle could not be loaded.",
+        subtitleTrack: "Subtitle",
+        subtitleOff: "Off",
+        externalSubtitle: "External subtitle",
         playFailed: "The video could not be started.",
         playing: "Now playing",
         buffering: "Buffering...",
@@ -433,6 +442,9 @@ const introMaxSeconds = (() => {
         loadFailed: "无法读取此目录。",
         itemFailed: "无法打开此媒体。",
         subFailed: "ASS 字幕加载失败。",
+        subtitleTrack: "字幕",
+        subtitleOff: "关闭",
+        externalSubtitle: "外置字幕",
         playFailed: "视频无法开始播放。",
         playing: "正在播放",
         buffering: "正在缓冲...",
@@ -480,6 +492,9 @@ const introMaxSeconds = (() => {
         loadFailed: "フォルダーを読み込めませんでした。",
         itemFailed: "メディアを開けませんでした。",
         subFailed: "ASS字幕を読み込めませんでした。",
+        subtitleTrack: "字幕",
+        subtitleOff: "オフ",
+        externalSubtitle: "外部字幕",
         playFailed: "動画を再生できませんでした。",
         playing: "再生中",
         buffering: "バッファリング中...",
@@ -516,6 +531,12 @@ const introMaxSeconds = (() => {
       rate: number;
     };
     type SavedProgress = { p: string; t: number; d?: number; e?: 1 };
+    type EmbeddedSubtitle = {
+      value: string;
+      label: string;
+      raw: string;
+      isDefault: boolean;
+    };
     type MediaItem = {
       id?: string;
       name: string;
@@ -540,6 +561,8 @@ const introMaxSeconds = (() => {
       current: MediaItem | null;
       lang: Lang;
       ass: JASSUB | null;
+      embeddedSubtitles: EmbeddedSubtitle[];
+      subtitleSelection: string;
       lyrics: LyricCue[];
       lyricIndex: number;
       lyricToken: number;
@@ -556,6 +579,8 @@ const introMaxSeconds = (() => {
       current: null,
       lang: "en",
       ass: null,
+      embeddedSubtitles: [],
+      subtitleSelection: "off",
       lyrics: [],
       lyricIndex: -1,
       lyricToken: 0,
@@ -628,6 +653,8 @@ const introMaxSeconds = (() => {
       lyricsList: document.querySelector<HTMLElement>("#lyricsList")!,
       kind: document.querySelector<HTMLElement>("#kindBadge")!,
       subtitle: document.querySelector<HTMLElement>("#subtitleBadge")!,
+      subtitleSelector: document.querySelector<HTMLElement>("#subtitleSelector")!,
+      subtitleSelect: document.querySelector("#subtitleSelect") as unknown as HTMLSelectElement,
       lyricsBadge: document.querySelector<HTMLElement>("#lyricsBadge")!,
       nowPlaying: document.querySelector<HTMLElement>(".now-playing")!,
       title: document.querySelector<HTMLElement>("#mediaTitle")!,
@@ -1367,6 +1394,7 @@ const introMaxSeconds = (() => {
         const key = el.dataset.i18nPlaceholder as keyof (typeof c)["en"];
         if (key && c[s.lang][key]) el.placeholder = t(key);
       });
+      d.subtitleSelect.ariaLabel = t("subtitleTrack");
       updateVideoControls();
       updateAudioControls();
       setLibraryOpen(d.app.classList.contains("is-library-open"));
@@ -1401,10 +1429,10 @@ const introMaxSeconds = (() => {
       d.kind.textContent = t(s.current.kind || "video");
       d.title.textContent = s.current.name;
       d.mediaPath.textContent = s.current.artist || displayPath(s.current.path);
-      d.subtitle.hidden = !s.current.sub;
       d.lyricsBadge.hidden = !s.current.lrc && !s.current.lrc2;
       d.nowPlaying.hidden = s.current.kind === "file";
       d.fileDownload.textContent = t("download");
+      renderSubtitleOptions();
     }
 
     async function load(path = s.path, query = d.search.value.trim(), navigation: NavigationMode = "none") {
@@ -1458,10 +1486,10 @@ const introMaxSeconds = (() => {
       saveProgress(true);
       subtitleAbortController?.abort();
       subtitleAbortController = null;
-      if (s.ass) {
-        await s.ass.destroy().catch(() => undefined);
-        s.ass = null;
-      }
+      await destroyVideoSubtitle();
+      s.embeddedSubtitles = [];
+      s.subtitleSelection = "off";
+      renderSubtitleOptions();
       d.video.pause();
       d.audio.pause();
       d.video.removeAttribute("src");
@@ -1506,8 +1534,16 @@ const introMaxSeconds = (() => {
       return request === itemRequest && route === routeRequest && !signal.aborted;
     }
 
+    async function destroyVideoSubtitle() {
+      const ass = s.ass;
+      s.ass = null;
+      delete d.videoFrame.dataset.subtitleReady;
+      if (ass) await ass.destroy().catch(() => undefined);
+    }
+
     async function installVideoSubtitle(rawSubtitle: string, request: number, route: number, signal: AbortSignal) {
       if (!rawSubtitle.trim() || !isCurrentItemLoad(request, route, signal)) return;
+      await destroyVideoSubtitle();
       const subContent = normalizeAssFonts(rawSubtitle, "Noto Sans SC");
       let ass: JASSUB | null = null;
       try {
@@ -1546,7 +1582,10 @@ const introMaxSeconds = (() => {
 
     function textFromEbml(value: unknown) {
       if (typeof value === "string") return value;
-      if (value instanceof Uint8Array) return new TextDecoder().decode(value);
+      if (value instanceof ArrayBuffer) return new TextDecoder().decode(new Uint8Array(value));
+      if (ArrayBuffer.isView(value)) {
+        return new TextDecoder().decode(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+      }
       return value && typeof (value as { toString?: () => string }).toString === "function"
         ? (value as { toString: () => string }).toString()
         : "";
@@ -1560,12 +1599,11 @@ const introMaxSeconds = (() => {
       return `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}.${String(centiseconds % 100).padStart(2, "0")}`;
     }
 
-    async function loadEmbeddedVideoSubtitle(item: MediaItem, request: number, route: number, signal: AbortSignal) {
-      if (item.sub || !/\.mkv(?:$|[?#])/i.test(item.name) || !item.url) return false;
+    async function parseEmbeddedVideoSubtitles(item: MediaItem, request: number, route: number, signal: AbortSignal): Promise<EmbeddedSubtitle[]> {
+      if (!/\.mkv(?:$|[?#])/i.test(item.name) || !item.url) return [];
       const response = await fetch(item.url, { signal });
-      if (!response.ok) return false;
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (!isCurrentItemLoad(request, route, signal)) return false;
+      if (!response.ok || !response.body) return [];
+      if (!isCurrentItemLoad(request, route, signal)) return [];
 
       type Track = { number: number; type: number; codec: string; privateData: string; name: string; language: string; default: boolean };
       type Cue = { track: number; at: number; duration: number; payload: string };
@@ -1576,6 +1614,10 @@ const introMaxSeconds = (() => {
       let clusterTime = 0;
       let currentTrack: Partial<Track> | null = null;
       let pendingGroup: { track: number; relative: number; payload: string; duration?: number } | null = null;
+      let decoderError: unknown = null;
+      decoder.on("error", (error: unknown) => {
+        decoderError = error;
+      });
       decoder.on("data", (entry: [string, Record<string, any>]) => {
         const [kind, tag] = entry;
         if (tag.name === "TrackEntry" && kind === "start") {
@@ -1606,8 +1648,12 @@ const introMaxSeconds = (() => {
         }
         if (tag.name === "TimecodeScale") scale = Number(tag.value) || scale;
         else if (tag.name === "Timecode") clusterTime = Number(tag.value) || 0;
-        else if (tag.name === "Block" && kind === "tag") {
+        else if ((tag.name === "Block" || tag.name === "SimpleBlock") && kind === "tag") {
           pendingGroup = { track: Number(tag.track), relative: Number(tag.value) || 0, payload: textFromEbml(tag.payload) };
+          if (tag.name === "SimpleBlock") {
+            cues.push({ track: pendingGroup.track, at: (clusterTime + pendingGroup.relative) * scale / 1_000_000, duration: 0, payload: pendingGroup.payload });
+            pendingGroup = null;
+          }
         } else if (tag.name === "BlockDuration" && pendingGroup) {
           pendingGroup.duration = Number(tag.value) || 0;
         } else if (tag.name === "BlockGroup" && kind === "end" && pendingGroup) {
@@ -1615,37 +1661,119 @@ const introMaxSeconds = (() => {
           pendingGroup = null;
         }
       });
-      decoder.write(bytes);
+      const reader = response.body.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!isCurrentItemLoad(request, route, signal)) return [];
+          decoder.write(value);
+          if (decoderError) throw decoderError;
+        }
+      } finally {
+        reader.releaseLock();
+      }
       decoder.end();
+      if (decoderError) throw decoderError;
 
-      const subtitleTracks = [...tracks.values()].filter((track) => track.type === 17 && track.codec === "S_TEXT/ASS" && track.privateData);
-      if (!subtitleTracks.length) return false;
-      const preferred = subtitleTracks.find((track) => /chs|简|中文|zh/i.test(`${track.name} ${track.language}`))
-        || subtitleTracks.find((track) => track.default)
-        || subtitleTracks[0];
-      const selected = cues.filter((cue) => cue.track === preferred.number).sort((a, b) => a.at - b.at);
-      const events = selected.map((cue, index) => {
-        const fields = cue.payload.split(",");
-        if (fields.length < 9) return "";
-        const end = cue.duration > 0 ? cue.at + cue.duration : selected[index + 1]?.at || cue.at + 3;
-        return `Dialogue: ${fields[1]},${assTime(cue.at)},${assTime(end)},${fields.slice(2).join(",")}`;
-      }).filter(Boolean);
-      if (!events.length || !isCurrentItemLoad(request, route, signal)) return false;
-      const script = preferred.privateData
-        .replace(/^\uFEFF/, "")
-        .replace(/\r\n?/g, "\n")
-        .replace(/\n\[Events\][\s\S]*$/i, "")
-        .trimEnd();
-      await installVideoSubtitle(`${script}\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}`, request, route, signal);
-      return true;
+      const subtitleTracks = [...tracks.values()].filter((track) => track.type === 17 && /^S_TEXT\/ASS$/i.test(track.codec) && track.privateData);
+      if (!subtitleTracks.length || !isCurrentItemLoad(request, route, signal)) return [];
+      return subtitleTracks.map((track, index) => {
+        const selected = cues.filter((cue) => cue.track === track.number).sort((a, b) => a.at - b.at);
+        const events = selected.map((cue, cueIndex) => {
+          const fields = cue.payload.split(",");
+          if (fields.length < 9) return "";
+          const end = cue.duration > 0 ? cue.at + cue.duration : selected[cueIndex + 1]?.at || cue.at + 3;
+          return `Dialogue: ${fields[1]},${assTime(cue.at)},${assTime(end)},${fields.slice(2).join(",")}`;
+        }).filter(Boolean);
+        if (!events.length) return null;
+        const script = track.privateData
+          .replace(/^\uFEFF/, "")
+          .replace(/\r\n?/g, "\n")
+          .replace(/\n\[Events\][\s\S]*$/i, "")
+          .trimEnd();
+        return {
+          value: `embedded:${track.number}`,
+          label: track.name.trim() || track.language.trim() || `${t("subtitleTrack")} ${index + 1}`,
+          raw: `${script}\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}`,
+          isDefault: track.default
+        };
+      }).filter((track): track is EmbeddedSubtitle => Boolean(track));
     }
 
-    async function loadVideoSubtitle(item: MediaItem, request: number, route: number, signal: AbortSignal) {
-      if (!item.sub) return;
+    async function loadExternalVideoSubtitle(item: MediaItem, signal: AbortSignal) {
+      if (!item.sub) return "";
       const subUrl = `/api/public/sub?path=${encodeURIComponent(item.path)}`;
       const response = await fetch(subUrl, { signal });
       if (!response.ok) throw new Error("Subtitle request failed.");
-      await installVideoSubtitle(await response.text(), request, route, signal);
+      return response.text();
+    }
+
+    function preferredEmbeddedSubtitle() {
+      return s.embeddedSubtitles.find((track) => /chs|简|中文|zh/i.test(track.label))
+        || s.embeddedSubtitles.find((track) => track.isDefault)
+        || s.embeddedSubtitles[0];
+    }
+
+    function renderSubtitleOptions() {
+      const current = s.current;
+      d.subtitleSelect.replaceChildren();
+      const off = document.createElement("option");
+      off.value = "off";
+      off.dataset.i18n = "subtitleOff";
+      off.textContent = t("subtitleOff");
+      d.subtitleSelect.add(off);
+      if (current?.sub) {
+        const external = document.createElement("option");
+        external.value = "external";
+        external.dataset.i18n = "externalSubtitle";
+        external.textContent = t("externalSubtitle");
+        d.subtitleSelect.add(external);
+      }
+      for (const track of s.embeddedSubtitles) {
+        const option = document.createElement("option");
+        option.value = track.value;
+        option.textContent = track.label;
+        d.subtitleSelect.add(option);
+      }
+      if (![...d.subtitleSelect.options].some((option) => option.value === s.subtitleSelection)) {
+        s.subtitleSelection = current?.sub ? "external" : "off";
+      }
+      d.subtitleSelect.value = s.subtitleSelection;
+      d.subtitleSelector.hidden = s.embeddedSubtitles.length === 0;
+      d.subtitle.hidden = s.subtitleSelection === "off";
+    }
+
+    async function loadSelectedVideoSubtitle(item: MediaItem, request: number, route: number, signal: AbortSignal) {
+      if (s.subtitleSelection === "off") {
+        await destroyVideoSubtitle();
+        renderSubtitleOptions();
+        return false;
+      }
+      const raw = s.subtitleSelection === "external"
+        ? await loadExternalVideoSubtitle(item, signal)
+        : s.embeddedSubtitles.find((track) => track.value === s.subtitleSelection)?.raw || "";
+      if (!raw) return false;
+      await installVideoSubtitle(raw, request, route, signal);
+      renderSubtitleOptions();
+      return true;
+    }
+
+    async function changeVideoSubtitle(value: string) {
+      if (!s.current || s.current.kind !== "video") return;
+      subtitleAbortController?.abort();
+      const controller = new AbortController();
+      subtitleAbortController = controller;
+      const request = itemRequest;
+      const route = routeRequest;
+      s.subtitleSelection = value;
+      renderSubtitleOptions();
+      try {
+        await loadSelectedVideoSubtitle(s.current, request, route, controller.signal);
+        if (isCurrentItemLoad(request, route, controller.signal)) setStatus(d.playerStatus, t("playing"));
+      } catch (error) {
+        if (isCurrentItemLoad(request, route, controller.signal)) setStatus(d.playerStatus, error instanceof Error ? error.message : t("subFailed"), "error");
+      }
     }
 
     async function startVideoPlayback(request: number, route: number, signal: AbortSignal) {
@@ -1686,6 +1814,8 @@ const introMaxSeconds = (() => {
       await clearMedia();
       if (!isCurrentItemLoad(request, route, itemController.signal)) return;
       s.current = item;
+      s.embeddedSubtitles = [];
+      s.subtitleSelection = item.sub ? "external" : "off";
       resetStatSession(data.stat || { plays: 0, completions: 0, rate: 0 });
       if (item.kind === "audio" && !s.audioQueue.some((entry) => entry.path === item.path)) s.audioQueue = audioQueue;
       if (item.kind === "video" && !s.videoQueue.some((entry) => entry.path === item.path)) s.videoQueue = videoQueue;
@@ -1732,33 +1862,39 @@ const introMaxSeconds = (() => {
         d.video.load();
         updateVideoControls();
         showControls();
-        if (!item.sub) {
-          delete d.videoFrame.dataset.subtitleReady;
-          const subtitleController = new AbortController();
-          subtitleAbortController = subtitleController;
-          try {
-            await loadEmbeddedVideoSubtitle(item, request, route, subtitleController.signal);
-          } catch {
-            // Embedded subtitles are optional; the video remains playable if parsing fails.
-          }
+        const subtitleController = new AbortController();
+        subtitleAbortController = subtitleController;
+        let embedded: EmbeddedSubtitle[] = [];
+        try {
+          embedded = await parseEmbeddedVideoSubtitles(item, request, route, subtitleController.signal);
+        } catch {
+          // Embedded subtitles are optional; the video remains playable if parsing fails.
+        }
+        if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
+        s.embeddedSubtitles = embedded;
+        if (!item.sub) s.subtitleSelection = preferredEmbeddedSubtitle()?.value || "off";
+        renderSubtitleOptions();
+        try {
+          await loadSelectedVideoSubtitle(item, request, route, subtitleController.signal);
+        } catch {
           if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
-          videoPlaybackStarted = await startVideoPlayback(request, route, itemController.signal);
-        } else {
-          const subtitleController = new AbortController();
-          subtitleAbortController = subtitleController;
-          try {
-            await loadVideoSubtitle(item, request, route, subtitleController.signal);
-          } catch {
-            if (isCurrentItemLoad(request, route, subtitleController.signal)) {
+          const fallback = item.sub ? preferredEmbeddedSubtitle() : undefined;
+          if (fallback) {
+            s.subtitleSelection = fallback.value;
+            renderSubtitleOptions();
+            try {
+              await loadSelectedVideoSubtitle(item, request, route, subtitleController.signal);
+            } catch {
               d.videoFrame.dataset.subtitleReady = "0";
               setStatus(d.playerStatus, t("subFailed"), "error");
-            } else {
-              return;
             }
+          } else if (item.sub) {
+            d.videoFrame.dataset.subtitleReady = "0";
+            setStatus(d.playerStatus, t("subFailed"), "error");
           }
-          if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
-          videoPlaybackStarted = await startVideoPlayback(request, route, subtitleController.signal);
         }
+        if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
+        videoPlaybackStarted = await startVideoPlayback(request, route, subtitleController.signal);
       }
       if (!d.playerStatus.dataset.tone && (item.kind !== "video" || videoPlaybackStarted)) setStatus(d.playerStatus, t("playing"));
     }
@@ -1906,6 +2042,9 @@ const introMaxSeconds = (() => {
     d.videoPrevious.addEventListener("click", () => playAdjacent("video", -1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
     d.videoNext.addEventListener("click", () => playAdjacent("video", 1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
     d.speedToggle.addEventListener("click", cycleVideoSpeed);
+    d.subtitleSelect.addEventListener("change", () => {
+      changeVideoSubtitle(d.subtitleSelect.value).catch((error) => setStatus(d.playerStatus, error.message, "error"));
+    });
     d.muteToggle.addEventListener("click", () => {
       d.video.muted = !d.video.muted;
       if (!d.video.muted && d.video.volume === 0) d.video.volume = 1;
