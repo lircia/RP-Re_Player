@@ -891,31 +891,6 @@ textarea:focus-visible {
   gap: 7px;
 }
 
-.subtitle-selector {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  margin-left: auto;
-}
-
-.subtitle-selector[hidden] {
-  display: none;
-}
-
-.subtitle-selector select {
-  min-width: 92px;
-  max-width: min(220px, 42vw);
-  height: 25px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--ink);
-  padding: 0 22px 0 8px;
-  font: inherit;
-  font-size: 11px;
-  outline: none;
-}
-
 .media-badge {
   display: inline-flex;
   align-items: center;
@@ -3414,11 +3389,6 @@ body:has(.login-screen)::before {
 
 .media-app .now-playing-copy {
   width: 100%;
-}
-
-.media-app .subtitle-selector select:focus-visible {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .media-app .now-playing::after {

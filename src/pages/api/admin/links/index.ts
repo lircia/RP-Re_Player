@@ -25,6 +25,7 @@ export const POST: APIRoute = async (context) => {
       description: body.description,
       poster: body.poster,
       sub: body.sub,
+      embeddedMulti: body.embeddedMulti === true || body.embeddedMulti === "1" || body.embeddedMulti === "on",
       lrc: body.lrc,
       lrc2: body.lrc2
     });

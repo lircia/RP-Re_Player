@@ -12,6 +12,7 @@ export interface PseudoItem {
   artist?: string;
   poster?: string;
   sub?: string;
+  embeddedMulti?: boolean;
   lrc?: string;
   lrc2?: string;
   createdAt: string;
@@ -142,6 +143,7 @@ async function ensureDb(env: AppEnv) {
         description TEXT,
         poster TEXT,
         sub TEXT,
+        embedded_multi INTEGER NOT NULL DEFAULT 0,
         lrc TEXT,
         lrc2 TEXT,
         created_at TEXT NOT NULL,
@@ -153,6 +155,9 @@ async function ensureDb(env: AppEnv) {
   const info = await env.DB.prepare("PRAGMA table_info(rp_pseudo_links)").all<{ name: string }>();
   if (!(info.results ?? []).some((column) => column.name === "sub")) {
     await env.DB.prepare("ALTER TABLE rp_pseudo_links ADD COLUMN sub TEXT").run();
+  }
+  if (!(info.results ?? []).some((column) => column.name === "embedded_multi")) {
+    await env.DB.prepare("ALTER TABLE rp_pseudo_links ADD COLUMN embedded_multi INTEGER NOT NULL DEFAULT 0").run();
   }
   if (!(info.results ?? []).some((column) => column.name === "lrc")) {
     await env.DB.prepare("ALTER TABLE rp_pseudo_links ADD COLUMN lrc TEXT").run();
@@ -176,6 +181,7 @@ function mapRow(row: any): PseudoItem {
     description: row.description || undefined,
     poster: row.poster || undefined,
     sub: row.sub || undefined,
+    embeddedMulti: Boolean(row.embedded_multi),
     lrc: row.lrc || undefined,
     lrc2: row.lrc2 || undefined,
     createdAt: row.created_at,
@@ -186,7 +192,7 @@ function mapRow(row: any): PseudoItem {
 export async function allItems(env: AppEnv): Promise<PseudoItem[]> {
   if (await ensureDb(env)) {
     const result = await env.DB!.prepare(
-      "SELECT id, name, path, url, kind, description, poster, sub, lrc, lrc2, created_at, updated_at FROM rp_pseudo_links ORDER BY path ASC"
+      "SELECT id, name, path, url, kind, description, poster, sub, embedded_multi, lrc, lrc2, created_at, updated_at FROM rp_pseudo_links ORDER BY path ASC"
     ).all<any>();
     return (result.results ?? []).map(mapRow);
   }
@@ -281,7 +287,7 @@ export async function getItem(env: AppEnv, path: string) {
   const normalized = normalizeRootPath(path);
   if (await ensureDb(env)) {
     const row = await env.DB!.prepare(
-      "SELECT id, name, path, url, kind, description, poster, sub, lrc, lrc2, created_at, updated_at FROM rp_pseudo_links WHERE path = ? LIMIT 1"
+      "SELECT id, name, path, url, kind, description, poster, sub, embedded_multi, lrc, lrc2, created_at, updated_at FROM rp_pseudo_links WHERE path = ? LIMIT 1"
     )
       .bind(normalized)
       .first<any>();
@@ -300,6 +306,7 @@ export async function createItem(
     description?: string;
     poster?: string;
     sub?: string;
+    embeddedMulti?: boolean;
     lrc?: string;
     lrc2?: string;
   }
@@ -320,6 +327,7 @@ export async function createItem(
     description: input.kind === "file" ? String(input.description || "").trim() : undefined,
     poster: input.kind === "file" ? undefined : webUrl(input.poster || "", "Poster URL"),
     sub: input.kind === "video" ? webUrl(input.sub || "", "Subtitle URL") : undefined,
+    embeddedMulti: input.kind === "video" && Boolean(input.embeddedMulti),
     lrc: input.kind === "audio" ? webUrl(input.lrc || "", "Lyrics URL") : undefined,
     lrc2: input.kind === "audio" ? webUrl(input.lrc2 || "", "Other lyrics URL") : undefined,
     createdAt: now,
@@ -339,8 +347,8 @@ export async function createItem(
   if (await ensureDb(env)) {
     const result = await env.DB!.prepare(
       `
-        INSERT INTO rp_pseudo_links (id, name, path, url, kind, description, poster, sub, lrc, lrc2, created_at, updated_at)
-        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        INSERT INTO rp_pseudo_links (id, name, path, url, kind, description, poster, sub, embedded_multi, lrc, lrc2, created_at, updated_at)
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         WHERE NOT EXISTS (
           SELECT 1
           FROM rp_pseudo_links
@@ -357,6 +365,7 @@ export async function createItem(
           description = excluded.description,
           poster = excluded.poster,
           sub = excluded.sub,
+          embedded_multi = excluded.embedded_multi,
           lrc = excluded.lrc,
           lrc2 = excluded.lrc2,
           updated_at = excluded.updated_at
@@ -371,6 +380,7 @@ export async function createItem(
         item.description ?? null,
         item.poster ?? null,
         item.sub ?? null,
+        item.embeddedMulti ? 1 : 0,
         item.lrc ?? null,
         item.lrc2 ?? null,
         now,

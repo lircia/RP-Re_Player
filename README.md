@@ -80,6 +80,8 @@ UI=your-website-id
 
 When adding a video, enter a public HTTP(S) URL to an `.ass` subtitle file. RP fetches that configured subtitle through its own public subtitle endpoint, which avoids ordinary browser CORS restrictions. The player requests small Noto Sans subsets for the characters used by each subtitle; locally hosted SC/JP files remain as a fallback when the font service is unavailable. The subtitle source must still be reachable from Cloudflare Workers.
 
+MKV files without an external subtitle use the first embedded ASS subtitle track. The management form includes an **Embedded multilingual subtitles** option, which is disabled by default; enabling it uses discard-style loading and skips embedded subtitle extraction so the video can still play without rendering those tracks. Loading multiple embedded subtitle tracks from MKV is currently unsupported. External ASS subtitles remain supported.
+
 ## LRC Lyrics
 
 When adding audio, enter one public HTTP(S) `.lrc` URL for synchronized lyrics. Enable **Bilingual lyrics** to add a second language file. RP proxies both files to avoid ordinary browser CORS restrictions, highlights and scrolls the current line in real time, and places detected Chinese lyrics above the foreign-language line. If language detection is inconclusive, the other-language file appears above the default file. A single LRC containing two lines at the same timestamp is adapted automatically.
