@@ -332,6 +332,12 @@ const introMaxSeconds = (() => {
               <span id="subtitleBadge" class="media-badge subtitle-badge" hidden>
                 <Captions size={14} /> <span id="subtitleBadgeText">ASS</span>
               </span>
+              <label id="subtitleSelector" class="subtitle-selector" hidden>
+                <span class="sr-only" data-i18n="subtitleTrack">Subtitle</span>
+                <select id="subtitleSelect" aria-label="Subtitle">
+                  <option value="off" data-i18n="subtitleOff">Off</option>
+                </select>
+              </label>
               <span id="lyricsBadge" class="media-badge subtitle-badge" hidden>
                 <Music2 size={14} /> LRC
               </span>
@@ -358,6 +364,7 @@ const introMaxSeconds = (() => {
 
   <script>
     import JASSUB from "jassub";
+    import { PlaysVideoEngine, type SubtitleTrackInfo } from "playsvideo";
     import { Decoder as EbmlDecoder } from "ebml/lib/ebml.esm.js";
     import { buildLyrics, type LyricCue, type LyricWord } from "../lib/lrc";
     import { publicCoverPath } from "../lib/pseudo";
@@ -387,6 +394,9 @@ const introMaxSeconds = (() => {
         itemFailed: "Could not open this media.",
         subFailed: "The ASS subtitle could not be loaded.",
         noSubtitle: "No subtitles",
+        subtitleTrack: "Subtitle",
+        subtitleOff: "Off",
+        externalSubtitle: "External subtitle",
         playFailed: "The video could not be started.",
         playing: "Now playing",
         buffering: "Buffering...",
@@ -435,6 +445,9 @@ const introMaxSeconds = (() => {
         itemFailed: "无法打开此媒体。",
         subFailed: "ASS 字幕加载失败。",
         noSubtitle: "无字幕",
+        subtitleTrack: "字幕",
+        subtitleOff: "关闭字幕",
+        externalSubtitle: "外置字幕",
         playFailed: "视频无法开始播放。",
         playing: "正在播放",
         buffering: "正在缓冲...",
@@ -483,6 +496,9 @@ const introMaxSeconds = (() => {
         itemFailed: "メディアを開けませんでした。",
         subFailed: "ASS字幕を読み込めませんでした。",
         noSubtitle: "字幕なし",
+        subtitleTrack: "字幕",
+        subtitleOff: "字幕なし",
+        externalSubtitle: "外部字幕",
         playFailed: "動画を再生できませんでした。",
         playing: "再生中",
         buffering: "バッファリング中...",
@@ -525,6 +541,7 @@ const introMaxSeconds = (() => {
       raw: string;
       isDefault: boolean;
     };
+    type SubtitleSelection = "off" | "external" | `embedded:${number}`;
     type MediaItem = {
       id?: string;
       name: string;
@@ -550,6 +567,10 @@ const introMaxSeconds = (() => {
       current: MediaItem | null;
       lang: Lang;
       ass: JASSUB | null;
+      playsVideo: PlaysVideoEngine | null;
+      playsVideoTracks: SubtitleTrackInfo[];
+      playsVideoObserver: MutationObserver | null;
+      subtitleSelection: SubtitleSelection;
       lyrics: LyricCue[];
       lyricIndex: number;
       lyricToken: number;
@@ -566,6 +587,10 @@ const introMaxSeconds = (() => {
       current: null,
       lang: "en",
       ass: null,
+      playsVideo: null,
+      playsVideoTracks: [],
+      playsVideoObserver: null,
+      subtitleSelection: "off",
       lyrics: [],
       lyricIndex: -1,
       lyricToken: 0,
@@ -639,6 +664,8 @@ const introMaxSeconds = (() => {
       kind: document.querySelector<HTMLElement>("#kindBadge")!,
       subtitle: document.querySelector<HTMLElement>("#subtitleBadge")!,
       subtitleText: document.querySelector<HTMLElement>("#subtitleBadgeText")!,
+      subtitleSelector: document.querySelector<HTMLElement>("#subtitleSelector")!,
+      subtitleSelect: document.querySelector("#subtitleSelect") as unknown as HTMLSelectElement,
       lyricsBadge: document.querySelector<HTMLElement>("#lyricsBadge")!,
       nowPlaying: document.querySelector<HTMLElement>(".now-playing")!,
       title: document.querySelector<HTMLElement>("#mediaTitle")!,
@@ -1378,6 +1405,7 @@ const introMaxSeconds = (() => {
         const key = el.dataset.i18nPlaceholder as keyof (typeof c)["en"];
         if (key && c[s.lang][key]) el.placeholder = t(key);
       });
+      d.subtitleSelect.setAttribute("aria-label", t("subtitleTrack"));
       updateVideoControls();
       updateAudioControls();
       setLibraryOpen(d.app.classList.contains("is-library-open"));
@@ -1412,8 +1440,13 @@ const introMaxSeconds = (() => {
       d.kind.textContent = t(s.current.kind || "video");
       d.title.textContent = s.current.name;
       d.mediaPath.textContent = s.current.artist || displayPath(s.current.path);
-      d.subtitle.hidden = s.current.kind !== "video";
-      d.subtitleText.textContent = s.current.sub ? "ASS" : t("noSubtitle");
+      if (s.current.kind === "video" && s.current.embeddedMulti) {
+        renderSubtitleOptions();
+      } else {
+        d.subtitleSelector.hidden = true;
+        d.subtitle.hidden = s.current.kind !== "video";
+        d.subtitleText.textContent = s.current.sub ? "ASS" : t("noSubtitle");
+      }
       d.lyricsBadge.hidden = !s.current.lrc && !s.current.lrc2;
       d.nowPlaying.hidden = s.current.kind === "file";
       d.fileDownload.textContent = t("download");
@@ -1471,8 +1504,13 @@ const introMaxSeconds = (() => {
       subtitleAbortController?.abort();
       subtitleAbortController = null;
       await destroyVideoSubtitle();
+      destroyPlaysVideo();
+      s.playsVideoTracks = [];
+      s.subtitleSelection = "off";
       d.subtitle.hidden = true;
+      d.subtitleSelector.hidden = true;
       d.video.pause();
+      d.video.autoplay = false;
       d.audio.pause();
       d.video.removeAttribute("src");
       d.video.load();
@@ -1521,6 +1559,94 @@ const introMaxSeconds = (() => {
       s.ass = null;
       delete d.videoFrame.dataset.subtitleReady;
       if (ass) await ass.destroy().catch(() => undefined);
+    }
+
+    function destroyPlaysVideo() {
+      s.playsVideoObserver?.disconnect();
+      s.playsVideoObserver = null;
+      const engine = s.playsVideo;
+      s.playsVideo = null;
+      if (engine) engine.destroy();
+    }
+
+    function subtitleTrackLabel(track: SubtitleTrackInfo, index: number) {
+      return track.name?.trim() || track.language?.trim() || `${t("subtitleTrack")} ${index + 1}`;
+    }
+
+    function embeddedSubtitleIndex(selection: SubtitleSelection) {
+      if (!selection.startsWith("embedded:")) return -1;
+      const index = Number(selection.slice("embedded:".length));
+      return Number.isInteger(index) ? index : -1;
+    }
+
+    function disableNativeSubtitleTracks() {
+      for (const track of Array.from(d.video.textTracks)) track.mode = "disabled";
+    }
+
+    function activateNativeSubtitleTrack(index: number) {
+      const trackElement = d.video.querySelectorAll("track")[index] as HTMLTrackElement | undefined;
+      disableNativeSubtitleTracks();
+      if (!trackElement) return false;
+      trackElement.track.mode = "showing";
+      return true;
+    }
+
+    async function applyPlaysVideoSubtitle(request: number, route: number, signal: AbortSignal) {
+      if (!isCurrentItemLoad(request, route, signal)) return false;
+      if (s.subtitleSelection === "external") {
+        disableNativeSubtitleTracks();
+        renderSubtitleOptions();
+        return Boolean(s.ass);
+      }
+      await destroyVideoSubtitle();
+      if (s.subtitleSelection === "off") {
+        disableNativeSubtitleTracks();
+        renderSubtitleOptions();
+        return true;
+      }
+      const index = embeddedSubtitleIndex(s.subtitleSelection);
+      const active = index >= 0 && activateNativeSubtitleTrack(index);
+      renderSubtitleOptions();
+      return active;
+    }
+
+    function renderSubtitleOptions() {
+      const current = s.current;
+      const multi = current?.kind === "video" && Boolean(current.embeddedMulti);
+      d.subtitleSelector.hidden = !multi;
+      if (!multi) return;
+
+      const options: Array<{ value: SubtitleSelection; label: string }> = [
+        { value: "off", label: t("subtitleOff") }
+      ];
+      if (current.sub) options.push({ value: "external", label: t("externalSubtitle") });
+      for (const [index, track] of s.playsVideoTracks.entries()) {
+        options.push({ value: `embedded:${track.index}`, label: subtitleTrackLabel(track, index) });
+      }
+      if (!options.some((option) => option.value === s.subtitleSelection)) {
+        s.subtitleSelection = current.sub
+          ? "external"
+          : s.playsVideoTracks[0]
+            ? `embedded:${s.playsVideoTracks[0].index}`
+            : "off";
+      }
+      d.subtitleSelect.replaceChildren(...options.map((option) => {
+        const element = document.createElement("option");
+        element.value = option.value;
+        element.textContent = option.label;
+        return element;
+      }));
+      d.subtitleSelect.value = s.subtitleSelection;
+      d.subtitle.hidden = s.subtitleSelection === "off";
+      const embeddedIndex = embeddedSubtitleIndex(s.subtitleSelection);
+      const embeddedTrack = embeddedIndex >= 0
+        ? s.playsVideoTracks.find((track) => track.index === embeddedIndex)
+        : undefined;
+      d.subtitleText.textContent = s.subtitleSelection === "external"
+        ? "ASS"
+        : embeddedTrack
+          ? subtitleTrackLabel(embeddedTrack, s.playsVideoTracks.indexOf(embeddedTrack))
+          : t("noSubtitle");
     }
 
     async function installVideoSubtitle(rawSubtitle: string, request: number, route: number, signal: AbortSignal) {
@@ -1696,6 +1822,119 @@ const introMaxSeconds = (() => {
       return response.text();
     }
 
+    async function loadPlaysVideo(item: MediaItem, request: number, route: number, signal: AbortSignal) {
+      if (!item.url) throw new Error(t("playFailed"));
+      const engine = new PlaysVideoEngine(d.video, { embeddedSubtitlePolicy: "auto" });
+      s.playsVideo = engine;
+      s.playsVideoTracks = [];
+
+      const refreshTracks = () => {
+        if (s.playsVideo !== engine || !isCurrentItemLoad(request, route, signal)) return;
+        s.playsVideoTracks = engine.subtitleTracks.slice();
+        renderSubtitleOptions();
+        if (s.subtitleSelection.startsWith("embedded:")) {
+          queueMicrotask(() => applyPlaysVideoSubtitle(request, route, signal).catch(() => undefined));
+        }
+      };
+      engine.addEventListener("subtitle-status", refreshTracks);
+      const observer = new MutationObserver(refreshTracks);
+      s.playsVideoObserver = observer;
+      observer.observe(d.video, { childList: true });
+
+      const ready = new Promise<SubtitleTrackInfo[]>((resolve, reject) => {
+        let settled = false;
+        const cleanup = () => {
+          engine.removeEventListener("ready", onReady);
+          engine.removeEventListener("error", onError);
+          signal.removeEventListener("abort", onAbort);
+        };
+        const finish = (callback: () => void) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          callback();
+        };
+        const onReady: EventListener = (event) => {
+          const detail = (event as CustomEvent<{ subtitleTracks: SubtitleTrackInfo[] }>).detail;
+          finish(() => resolve(detail?.subtitleTracks || engine.subtitleTracks.slice()));
+        };
+        const onError: EventListener = (event) => {
+          const detail = (event as CustomEvent<{ message?: string }>).detail;
+          finish(() => reject(new Error(detail?.message || t("playFailed"))));
+        };
+        const onAbort = () => finish(() => reject(new DOMException("Video loading was aborted.", "AbortError")));
+        engine.addEventListener("ready", onReady);
+        engine.addEventListener("error", onError);
+        signal.addEventListener("abort", onAbort, { once: true });
+        try {
+          d.video.autoplay = true;
+          engine.loadUrl(item.url!);
+        } catch (error) {
+          finish(() => reject(error));
+        }
+      });
+
+      try {
+        const tracks = await ready;
+        if (!isCurrentItemLoad(request, route, signal)) return false;
+        s.playsVideoTracks = tracks.slice();
+        if (!item.sub) {
+          s.subtitleSelection = tracks[0] ? `embedded:${tracks[0].index}` : "off";
+          renderSubtitleOptions();
+          await applyPlaysVideoSubtitle(request, route, signal);
+        } else {
+          let external = "";
+          try {
+            external = await loadExternalVideoSubtitle(item, signal);
+          } catch {
+            console.warn("Could not load external video subtitle.");
+          }
+          if (external.trim()) {
+            s.subtitleSelection = "external";
+            await installVideoSubtitle(external, request, route, signal);
+            await applyPlaysVideoSubtitle(request, route, signal);
+          } else {
+            s.subtitleSelection = tracks[0] ? `embedded:${tracks[0].index}` : "off";
+            renderSubtitleOptions();
+            await applyPlaysVideoSubtitle(request, route, signal);
+          }
+        }
+        return await startVideoPlayback(request, route, signal);
+      } finally {
+        d.video.autoplay = false;
+      }
+    }
+
+    async function changeVideoSubtitle(value: string) {
+      if (!s.current?.embeddedMulti || s.current.kind !== "video") return;
+      const selection: SubtitleSelection = value === "external" || value === "off" || value.startsWith("embedded:")
+        ? value as SubtitleSelection
+        : "off";
+      const request = itemRequest;
+      const route = routeRequest;
+      const signal = subtitleAbortController?.signal;
+      if (!signal) return;
+      s.subtitleSelection = selection;
+      renderSubtitleOptions();
+      try {
+        if (selection === "external") {
+          const raw = await loadExternalVideoSubtitle(s.current, signal);
+          if (!raw.trim()) throw new Error(t("subFailed"));
+          await installVideoSubtitle(raw, request, route, signal);
+          await applyPlaysVideoSubtitle(request, route, signal);
+        } else {
+          await applyPlaysVideoSubtitle(request, route, signal);
+        }
+        if (isCurrentItemLoad(request, route, signal)) setStatus(d.playerStatus, t("playing"));
+      } catch (error) {
+        if (isCurrentItemLoad(request, route, signal)) {
+          s.subtitleSelection = "off";
+          renderSubtitleOptions();
+          setStatus(d.playerStatus, error instanceof Error ? error.message : t("subFailed"), "error");
+        }
+      }
+    }
+
     async function startVideoPlayback(request: number, route: number, signal: AbortSignal) {
       if (!isCurrentItemLoad(request, route, signal)) return false;
       try {
@@ -1734,6 +1973,10 @@ const introMaxSeconds = (() => {
       await clearMedia();
       if (!isCurrentItemLoad(request, route, itemController.signal)) return;
       s.current = item;
+      s.subtitleSelection = item.embeddedMulti
+        ? item.sub ? "external" : "off"
+        : "off";
+      s.playsVideoTracks = [];
       resetStatSession(data.stat || { plays: 0, completions: 0, rate: 0 });
       if (item.kind === "audio" && !s.audioQueue.some((entry) => entry.path === item.path)) s.audioQueue = audioQueue;
       if (item.kind === "video" && !s.videoQueue.some((entry) => entry.path === item.path)) s.videoQueue = videoQueue;
@@ -1776,52 +2019,62 @@ const introMaxSeconds = (() => {
         d.videoFrame.hidden = false;
         d.video.poster = item.poster || "/poster.svg";
         d.video.preload = "auto";
-        d.video.src = item.url || "";
-        d.video.load();
         updateVideoControls();
         showControls();
         subtitleAbortController?.abort();
         const subtitleController = new AbortController();
         subtitleAbortController = subtitleController;
-        let embedded: EmbeddedSubtitle | undefined;
-        let rawSubtitle = "";
-        try {
-          if (!item.sub && !item.embeddedMulti) {
-            embedded = (await parseEmbeddedVideoSubtitles(item, request, route, subtitleController.signal))[0];
-          }
-        } catch (error) {
-          // Embedded subtitles are optional; the video remains playable if parsing fails.
-          console.warn("Could not scan embedded video subtitles.", error);
-        }
-        if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
-        if (item.sub) {
+        if (item.embeddedMulti) {
           try {
-            rawSubtitle = await loadExternalVideoSubtitle(item, subtitleController.signal);
-          } catch {
-            console.warn("Could not load external video subtitle.");
-          }
-          if (!rawSubtitle.trim() && !item.embeddedMulti) {
-            try {
-              embedded = (await parseEmbeddedVideoSubtitles(item, request, route, subtitleController.signal))[0];
-            } catch (error) {
-              console.warn("Could not scan embedded video subtitles.", error);
+            videoPlaybackStarted = await loadPlaysVideo(item, request, route, subtitleController.signal);
+          } catch (error) {
+            if (isCurrentItemLoad(request, route, subtitleController.signal)) {
+              setStatus(d.playerStatus, error instanceof Error ? error.message : t("playFailed"), "error");
             }
           }
-        }
-        rawSubtitle = rawSubtitle.trim() || embedded?.raw || "";
-        if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
-        if (rawSubtitle) {
+        } else {
+          d.video.src = item.url || "";
+          d.video.load();
+          let embedded: EmbeddedSubtitle | undefined;
+          let rawSubtitle = "";
           try {
-            await installVideoSubtitle(rawSubtitle, request, route, subtitleController.signal);
-            d.subtitleText.textContent = "ASS";
-          } catch {
-            d.videoFrame.dataset.subtitleReady = "0";
+            if (!item.sub) {
+              embedded = (await parseEmbeddedVideoSubtitles(item, request, route, subtitleController.signal))[0];
+            }
+          } catch (error) {
+            // Embedded subtitles are optional; the video remains playable if parsing fails.
+            console.warn("Could not scan embedded video subtitles.", error);
+          }
+          if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
+          if (item.sub) {
+            try {
+              rawSubtitle = await loadExternalVideoSubtitle(item, subtitleController.signal);
+            } catch {
+              console.warn("Could not load external video subtitle.");
+            }
+            if (!rawSubtitle.trim()) {
+              try {
+                embedded = (await parseEmbeddedVideoSubtitles(item, request, route, subtitleController.signal))[0];
+              } catch (error) {
+                console.warn("Could not scan embedded video subtitles.", error);
+              }
+            }
+          }
+          rawSubtitle = rawSubtitle.trim() || embedded?.raw || "";
+          if (!isCurrentItemLoad(request, route, subtitleController.signal)) return;
+          if (rawSubtitle) {
+            try {
+              await installVideoSubtitle(rawSubtitle, request, route, subtitleController.signal);
+              d.subtitleText.textContent = "ASS";
+            } catch {
+              d.videoFrame.dataset.subtitleReady = "0";
+              d.subtitleText.textContent = t("noSubtitle");
+            }
+          } else {
             d.subtitleText.textContent = t("noSubtitle");
           }
-        } else {
-          d.subtitleText.textContent = t("noSubtitle");
+          videoPlaybackStarted = await startVideoPlayback(request, route, subtitleController.signal);
         }
-        videoPlaybackStarted = await startVideoPlayback(request, route, subtitleController.signal);
       }
       if (!d.playerStatus.dataset.tone && (item.kind !== "video" || videoPlaybackStarted)) setStatus(d.playerStatus, t("playing"));
     }
@@ -1969,6 +2222,9 @@ const introMaxSeconds = (() => {
     d.videoPrevious.addEventListener("click", () => playAdjacent("video", -1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
     d.videoNext.addEventListener("click", () => playAdjacent("video", 1).catch((error) => setStatus(d.playerStatus, error.message, "error")));
     d.speedToggle.addEventListener("click", cycleVideoSpeed);
+    d.subtitleSelect.addEventListener("change", () => {
+      changeVideoSubtitle(d.subtitleSelect.value).catch((error) => setStatus(d.playerStatus, error.message, "error"));
+    });
     d.muteToggle.addEventListener("click", () => {
       d.video.muted = !d.video.muted;
       if (!d.video.muted && d.video.volume === 0) d.video.volume = 1;

@@ -80,7 +80,7 @@ UI=your-website-id
 
 When adding a video, enter a public HTTP(S) URL to an `.ass` subtitle file. RP fetches that configured subtitle through its own public subtitle endpoint, which avoids ordinary browser CORS restrictions. The player requests small Noto Sans subsets for the characters used by each subtitle; locally hosted SC/JP files remain as a fallback when the font service is unavailable. The subtitle source must still be reachable from Cloudflare Workers.
 
-MKV files without an external subtitle use the first embedded ASS subtitle track. The management form includes an **Embedded multilingual subtitles** option, which is disabled by default; enabling it uses discard-style loading and skips embedded subtitle extraction so the video can still play without rendering those tracks. Loading multiple embedded subtitle tracks from MKV is currently unsupported. External ASS subtitles remain supported.
+MKV files without an external subtitle use the first embedded ASS subtitle track. The management form includes an **Embedded multilingual subtitles** option, which is disabled by default. When enabled, the video is loaded through [playsvideo](https://github.com/kzahel/playsvideo); the subtitle selector can switch between all extracted embedded tracks, no subtitles, and an external ASS subtitle when configured. When disabled, the existing direct video path is used and only the first embedded ASS track is loaded. External ASS subtitles remain supported.
 
 ## LRC Lyrics
 

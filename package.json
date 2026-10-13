@@ -19,7 +19,14 @@
     "astro": "latest",
     "ebml": "^3.0.0",
     "jassub": "^2.5.7",
+    "mediabunny-base": "npm:mediabunny@1.61.4",
+    "playsvideo": "^0.4.7",
     "typescript": "latest"
+  },
+  "overrides": {
+    "playsvideo": {
+      "mediabunny": "$mediabunny-base"
+    }
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
