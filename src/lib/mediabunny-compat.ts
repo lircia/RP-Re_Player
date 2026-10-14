@@ -94,6 +94,17 @@ type ParsedMatroskaCue = {
   payload: string;
 };
 
+type ParsedMatroskaMetadata = {
+  size: number;
+  tracks: Map<number, ParsedMatroskaTrack>;
+  timecodeScale: number;
+};
+
+type SubtitleScanState = {
+  metadata: Promise<ParsedMatroskaMetadata | null>;
+  cues: Promise<Map<number, ParsedMatroskaCue[]>> | null;
+};
+
 type InputWithSource = {
   source: {
     getSize(): Promise<number>;
@@ -102,7 +113,7 @@ type InputWithSource = {
   };
 };
 
-const subtitleTrackCache = new WeakMap<object, Promise<CompatSubtitleTrack[]>>();
+const subtitleTrackCache = new WeakMap<object, SubtitleScanState>();
 
 function installSourceApiBridge() {
   type SourcePrototype = {
@@ -166,31 +177,35 @@ function bytesForRange(result: { bytes: Uint8Array; offset: number }, start: num
   return result.bytes.subarray(localStart, localStart + length);
 }
 
-async function readSourceBytes(source: InputWithSource["source"]): Promise<CompatSubtitleTrack[]> {
+async function readMatroskaMetadata(source: InputWithSource["source"]): Promise<ParsedMatroskaMetadata | null> {
   const size = await source.getSize();
-  if (!Number.isFinite(size) || size <= 0) return [];
+  if (!Number.isFinite(size) || size <= 0) return null;
 
-  const first = await source._read(0, Math.min(size, 4), 0, Math.min(size, 4));
-  const firstBytes = first && bytesForRange(first, 0, Math.min(size, 4));
-  if (!firstBytes || !isEbml(firstBytes)) return [];
+  // `getSubtitleTracks()` is called during playsvideo's initial probe.  Do
+  // not scan the media clusters here: a URL source would otherwise download
+  // the whole MKV before the player is even allowed to start.  Matroska puts
+  // EBML/Info/Tracks before the first Cluster in normal files, so stop as soon
+  // as that boundary is reached.  The limit is only a guard for malformed or
+  // unusual files with very large metadata/attachments.
+  const metadataLimit = Math.min(size, 32 * 1024 * 1024);
 
-  // The integration branch reads the subtitle samples after demuxing.  Keep
-  // the compatibility implementation simple and deterministic by feeding the
-  // EBML decoder sequential chunks. This avoids creating a second fetch and
-  // also works for UrlSource instances without HTTP range support.
   const decoder = new EbmlDecoder();
   const tracks = new Map<number, ParsedMatroskaTrack>();
-  const cues: ParsedMatroskaCue[] = [];
   const decoderErrors: unknown[] = [];
   let timecodeScale = 1_000_000;
-  let clusterTimecode = 0;
   let currentTrack: Partial<ParsedMatroskaTrack> | null = null;
-  let pendingBlock: { track: number; relative: number; payload: string; duration?: number } | null = null;
+  let firstClusterSeen = false;
 
   decoder.on("error", (error: unknown) => decoderErrors.push(error));
   decoder.on("data", (entry: [string, EbmlTag]) => {
     const [kind, tag] = entry;
     const name = tag.name || "";
+
+    if (name === "Cluster" && kind === "start") {
+      firstClusterSeen = true;
+      return;
+    }
+    if (firstClusterSeen) return;
 
     if (name === "TrackEntry" && kind === "start") {
       currentTrack = {};
@@ -226,50 +241,112 @@ async function readSourceBytes(source: InputWithSource["source"]): Promise<Compa
     }
 
     if (name === "TimecodeScale") timecodeScale = Number(tag.value) || timecodeScale;
-    else if (name === "Timecode") clusterTimecode = Number(tag.value) || 0;
-    else if ((name === "Block" || name === "SimpleBlock") && kind === "tag") {
+  });
+
+  const chunkSize = 4 * 1024 * 1024;
+  for (let start = 0; start < metadataLimit && !firstClusterSeen; start += chunkSize) {
+    const end = Math.min(metadataLimit, start + chunkSize);
+    const result = await source._read(start, end, start, end);
+    if (!result) return null;
+    const bytes = bytesForRange(result, start, end);
+    if (!bytes) return null;
+    if (start === 0 && !isEbml(bytes.subarray(0, 4))) return null;
+    decoder.write(bytes);
+  }
+  // If the file ended before a Cluster, flush the decoder.  When the first
+  // Cluster was found the decoder intentionally remains open because its
+  // payload is not part of this metadata-only pass.
+  if (!firstClusterSeen) decoder.end();
+  if (decoderErrors.length > 0) throw decoderErrors[0];
+
+  return {
+    size,
+    tracks,
+    timecodeScale
+  };
+}
+
+async function readMatroskaSubtitleCues(
+  source: InputWithSource["source"],
+  metadata: ParsedMatroskaMetadata
+): Promise<Map<number, ParsedMatroskaCue[]>> {
+  const subtitleTrackNumbers = new Set(
+    [...metadata.tracks.values()]
+      .filter(track => track.type === 17 && track.codec)
+      .map(track => track.number)
+  );
+  const cues = new Map<number, ParsedMatroskaCue[]>();
+  if (subtitleTrackNumbers.size === 0) return cues;
+
+  const decoder = new EbmlDecoder();
+  const decoderErrors: unknown[] = [];
+  let clusterTimecode = 0;
+  let pendingBlock: { track: number; relative: number; payload: string; duration?: number } | null = null;
+
+  decoder.on("error", (error: unknown) => decoderErrors.push(error));
+  decoder.on("data", (entry: [string, EbmlTag]) => {
+    const [kind, tag] = entry;
+    const name = tag.name || "";
+    if (name === "Timecode") {
+      clusterTimecode = Number(tag.value) || 0;
+    } else if ((name === "Block" || name === "SimpleBlock") && kind === "tag") {
+      const track = Number(tag.track);
+      if (!subtitleTrackNumbers.has(track)) return;
       pendingBlock = {
-        track: Number(tag.track),
+        track,
         relative: Number(tag.value) || 0,
         payload: ebmlText(tag.payload ?? tag.data)
       };
       if (name === "SimpleBlock") {
-        cues.push({
-          track: pendingBlock.track,
-          timestamp: (clusterTimecode + pendingBlock.relative) * timecodeScale / 1_000_000,
+        const list = cues.get(track) || [];
+        list.push({
+          track,
+          timestamp: (clusterTimecode + pendingBlock.relative) * metadata.timecodeScale / 1_000_000,
           duration: 0,
           payload: pendingBlock.payload
         });
+        cues.set(track, list);
         pendingBlock = null;
       }
     } else if (name === "BlockDuration" && pendingBlock) {
       pendingBlock.duration = Number(tag.value) || 0;
     } else if (name === "BlockGroup" && kind === "end" && pendingBlock) {
-      cues.push({
+      const list = cues.get(pendingBlock.track) || [];
+      list.push({
         track: pendingBlock.track,
-        timestamp: (clusterTimecode + pendingBlock.relative) * timecodeScale / 1_000_000,
-        duration: (pendingBlock.duration || 0) * timecodeScale / 1_000_000,
+        timestamp: (clusterTimecode + pendingBlock.relative) * metadata.timecodeScale / 1_000_000,
+        duration: (pendingBlock.duration || 0) * metadata.timecodeScale / 1_000_000,
         payload: pendingBlock.payload
       });
+      cues.set(pendingBlock.track, list);
       pendingBlock = null;
     }
   });
 
   const chunkSize = 8 * 1024 * 1024;
-  for (let start = 0; start < size; start += chunkSize) {
-    const end = Math.min(size, start + chunkSize);
+  for (let start = 0; start < metadata.size; start += chunkSize) {
+    const end = Math.min(metadata.size, start + chunkSize);
     const result = await source._read(start, end, start, end);
-    if (!result) return [];
+    if (!result) return new Map();
     const bytes = bytesForRange(result, start, end);
-    if (!bytes) return [];
+    if (!bytes) return new Map();
     decoder.write(bytes);
   }
   decoder.end();
   if (decoderErrors.length > 0) throw decoderErrors[0];
+  return cues;
+}
 
-  const subtitleTracks = [...tracks.values()].filter(track => track.type === 17 && track.codec);
-  return subtitleTracks.map((track): CompatSubtitleTrack => {
-    const trackCues = cues
+function makeSubtitleTrack(
+  track: ParsedMatroskaTrack,
+  loadCues: () => Promise<Map<number, ParsedMatroskaCue[]>>
+): CompatSubtitleTrack {
+  const codec = subtitleCodec(track.codec);
+  const header = track.privateData.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trimEnd();
+
+  async function getTrackCues() {
+    const allCues = await loadCues();
+    return (allCues.get(track.number) || [])
       .filter(cue => cue.track === track.number)
       .sort((a, b) => a.timestamp - b.timestamp)
       .map((cue, index, all) => {
@@ -293,35 +370,42 @@ async function readSourceBytes(source: InputWithSource["source"]): Promise<Compa
         }
         return { timestamp: cue.timestamp, duration, text, assFields, layer };
       });
-    const codec = subtitleCodec(track.codec);
-    const header = track.privateData.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trimEnd();
-    const exportedEvents = trackCues.map(cue => {
-      if (codec !== "ass" && codec !== "ssa") return "";
-      return `Dialogue: ${cue.layer || "0"},${assTimestamp(cue.timestamp)},${assTimestamp(cue.timestamp + cue.duration)},${cue.assFields || `Default,,0,0,0,,${cue.text}`}`;
-    }).filter(Boolean);
-    return {
-      codec,
-      languageCode: track.language || "und",
-      name: track.name || null,
-      disposition: {
-        default: track.default,
-        primary: track.default,
-        forced: track.forced,
-        original: false,
-        commentary: false,
-        hearingImpaired: track.hearingImpaired,
-        visuallyImpaired: false
-      },
-      async *getCues() {
-        yield* trackCues;
-      },
-      async exportToText() {
-        if (codec !== "ass" && codec !== "ssa") return header;
-        const script = header.replace(/\n\[Events\][\s\S]*$/i, "").trimEnd();
-        return `${script}\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${exportedEvents.join("\n")}`;
-      }
-    };
-  });
+  }
+
+  return {
+    codec,
+    languageCode: track.language || "und",
+    name: track.name || null,
+    disposition: {
+      default: track.default,
+      primary: track.default,
+      forced: track.forced,
+      original: false,
+      commentary: false,
+      hearingImpaired: track.hearingImpaired,
+      visuallyImpaired: false
+    },
+    async *getCues() {
+      yield* await getTrackCues();
+    },
+    async exportToText() {
+      if (codec !== "ass" && codec !== "ssa") return header;
+      const trackCues = await getTrackCues();
+      const exportedEvents = trackCues.map(cue =>
+        `Dialogue: ${cue.layer || "0"},${assTimestamp(cue.timestamp)},${assTimestamp(cue.timestamp + cue.duration)},${cue.assFields || `Default,,0,0,0,,${cue.text}`}`
+      );
+      const script = header.replace(/\n\[Events\][\s\S]*$/i, "").trimEnd();
+      return `${script}\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${exportedEvents.join("\n")}`;
+    }
+  };
+}
+
+async function readSourceBytes(source: InputWithSource["source"], state: SubtitleScanState): Promise<CompatSubtitleTrack[]> {
+  const metadata = await state.metadata;
+  if (!metadata) return [];
+  const loadCues = () => state.cues ||= readMatroskaSubtitleCues(source, metadata).catch(() => new Map());
+  const subtitleTracks = [...metadata.tracks.values()].filter(track => track.type === 17 && track.codec);
+  return subtitleTracks.map(track => makeSubtitleTrack(track, loadCues));
 }
 
 function installSubtitleTrackApi() {
@@ -329,14 +413,17 @@ function installSubtitleTrackApi() {
     prototype: { getSubtitleTracks?: () => Promise<CompatSubtitleTrack[]> };
   };
   if (typeof Input.prototype.getSubtitleTracks === "function") return;
-  const getSubtitleTracks = function(this: InputWithSource): Promise<CompatSubtitleTrack[]> {
+  const getSubtitleTracks = async function(this: InputWithSource): Promise<CompatSubtitleTrack[]> {
     const input = this as unknown as object;
-    let result = subtitleTrackCache.get(input);
-    if (!result) {
-      result = readSourceBytes(this.source).catch(() => []);
-      subtitleTrackCache.set(input, result);
+    let state = subtitleTrackCache.get(input);
+    if (!state) {
+      state = {
+        metadata: readMatroskaMetadata(this.source).catch(() => null),
+        cues: null
+      };
+      subtitleTrackCache.set(input, state);
     }
-    return result;
+    return readSourceBytes(this.source, state).catch(() => []);
   };
   Input.prototype.getSubtitleTracks = getSubtitleTracks;
 }
