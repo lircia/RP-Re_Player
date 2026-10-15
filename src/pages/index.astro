@@ -229,6 +229,8 @@ const introMaxSeconds = (() => {
               preload="auto"
               controls
               theme="light"
+              subtitlesize="0.92"
+              subtitlecolor="#CCFFFF"
               fallback="native"
             ></movi-player>
             <div id="videoControls" class="video-controls">
@@ -691,8 +693,8 @@ const introMaxSeconds = (() => {
 
     // Movi renders its captions inside its shadow root.  Keep the caption
     // centred even when its renderer has measured a narrow line and added an
-    // inline left padding, and leave a little more room below the caption so
-    // it does not sit too high above the picture.
+    // inline left padding, and keep the caption close to the bottom of the
+    // picture.
     function installMoviSubtitleStyle() {
       const shadow = d.movi.shadowRoot;
       if (!shadow || shadow.querySelector("#rp-movi-subtitle-tuning")) return;
@@ -700,7 +702,8 @@ const introMaxSeconds = (() => {
       style.id = "rp-movi-subtitle-tuning";
       style.textContent = `
         .movi-subtitle-overlay {
-          --movi-sub-bottom: 7% !important;
+          --movi-sub-bottom: 2% !important;
+          --movi-sub-size-mult: 0.92 !important;
         }
         .movi-subtitle-anchor {
           width: 100% !important;
@@ -1500,8 +1503,11 @@ const introMaxSeconds = (() => {
         renderSubtitleOptions();
       } else {
         d.subtitleSelector.hidden = true;
-        d.subtitle.hidden = s.current.kind !== "video";
-        d.subtitleText.textContent = s.current.sub ? "ASS" : t("noSubtitle");
+        // Do not show a "No subtitles" badge while an ordinary video is
+        // still being inspected for an embedded track.  It is also omitted
+        // when the inspection finds no subtitle at all.
+        d.subtitle.hidden = s.current.kind !== "video" || !s.current.sub;
+        d.subtitleText.textContent = s.current.sub ? "ASS" : "";
       }
       d.lyricsBadge.hidden = !s.current.lrc && !s.current.lrc2;
       d.nowPlaying.hidden = s.current.kind === "file";
@@ -2158,13 +2164,16 @@ const introMaxSeconds = (() => {
           if (rawSubtitle) {
             try {
               await installVideoSubtitle(rawSubtitle, request, route, subtitleController.signal);
+              d.subtitle.hidden = false;
               d.subtitleText.textContent = "ASS";
             } catch {
               d.videoFrame.dataset.subtitleReady = "0";
-              d.subtitleText.textContent = t("noSubtitle");
+              d.subtitle.hidden = true;
+              d.subtitleText.textContent = "";
             }
           } else {
-            d.subtitleText.textContent = t("noSubtitle");
+            d.subtitle.hidden = true;
+            d.subtitleText.textContent = "";
           }
           videoPlaybackStarted = await startVideoPlayback(request, route, subtitleController.signal);
         }

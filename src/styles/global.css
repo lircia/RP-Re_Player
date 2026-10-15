@@ -470,7 +470,8 @@ textarea:focus-visible {
   width: 100%;
   height: 100%;
   background: var(--player);
-  --movi-sub-bottom: 7%;
+  --movi-sub-bottom: 2%;
+  --movi-sub-size-mult: 0.92;
 }
 
 .video-frame[data-backend="movi"] video {
