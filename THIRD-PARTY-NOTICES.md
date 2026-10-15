@@ -13,6 +13,6 @@ standalone builds, including FFmpeg, dav1d, zlib, hls.js, dash.js, and Shaka
 Player. Those components retain their own copyright and license terms.
 
 The complete license and third-party notices shipped with the installed package
-are preserved at [`third-party-licenses/movi-player-0.4.1-LICENSE.txt`](third-party-licenses/movi-player-0.4.1-LICENSE.txt).
+are preserved at [`THIRD-PARTY-NOTICES`](THIRD-PARTY-NOTICES).
 
 Upstream project: <https://github.com/MrUjjwalG/movi-player>

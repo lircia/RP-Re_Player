@@ -28,7 +28,7 @@ Re Player is a **link-based media library**. An administrator mounts external vi
 > [!NOTE]
 > This project is open-sourced under the **MIT** license. You are free to use, modify, and redistribute it.
 >
-> The project includes `movi-player` 0.4.1, which is distributed under the Apache License 2.0 together with its listed third-party components. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and the included [movi-player license text](third-party-licenses/movi-player-0.4.1-LICENSE.txt) for the applicable notices.
+> The project includes `movi-player` 0.4.1, which is distributed under the Apache License 2.0 together with its listed third-party components. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and the included [movi-player license text](THIRD-PARTY-NOTICES) for the applicable notices.
 
 ## 🚀 Quick Start
 

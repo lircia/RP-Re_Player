@@ -28,7 +28,7 @@ Re Player 是一个**基于链接的媒体库**：管理员在后台将外部视
 > [!NOTE]
 > 本项目基于 **MIT** 许可证开源，你可以自由使用、修改和分发。
 >
-> 项目包含 `movi-player` 0.4.1，该组件采用 Apache License 2.0，并同时包含其列出的第三方组件许可证。具体版权和许可证说明请查看 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 以及附带的 [movi-player 许可证原文](third-party-licenses/movi-player-0.4.1-LICENSE.txt)。
+> 项目包含 `movi-player` 0.4.1，该组件采用 Apache License 2.0，并同时包含其列出的第三方组件许可证。具体版权和许可证说明请查看 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 以及附带的 [movi-player 许可证原文](THIRD-PARTY-NOTICES)。
 
 ## 🚀 快速开始
 

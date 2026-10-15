@@ -28,7 +28,7 @@ Re Player は**リンク型メディアライブラリ**です。管理者が外
 > [!NOTE]
 > 本プロジェクトは **MIT** ライセンスで公開されています。自由に利用・変更・再配布できます。
 >
-> 本プロジェクトには Apache License 2.0 で提供される `movi-player` 0.4.1 と、そのライセンスに記載されたサードパーティコンポーネントが含まれます。詳しくは [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) と同梱の [movi-player ライセンス本文](third-party-licenses/movi-player-0.4.1-LICENSE.txt) を参照してください。
+> 本プロジェクトには Apache License 2.0 で提供される `movi-player` 0.4.1 と、そのライセンスに記載されたサードパーティコンポーネントが含まれます。詳しくは [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) と同梱の [movi-player ライセンス本文](THIRD-PARTY-NOTICES) を参照してください。
 
 ## 🚀 クイックスタート
 
