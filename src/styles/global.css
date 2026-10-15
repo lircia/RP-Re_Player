@@ -463,6 +463,23 @@ textarea:focus-visible {
   inset: 0;
 }
 
+.video-frame .movi-video {
+  position: absolute;
+  inset: 0;
+  display: none;
+  width: 100%;
+  height: 100%;
+  background: var(--player);
+}
+
+.video-frame[data-backend="movi"] video {
+  display: none;
+}
+
+.video-frame[data-backend="movi"] .movi-video {
+  display: block;
+}
+
 .video-frame .JASSUB {
   z-index: 2;
 }
@@ -3222,6 +3239,7 @@ body:has(.login-screen)::before {
 }
 
 .media-app .video-frame video,
+.media-app .video-frame .movi-video,
 .media-app .image-frame img {
   filter: none;
 }

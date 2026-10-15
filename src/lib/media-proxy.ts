@@ -145,6 +145,13 @@ export async function serveMedia(
   }
   headers.set("content-disposition", `${options.disposition || "inline"}; filename*=UTF-8''${contentDispositionName(item.name)}`);
 
+  // Movi issues its own byte-range requests and deliberately asks the browser
+  // not to reuse a cached 200 response for them. Keep this endpoint out of
+  // Workers Cache as well: Workers Cache does not store a Worker-generated 206
+  // response, and turning it into a synthetic 200 here would make the range
+  // contract ambiguous for the player.
+  if (options.disposition !== "attachment") headers.set("cache-control", "no-store");
+
   return new Response(method === "HEAD" ? null : upstream.body, {
     status: upstream.status,
     statusText: upstream.statusText,

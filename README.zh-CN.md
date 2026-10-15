@@ -1,102 +1,172 @@
-# Re Player (RP)
+<p align="center">
+  <img src="public/favicon.svg" width="120" alt="Re Player logo" />
+</p>
 
-[English](README.md) | 简体中文 | [日本語](README.ja.md)
+<div align="center">
 
-Re Player 是一个使用 Astro 框架、可部署到 Cloudflare Workers 的链接媒体库。访客在左侧浏览虚拟 `/root` 目录，在右侧网页播放器中播放视频、音频或图片；项目不会直接挂载任何存储服务。
+# 🎬 Re Player (RP)
 
-## 功能
+**基于 Astro + Cloudflare Workers 的链接型媒体库**
 
-- 在固定根路径 `/root` 下创建链接伪挂载
-- 播放视频、音频和图片
-- 使用 JASSUB/libass 和内置中日文回退字体在浏览器中渲染可选 ASS 字幕
-- 支持实时同步 LRC 歌词、单文件自动适配和可选双语歌词
-- 根据 IP 自动选择英语、简体中文或日语，并支持手动覆盖
-- 通过访客 Cookie 分别记住当前语言和每个音视频的播放进度，完播记录保留在末端
-- 手动访问 `/admin`，验证密码后进入类管理表格
-- 后台使用一个按钮切换五套 D1 持久化访客主题：默认、复古、蔚蓝、新蓝、浅灰
-- 使用 Cloudflare D1 持久化，本地无 D1 时使用内存回退
-- 可选 Umami 统计
+[English](README.md) · 简体中文 · [日本語](README.ja.md)
 
-## 本地运行
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Astro](https://img.shields.io/badge/Astro-7-orange)](https://astro.build)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
+
+</div>
+
+---
+
+## 📝 项目简介
+
+Re Player 是一个**基于链接的媒体库**：管理员在后台将外部视频、音频、图片挂载为虚拟 `/root` 目录，访客在左侧浏览目录树、在右侧网页播放器中直接播放。项目不直接挂载任何存储服务，运行于 **Astro + Cloudflare Workers**，无需自备服务器。
+
+**仓库地址**：[github.com/lircia/RP-Re_Player](https://github.com/lircia/RP-Re_Player)
 
 > [!NOTE]
-> 项目主仓库中的 Local.cmd 本地运行功能并不完整，只能在运行服务的本机访问。如需通过局域网内的其他设备访问，请下载发布包并阅读包内的 README，或下载并运行本仓库 local 分支的代码。
+> 本项目基于 **MIT** 许可证开源，你可以自由使用、修改和分发。
 
-运行 `Local.cmd` 会先构建项目，同时开放 HTTP `80` 与 HTTPS `443` 端口。默认 `IP=127.0.0.1` 时显示 `soers.de5.net`。已配置的回环记录按尾号映射：`127.0.0.N` 对应 `2N.soers.de5.net`，`172.0.0.N` 对应 `7N.soers.de5.net`，其中 `N=0-9`；`127.0.0.1` 特例使用根域名。其他 IP 直接显示实际地址。Wrangler 的本地 HTTPS 证书可能需要在浏览器中手动确认信任。
+## 🚀 快速开始
 
-等价命令为：
+### 环境要求
+
+- **Node.js ≥ 22**（Astro 7 要求）
+- **npm** 或 **pnpm**
+
+### 本地运行
+
+> [!NOTE]
+> 主仓库中的 `Local.cmd` 本地运行功能并不完整，只能在运行服务的本机访问。如需通过局域网内的其他设备访问，请下载发布包并阅读包内 README。
 
 ```bash
 npm install
 npm run local
 ```
 
-默认管理员密码为 `masteradmin`。手动打开 `/admin` 登录；通过变量 `P` 修改密码。
+默认在 `127.0.0.1` 上提供 HTTP `80` 与 HTTPS `443` 端口服务，地址显示为 `soers.de5.net`。
 
-登录后使用语言选择器左侧的访客主题按钮。该按钮依次切换默认、复古、蔚蓝、新蓝、浅灰；选择结果保存到 D1，只改变公开访客页。
+默认管理员密码为 `masteradmin`，手动打开 `/admin` 登录；设置环境变量 `P` 可修改密码。
 
-## Cloudflare D1
+### 部署到 Cloudflare Workers
 
-当前项目已在 `wrangler.toml` 中启用 D1 绑定。部署到其他 Cloudflare 账户时，需要创建 D1 数据库，并将 `database_name` 和 `database_id` 替换为新数据库的值：
+```bash
+npm run cf:deploy
+```
+
+无需修改 Cloudflare 的构建命令。
+
+## ✨ 功能特性
+
+- **🎞️ 多格式播放**：视频、音频、图片一键播放
+- **🗂️ 链接伪挂载**：在固定 `/root` 下挂载任意外部媒体链接
+- **📝 ASS 字幕**：JASSUB/libass 浏览器渲染，内置中/日文字体回退
+- **🎤 LRC 歌词**：实时同步、自动高亮滚动，支持双语歌词
+- **🌍 自动语言**：按 IP 自动选择中/英/日，支持手动覆盖
+- **📊 访客统计**：`/table` 查看访问、目录、媒体、播放事件
+- **🌗 五套主题**：默认、复古、蔚蓝、新蓝、浅灰一键切换
+- **🔒 密码保护**：`/admin` 后台与 `/table` 统计页均需管理员密码
+- **💾 D1 持久化**：无 D1 时自动回退内存存储
+- **📈 Umami 统计**：可选接入 [Umami](https://umami.is) 分析
+
+## 🌐 公开路由
+
+| 路由 | 说明 |
+| --- | --- |
+| `/` | 入口动画，移动端跳转 `/Local` |
+| `/Re` | 入口动画页（外部 intro 媒体后进入 `/Loading`） |
+| `/Loading` | 选择语言后进入访客页面 |
+| `/Local` | 常规访客媒体库 |
+| `/Local/Pash/...` | 常规伪挂载展示 URL |
+| `/Tree/...` | `/root/tree` 挂载媒体的原生播放器页面 |
+| `/table` | 访客统计页（需管理员密码） |
+| `/admin` | 管理后台（伪挂载、主题、设置） |
+
+`Tree` 与 `Local` 同层级，但在常规 Local 列表中不显示；请在管理后台将文件夹注册为 `/tree`。
+
+## ☁️ Cloudflare D1
+
+项目已在 `wrangler.toml` 中启用 D1 绑定。部署到其他 Cloudflare 账户时，创建 D1 数据库并替换 `database_name` 和 `database_id`：
 
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "你的数据库名称"
-database_id = "你的-cloudflare-d1-database-id"
+database_name = "your-database-name"
+database_id = "your-cloudflare-d1-database-id"
 ```
 
-RP 会自动创建并升级 `rp_pseudo_links`、`rp_media_stats`、`rp_settings` 和 `rp_visitor_theme` 表。D1 绑定名必须保持为 `DB`。
+RP 会自动创建并升级以下数据表：
 
-## 短变量
+| 数据表 | 用途 |
+| --- | --- |
+| `rp_pseudo_links` | 伪挂载信息 |
+| `rp_media_visitors` | 媒体播放进度与完播统计 |
+| `rp_visitor_events` | 访问、目录、媒体、播放事件 |
+| `rp_settings` | 保存的环境变量 |
+| `rp_visitor_theme` | 公开页访客主题 |
+
+D1 绑定名必须保持为 `DB`。
+
+## 🔧 环境变量
 
 | 变量 | 用途 |
 | --- | --- |
 | `A` | 访客页打开前显示的外部媒体地址 |
-| `B` | `A` 与 `C` 的最大显示或播放时间，单位为秒，默认 `4.2` |
+| `B` | `A` 与 `C` 的最大显示或播放时间（秒），默认 `4.2` |
 | `C` | 与 `A` 同时播放的可选外部音频地址；设置后 `A` 视频静音 |
 | `N` | 网站名称 |
 | `P` | 管理员密码 |
-| `T` | 是否启用中国腾讯云 / 阿里云来源识别跳转，默认开启；设置为 `0`、`false`、`off`、`no` 或 `disabled` 可关闭 |
 | `DB` | D1 绑定 |
 | `US` | Umami 脚本地址 |
 | `UI` | Umami 网站 ID |
 | `UH` | 可选 Umami 主机地址 |
 | `UD` | 可选 Umami 域名列表 |
 
-D1 可用时，RP 会在对应的 `env:变量名` 键尚不存在时，将每个非空的已绑定短变量写入 `rp_settings`。后续部署优先读取数据库中的值；未绑定或空变量不会写入。`keep_vars = true` 也会阻止 Wrangler 删除在 Cloudflare 控制台中配置的变量。
+D1 可用时，RP 会在对应 `env:变量名` 键尚不存在时，将每个非空的已绑定短变量写入 `rp_settings`；后续部署优先读取数据库中的值。`keep_vars = true` 也会阻止 Wrangler 删除在 Cloudflare 控制台中配置的变量。
 
-`T` 默认开启。访问入口会识别中国来源的腾讯云或阿里云服务器 IP，并分别跳转到腾讯云或阿里云官网；没有识别出对应运营商、来源不是中国或探测超时则正常放行。
+## 📖 功能详解
 
-## Umami
+### ASS 字幕
 
-仅当 `US` 和 `UI` 同时配置时加载 Umami：
+添加视频时可填写公开 HTTP(S) `.ass` 字幕链接。RP 通过站内字幕接口读取字幕，避免浏览器 CORS 限制；播放器按字幕实际使用字符请求小型 Noto Sans 字体子集，字体服务不可用时回退到站内 SC/JP 字体。字幕来源仍需能被 Cloudflare Workers 访问。
 
-```text
-US=https://cloud.umami.is/script.js
-UI=你的网站-id
+没有外置字幕的 MKV 视频，默认只读取第一条内置 ASS 字幕。管理后台的选项现改为 **H5 难以播放**：勾选后仅该视频改用 [movi-player](https://github.com/MrUjjwalG/movi-player)，在浏览器端读取 Matroska 内置轨道，并可在所有内置字幕之间切换；未勾选的视频仍使用原有 HTML5/JASSUB 处理方式。Movi 分支会将外置 ASS 转换为浏览器可用的 WebVTT，完整 ASS 样式仍由未勾选分支提供。Movi 依赖 HTTP Range 边下边播，媒体代理会保留上游的 `206 Partial Content` 响应并禁用媒体接口缓存。详见 Cloudflare 的 [Range 行为文档](https://developers.cloudflare.com/cache/reference/range-requests/) 与 [Workers Cache 限制](https://developers.cloudflare.com/workers/cache/limitations/)：Workers Cache 不会存储 Worker 直接返回的 `206`，因此不要为了缓存强制改成伪造的 `200`，否则可能破坏 Range 播放。
+
+### LRC 歌词
+
+添加音频时可填写一个公开 `.lrc` 歌词链接；开启 **双语歌词** 后可再填写另一语言歌词链接。RP 通过站内接口读取歌词以避免 CORS 限制，实时高亮并滚动当前行。检测到中文轨时中文在上、外语在下；无法判断语言时则相反。单个 LRC 中相同时间戳含两行内容时自动适配为双行显示。
+
+### 自动语言
+
+浏览器尚未保存手动语言偏好时，RP 调用免费且无需密钥的 `api.country.is` 查询访客国家：`CN` → 简体中文，`JP` → 日语，其他 → 英语；查询失败时回退到 Cloudflare 请求中的国家信息。手动选择同时保存在本地存储和 `rp_l` Cookie 中；每个媒体使用独立的 `rp_p_*` Cookie 保存播放位置，完播媒体保留完整时长。
+
+## 📁 目录结构
+
+```
+RP-Re_Player
+├── src/                        # 源码
+│   ├── layouts/                # 页面布局
+│   ├── lib/                    # 业务逻辑（伪挂载、字幕、歌词、主题等）
+│   ├── pages/                  # 路由页面
+│   │   ├── api/                # API 接口
+│   │   │   ├── admin/          # 管理后台接口
+│   │   │   └── public/         # 访客公开接口
+│   │   ├── Local/              # 访客媒体库
+│   │   └── tree/               # 原生播放器
+│   ├── styles/                 # 全局与主题样式
+│   └── types/                  # 类型定义
+├── public/                     # 静态资源（字体、图标、海报）
+├── scripts/                    # 构建与本地运行脚本
+├── astro.config.mjs            # Astro 配置
+├── wrangler.toml               # Cloudflare 配置
+├── package.json                # 项目依赖
+└── LICENSE                     # MIT 许可证
 ```
 
-`UH` 和 `UD` 分别对应 Umami 的可选 `data-host-url` 和 `data-domains` 设置。
+## 🙏 致谢
 
-## ASS 字幕
-
-添加视频时可填写公开的 HTTP(S) `.ass` 字幕链接。RP 会通过站内字幕接口读取已配置的字幕，避免普通浏览器跨域限制；播放器会按每份字幕实际使用的字符请求小型 Noto Sans 字体子集，字体服务不可用时再回退到站内 SC/JP 字体。字幕来源仍需能被 Cloudflare Workers 访问。
-
-没有外置字幕的 MKV 视频在未勾选后台“内置多语种字幕”时，继续使用现有视频加载逻辑，只读取第一条内置 ASS 字幕。勾选后改用 [playsvideo](https://github.com/kzahel/playsvideo) 处理视频，并在原字幕选择器位置显示选择框，可在所有已提取的内置字幕、无字幕以及已配置的外置 ASS 字幕之间切换。外置 ASS 字幕仍正常支持。
-
-## LRC 歌词
-
-添加音频时可填写一个公开的 HTTP(S) `.lrc` 歌词链接；开启“是否双语”后可再填写另一语言歌词链接。RP 会通过站内接口读取歌词以避免普通浏览器跨域限制，并实时高亮、滚动当前歌词。检测到中文轨时中文显示在上、外语显示在下；无法判断语言时，另一语言歌词在上、默认歌词在下。单个 LRC 中相同时间戳包含两行内容时会自动适配为双行显示。
-
-## 自动语言
-
-浏览器尚未保存手动语言偏好时，RP 会调用免费且无需密钥的 `api.country.is` 查询访客国家。`CN` 自动使用简体中文，`JP` 自动使用日语，其他国家使用英语；查询失败时回退到 Cloudflare 请求中的国家信息。手动选择同时保存在本地存储和 `rp_l` Cookie 中；每个媒体使用独立的 `rp_p_*` Cookie 保存该设备上的路径与播放位置，完播媒体会保留完整时长。
-
-## 部署
-
-```bash
-无需更改cloudflared的部署与构建命令
-
-如要本地运行可直接运行“Local.cmd"
-```
+- [Astro](https://astro.build) — Web 框架
+- [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS 字幕渲染
+- [movi-player](https://www.npmjs.com/package/movi-player) — 媒体播放器
+- [Umami](https://umami.is) — 可选网站分析

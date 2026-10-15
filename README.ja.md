@@ -1,57 +1,93 @@
-# Re Player (RP)
+<p align="center">
+  <img src="public/favicon.svg" width="120" alt="Re Player logo" />
+</p>
 
-[English](README.md) | [简体中文](README.zh-CN.md) | 日本語
+<div align="center">
 
-Re Player は、Astro で構築されたリンク型メディアライブラリです。Cloudflare Workers にデプロイでき、訪問者は仮想ディレクトリを閲覧しながら、動画・音声・画像をブラウザで再生できます。外部ストレージを直接マウントする必要はありません。
+# 🎬 Re Player (RP)
 
-## 主な機能
+**Astro + Cloudflare Workers で作られたリンク型メディアライブラリ**
 
-- `/root` を基準にしたリンク式の疑似マウント
-- 動画、音声、画像の再生
-- JASSUB/libass による ASS 字幕表示
-- 同期 LRC 歌詞、単一ファイルの自動調整、二言語歌詞
-- IP 情報に基づく英語・中国語・日本語の自動選択と手動変更
-- Cookie による言語設定と各メディアの再生位置の保存
-- 入場アニメーションと `/Loading` ページ
-- モバイル端末では Loading ページを省略して `/Local` を表示
-- パスワード保護された `/admin` 管理画面
-- 管理画面と同じパスワードで保護された `/table` アクセス統計画面
-- 訪問、ディレクトリ、メディア、再生イベントの IP・国・時刻の記録
-- `/Tree/...` による装飾なしのネイティブメディアプレイヤー
-- Cloudflare D1 保存と、D1 がない場合のローカルメモリフォールバック
-- オプションの Umami アナリティクス
+[English](README.md) · [简体中文](README.zh-CN.md) · 日本語
 
-## 公開 URL
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Astro](https://img.shields.io/badge/Astro-7-orange)](https://astro.build)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
 
-| URL | 説明 |
-| --- | --- |
-| `/` | 入場アニメーションの入口。モバイル端末では `/Local` に移動します。 |
-| `/Loading` | 言語を選択し、`Start` で訪問者ページへ進みます。 |
-| `/Local` | 通常の訪問者用メディアライブラリです。 |
-| `/Local/Pash/...` | 通常の疑似マウントを表示する URL です。 |
-| `/Tree/...` | `/root/tree` にマウントされたメディアをネイティブプレイヤーで表示します。 |
-| `/table` | 管理者パスワードが必要な訪問統計ページです。 |
-| `/admin` | 疑似マウント、テーマ、設定を管理します。 |
+</div>
 
-`Tree` は `Local` と同じ階層にあり、通常の Local リストには表示されません。管理画面でフォルダーを `/tree` として登録してください。
+---
 
-## ローカル実行
+## 📝 プロジェクト概要
+
+Re Player は**リンク型メディアライブラリ**です。管理者が外部の動画・音声・画像を仮想 `/root` ディレクトリにマウントし、訪問者は左側でツリーを閲覧しながら、右側のブラウザプレイヤーで再生します。外部ストレージを直接マウントする必要はありません。プロジェクトは **Astro + Cloudflare Workers** 上で動作し、専用サーバーは不要です。
+
+**リポジトリ**: [github.com/lircia/RP-Re_Player](https://github.com/lircia/RP-Re_Player)
 
 > [!NOTE]
-> メインリポジトリの Local.cmd によるローカル実行機能は不完全で、実行しているコンピューターからのみアクセスできます。LAN 内の別のデバイスからアクセスする場合は、リリースパッケージをダウンロードして同梱の README を読むか、このリポジトリの local ブランチのコードをダウンロードして実行してください。
+> 本プロジェクトは **MIT** ライセンスで公開されています。自由に利用・変更・再配布できます。
 
-`Local.cmd` を実行すると、プロジェクトをビルドしてローカルサーバーを起動します。コマンドラインから実行する場合は次のとおりです。
+## 🚀 クイックスタート
+
+### 必要環境
+
+- **Node.js ≥ 22**（Astro 7 の要件）
+- **npm** または **pnpm**
+
+### ローカル実行
+
+> [!NOTE]
+> メインリポジトリの `Local.cmd` によるローカル実行機能は不完全で、実行しているコンピューターからのみアクセスできます。LAN 内の別のデバイスからアクセスする場合は、リリースパッケージをダウンロードして同梱の README を参照してください。
 
 ```bash
 npm install
 npm run local
 ```
 
-既定の管理者パスワードは `masteradmin` です。`P` 変数を設定すると変更できます。管理画面は `/admin`、統計画面は `/table` を手動で開いてください。
+デフォルトでは `127.0.0.1` で HTTP `80` と HTTPS `443` ポートを提供し、アドレスは `soers.de5.net` と表示されます。
 
-## Cloudflare D1
+既定の管理者パスワードは `masteradmin` です。`/admin` を手動で開いてログインしてください。環境変数 `P` を設定するとパスワードを変更できます。
 
-`wrangler.toml` には `DB` という名前の D1 バインディングが設定されています。別の Cloudflare アカウントへ移行する場合は、D1 データベースを作成し、次の値を置き換えてください。
+### Cloudflare Workers へのデプロイ
+
+```bash
+npm run cf:deploy
+```
+
+Cloudflare のビルドコマンドを変更する必要はありません。
+
+## ✨ 主な機能
+
+- **🎞️ マルチフォーマット再生** — 動画・音声・画像をひとつのプレイヤーで
+- **🗂️ リンク型疑似マウント** — 固定 `/root` 配下に任意の外部メディア URL をマウント
+- **📝 ASS 字幕** — JASSUB/libass によるブラウザ内描画、SC/JP フォントのフォールバック付き
+- **🎤 LRC 歌詞** — リアルタイム同期・ハイライト、二言語歌詞に対応
+- **🌍 自動言語** — IP に基づく英語・中国語・日本語の自動選択と手動変更
+- **📊 訪問者統計** — `/table` で訪問・ディレクトリ・メディア・再生イベントを確認
+- **🌗 5 つのテーマ** — デフォルト・レトロ・アズール・ニューブルー・ライトグレーを一括切替
+- **🔒 パスワード保護** — `/admin` と `/table` はどちらも管理者パスワードが必要
+- **💾 D1 永続化** — D1 がない場合はメモリ内フォールバック
+- **📈 Umami 分析** — オプションの [Umami](https://umami.is) 統合
+
+## 🌐 公開ルート
+
+| ルート | 説明 |
+| --- | --- |
+| `/` | 入場アニメーション。モバイル端末では `/Local` へ移動 |
+| `/Re` | 入場アニメーションページ（外部 intro メディア後、`/Loading` へ） |
+| `/Loading` | 言語を選択して `Start` で訪問者ページへ |
+| `/Local` | 通常の訪問者メディアライブラリ |
+| `/Local/Pash/...` | 通常の疑似マウント表示 URL |
+| `/Tree/...` | `/root/tree` にマウントされたメディアのネイティブプレイヤー |
+| `/table` | 訪問者統計ページ（管理者パスワードが必要） |
+| `/admin` | 管理コンソール（疑似マウント・テーマ・設定） |
+
+`Tree` は `Local` と同じ階層にありますが、通常の Local リストには表示されません。管理コンソールでフォルダーを `/tree` として登録してください。
+
+## ☁️ Cloudflare D1
+
+プロジェクトはすでに `wrangler.toml` で D1 バインディングを有効にしています。別の Cloudflare アカウントへ移行する場合は、D1 データベースを作成し、`database_name` と `database_id` を置き換えてください。
 
 ```toml
 [[d1_databases]]
@@ -60,45 +96,77 @@ database_name = "your-database-name"
 database_id = "your-cloudflare-d1-database-id"
 ```
 
-RP は必要なテーブルを自動的に作成・更新します。現在使用される主なテーブルは次のとおりです。
+RP は以下のテーブルを自動的に作成・更新します。
 
-- `rp_pseudo_links`: 疑似マウント情報
-- `rp_media_stats`: メディアの再生統計
-- `rp_visitor_events`: 訪問イベント、IP、国、時刻
-- `rp_settings`: 保存された環境変数
-- `rp_visitor_theme`: 公開ページのテーマ
+| テーブル | 用途 |
+| --- | --- |
+| `rp_pseudo_links` | 疑似マウント情報 |
+| `rp_media_visitors` | 訪問者ごとの再生進捗と完走統計 |
+| `rp_visitor_events` | 訪問・ディレクトリ・メディア・再生イベント |
+| `rp_settings` | 保存された環境変数 |
+| `rp_visitor_theme` | 公開ページの訪問者テーマ |
 
-## 環境変数
+D1 バインディング名は `DB` のままでなければなりません。
+
+## 🔧 環境変数
 
 | 変数 | 用途 |
 | --- | --- |
 | `A` | 訪問者ページの前に表示する外部メディア URL |
-| `B` | `A` と `C` の表示・再生時間（秒）。既定値は `4.2` |
-| `C` | `A` と同時に再生する任意の外部音声 URL |
+| `B` | `A` と `C` の最大表示・再生時間（秒）。既定値は `4.2` |
+| `C` | `A` と同時に再生する任意の外部音声 URL。設定すると `A` の動画はミュート |
 | `N` | サイト名 |
 | `P` | 管理者パスワード |
-| `DB` | Cloudflare D1 バインディング |
+| `DB` | D1 バインディング |
 | `US` | Umami スクリプト URL |
 | `UI` | Umami ウェブサイト ID |
 | `UH` | 任意の Umami ホスト URL |
 | `UD` | 任意の Umami ドメイン一覧 |
 
-D1 が利用できる場合、空でない環境変数は初回起動時に `rp_settings` へ保存されます。以後は保存された値が優先されます。`keep_vars = true` により、Cloudflare ダッシュボードで設定した変数も保持されます。
+D1 が利用できる場合、RP は対応する `env:変数名` キーがまだ存在しないときに、空でないバインド済み短変数を `rp_settings` へ書き込みます。以降のデプロイでは保存された値が優先されます。`keep_vars = true` は、Cloudflare ダッシュボードで設定した変数が Wrangler によって削除されるのを防ぎます。
 
-## 自動言語選択
+## 📖 詳細
 
-言語 Cookie が存在しない場合、無料の `api.country.is` サービスで国を判定します。中国（`CN`）は簡体字中国語、日本（`JP`）は日本語、それ以外は英語になります。サービスが利用できない場合は Cloudflare の国情報を使用します。手動選択は `rp_l` Cookie に保存されます。
+### ASS 字幕
 
-## 字幕と歌詞
+動画を追加するときに、公開 HTTP(S) の `.ass` 字幕 URL を指定できます。RP はサイト内の字幕エンドポイント経由で字幕を取得し、通常のブラウザ CORS 制限を回避します。プレイヤーは字幕が実際に使う文字に対応した小さな Noto Sans サブセットを要求し、フォントサービスが利用できない場合は同梱の SC/JP フォントをフォールバックします。字幕の取得元は Cloudflare Workers から到達可能である必要があります。
 
-動画の追加時に公開された HTTP(S) の `.ass` URL を指定できます。音声には同期 LRC URL を指定でき、必要に応じて二言語目の歌詞も追加できます。字幕と歌詞はサイト内のプロキシを経由して読み込まれるため、通常のブラウザ CORS 制限の影響を受けにくくなっています。
+外部字幕のない MKV 動画は、既定では最初の埋め込み ASS トラックだけを読み込みます。管理コンソールの項目は **H5 で再生困難** に変更され、有効にした動画だけ [movi-player](https://github.com/MrUjjwalG/movi-player) でブラウザ内処理します。Matroska の埋め込み字幕トラックを選択でき、無効の動画は従来の HTML5/JASSUB 処理を使います。Movi 側の外部 ASS はブラウザ互換の WebVTT に変換され、完全な ASS スタイルは従来の分岐で利用できます。Movi は HTTP Range による段階読み込みを使うため、メディアプロキシは上流の `206 Partial Content` をそのまま返し、メディアエンドポイントのキャッシュを無効にします。詳しくは Cloudflare の [Range リクエスト動作](https://developers.cloudflare.com/cache/reference/range-requests/) と [Workers Cache の制限](https://developers.cloudflare.com/workers/cache/limitations/) を参照してください。Workers Cache は Worker が直接返す `206` を保存しないため、キャッシュ目的で `200` に強制変換しないでください。
 
-外部字幕のない MKV 動画で管理画面の「内蔵多言語字幕」を無効にした場合は、従来の動画読み込みを使用して最初の内蔵 ASS トラックだけを読み込みます。有効にした場合は [playsvideo](https://github.com/kzahel/playsvideo) で動画を処理し、元の字幕選択位置に表示される選択欄から、抽出された内蔵字幕、字幕なし、設定済みの外部 ASS 字幕を切り替えられます。外部 ASS 字幕は引き続き利用できます。
+### LRC 歌詞
 
-## デプロイ
+音声を追加するときに、同期歌詞用の公開 HTTP(S) `.lrc` URL を指定できます。**二言語歌詞** を有効にすると、別言語の歌詞ファイルも追加できます。RP は両ファイルをサイト内プロキシ経由で取得して CORS 制限を回避し、現在行をリアルタイムにハイライト・スクロールします。中国語の歌詞を検出した場合は中国語が上、外国語が下に表示されます。言語判定ができない場合は、別言語のファイルが既定ファイルの上に表示されます。同じタイムスタンプに 2 行含まれる単一 LRC は自動的に調整されます。
 
-```bash
-npm run cf:deploy
+### 自動言語
+
+手動の言語設定が保存されていない場合、RP は無料で鍵不要の `api.country.is` サービスで訪問者の国を判定します。`CN` は簡体字中国語、`JP` は日本語、それ以外は英語になります。サービスが利用できない場合は Cloudflare のリクエスト国情報をフォールバックとして使用します。手動選択はローカルストレージと `rp_l` Cookie に保存されます。メディアごとの `rp_p_*` Cookie は、そのデバイスのすべての音声/動画パスと再生位置を保存し、完走したメディアは完全な長さで記録されます。
+
+## 📁 ディレクトリ構造
+
+```
+RP-Re_Player
+├── src/                        # ソースコード
+│   ├── layouts/                # ページレイアウト
+│   ├── lib/                    # ビジネスロジック（疑似マウント・字幕・歌詞・テーマ等）
+│   ├── pages/                  # ルートページ
+│   │   ├── api/                # API エンドポイント
+│   │   │   ├── admin/          # 管理 API
+│   │   │   └── public/         # 訪問者向け公開 API
+│   │   ├── Local/              # 訪問者メディアライブラリ
+│   │   └── tree/               # ネイティブプレイヤー
+│   ├── styles/                 # グローバル・テーマスタイル
+│   └── types/                  # 型定義
+├── public/                     # 静的アセット（フォント・アイコン・ポスター）
+├── scripts/                    # ビルド・ローカル実行スクリプト
+├── astro.config.mjs            # Astro 設定
+├── wrangler.toml               # Cloudflare 設定
+├── package.json                # 依存関係
+└── LICENSE                     # MIT ライセンス
 ```
 
-Cloudflared の既存のビルドコマンドを変更する必要はありません。
+## 🙏 謝辞
+
+- [Astro](https://astro.build) — Web フレームワーク
+- [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS 字幕描画
+- [movi-player](https://www.npmjs.com/package/movi-player) — メディアプレイヤー
+- [Umami](https://umami.is) — オプションのサイト分析

@@ -1,43 +1,93 @@
-# Re Player (RP)
+<p align="center">
+  <img src="public/favicon.svg" width="120" alt="Re Player logo" />
+</p>
 
-English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
+<div align="center">
 
-Re Player is a link-based media library that uses the Astro framework and runs on Cloudflare Workers. Visitors browse a virtual `/root` tree in the left panel and play video, audio, or images in the browser player on the right. No storage provider is mounted directly.
+# 🎬 Re Player (RP)
 
-## Features
+**A link-based media library built with Astro, running on Cloudflare Workers**
 
-- Link pseudo-mounts under the required `/root` path
-- Video, audio, and image playback
-- Optional ASS subtitles rendered in the browser with JASSUB/libass and bundled Chinese/Japanese font fallbacks
-- Synchronized LRC lyrics with single-file adaptation and optional bilingual tracks
-- Automatic IP-based English, Simplified Chinese, or Japanese selection with a manual override
-- Visitor cookies remember the selected language and each audio/video file's playback position, including completed positions
-- Password-protected `/admin` console with a management-style table
-- Five D1-backed visitor themes switched from one admin button: Default, Retro, Azure, New Blue, and Light Gray
-- Cloudflare D1 persistence with an in-memory local fallback
-- Optional Umami analytics
+[English](README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md)
 
-## Local Run
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Astro](https://img.shields.io/badge/Astro-7-orange)](https://astro.build)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
+
+</div>
+
+---
+
+## 📝 About
+
+Re Player is a **link-based media library**. An administrator mounts external videos, audio, and images under a virtual `/root` directory, and visitors browse the tree on the left while playing media in the browser player on the right. No storage provider is mounted directly. The project runs on **Astro + Cloudflare Workers**, with no dedicated server required.
+
+**Repository**: [github.com/lircia/RP-Re_Player](https://github.com/lircia/RP-Re_Player)
 
 > [!NOTE]
-> Local running through Local.cmd in the main repository is incomplete and can only be accessed from the same computer. To access the service from other devices on your LAN, download the release package and read the README included with it, or download and run the code from this repository's local branch.
+> This project is open-sourced under the **MIT** license. You are free to use, modify, and redistribute it.
 
-Run `Local.cmd` to build RP and open HTTP port `80` plus HTTPS port `443`. With the default `IP=127.0.0.1`, it displays `soers.de5.net`. For the configured loopback records, `127.0.0.N` maps to `2N.soers.de5.net` and `172.0.0.N` maps to `7N.soers.de5.net` for `N=0-9`; `127.0.0.1` is the root-domain exception. Other addresses are displayed directly. Wrangler's local HTTPS certificate may require browser trust confirmation.
+## 🚀 Quick Start
 
-The equivalent command is:
+### Requirements
+
+- **Node.js ≥ 22** (required by Astro 7)
+- **npm** or **pnpm**
+
+### Run Locally
+
+> [!NOTE]
+> Local running through `Local.cmd` in the main repository is incomplete and can only be accessed from the same computer. To access the service from other devices on your LAN, download the release package and read its bundled README.
 
 ```bash
 npm install
 npm run local
 ```
 
-The default administrator password is `masteradmin`. Open `/admin` manually to sign in. Set `P` to change the password.
+By default the service listens on `127.0.0.1`, serving HTTP port `80` and HTTPS port `443`, displayed as `soers.de5.net`.
 
-After signing in, use the visitor-theme button to the left of the language selector. One button cycles through Default, Retro, Azure, New Blue, and Light Gray; the selection is stored in D1 and applies to the public visitor page only.
+The default administrator password is `masteradmin`. Open `/admin` manually to sign in; set the environment variable `P` to change the password.
 
-## Cloudflare D1
+### Deploy to Cloudflare Workers
 
-The current project already has an active D1 binding in `wrangler.toml`. When deploying to another Cloudflare account, create a D1 database and replace `database_name` and `database_id` with that database's values:
+```bash
+npm run cf:deploy
+```
+
+No change to Cloudflare's build command is required.
+
+## ✨ Features
+
+- **🎞️ Multi-format playback** — video, audio, and image in one player
+- **🗂️ Link pseudo-mounts** — mount any external media URL under the fixed `/root` path
+- **📝 ASS subtitles** — rendered in-browser with JASSUB/libass plus bundled SC/JP font fallbacks
+- **🎤 LRC lyrics** — real-time synced highlighting with optional bilingual tracks
+- **🌍 Auto language** — IP-based English / 简体中文 / 日本語 selection with manual override
+- **📊 Visitor analytics** — `/table` shows visit, directory, media, and play events
+- **🌗 Five themes** — Default, Retro, Azure, New Blue, Light Gray, switched from one admin button
+- **🔒 Password protected** — both `/admin` and `/table` require the administrator password
+- **💾 D1 persistence** — falls back to in-memory storage when D1 is unavailable
+- **📈 Umami analytics** — optional [Umami](https://umami.is) integration
+
+## 🌐 Public Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Entry animation; mobile devices go to `/Local` |
+| `/Re` | Entry animation page (external intro media, then `/Loading`) |
+| `/Loading` | Choose language, then `Start` to enter the visitor page |
+| `/Local` | Regular visitor media library |
+| `/Local/Pash/...` | Regular pseudo-mount display URLs |
+| `/Tree/...` | Native player page for media mounted at `/root/tree` |
+| `/table` | Visitor analytics page (requires the admin password) |
+| `/admin` | Admin console (pseudo-mounts, themes, settings) |
+
+`Tree` sits at the same level as `Local` but is not shown in the regular Local listing; register a folder as `/tree` in the admin console.
+
+## ☁️ Cloudflare D1
+
+The project already has an active D1 binding in `wrangler.toml`. When deploying to another Cloudflare account, create a D1 database and replace `database_name` and `database_id`:
 
 ```toml
 [[d1_databases]]
@@ -46,15 +96,25 @@ database_name = "your-database-name"
 database_id = "your-cloudflare-d1-database-id"
 ```
 
-RP creates and upgrades the `rp_pseudo_links`, `rp_media_stats`, `rp_settings`, and `rp_visitor_theme` tables automatically. The D1 binding name must remain `DB`.
+RP creates and upgrades the following tables automatically:
 
-## Short Variables
+| Table | Purpose |
+| --- | --- |
+| `rp_pseudo_links` | Pseudo-mount information |
+| `rp_media_visitors` | Per-visitor media progress and completion stats |
+| `rp_visitor_events` | Visit, directory, media, and play events |
+| `rp_settings` | Persisted environment variables |
+| `rp_visitor_theme` | Public-page visitor theme |
+
+The D1 binding name must remain `DB`.
+
+## 🔧 Environment Variables
 
 | Variable | Purpose |
 | --- | --- |
 | `A` | External media URL shown before the visitor page |
-| `B` | Maximum playback/display time for `A` and `C`, in seconds; default `4.2` |
-| `C` | Optional external audio URL played with `A`; when set, the `A` video is muted |
+| `B` | Maximum display/playback time for `A` and `C`, in seconds; default `4.2` |
+| `C` | Optional external audio URL played together with `A`; mutes the `A` video when set |
 | `N` | Site name |
 | `P` | Administrator password |
 | `DB` | D1 binding |
@@ -63,37 +123,50 @@ RP creates and upgrades the `rp_pseudo_links`, `rp_media_stats`, `rp_settings`, 
 | `UH` | Optional Umami host URL |
 | `UD` | Optional Umami domain list |
 
-When D1 is available, RP copies each non-empty bound short variable into `rp_settings` the first time its `env:VARIABLE` key is missing. Stored values take priority on later deployments; unbound or empty variables are not written. `keep_vars = true` also prevents Wrangler from deleting variables configured in the Cloudflare dashboard.
+When D1 is available, RP copies each non-empty bound short variable into `rp_settings` the first time its `env:VARIABLE` key is missing; stored values take priority on later deployments. `keep_vars = true` also prevents Wrangler from deleting variables configured in the Cloudflare dashboard.
 
-## Umami
+## 📖 Details
 
-Umami loads only when both `US` and `UI` are configured:
+### ASS Subtitles
 
-```text
-US=https://cloud.umami.is/script.js
-UI=your-website-id
+When adding a video, enter a public HTTP(S) URL to an `.ass` subtitle file. RP fetches the configured subtitle through its own public subtitle endpoint, avoiding ordinary browser CORS restrictions. The player requests small Noto Sans subsets for the characters used by each subtitle; bundled SC/JP fonts remain as a fallback when the font service is unavailable. The subtitle source must still be reachable from Cloudflare Workers.
+
+MKV files without an external subtitle use the first embedded ASS track by default. Enabling **H5 difficult playback** in the admin console switches only that video to [movi-player](https://github.com/MrUjjwalG/movi-player), which reads the Matroska tracks in the browser and provides a subtitle selector for all embedded tracks. Videos with the option disabled continue using the existing native HTML5/JASSUB path. External ASS subtitles in the Movi path are converted to browser-compatible WebVTT; full ASS styling remains available on the native path. Movi uses HTTP Range requests for progressive loading, so the media proxy preserves upstream `206 Partial Content` responses and disables caching for the media endpoint. See Cloudflare's [Range request behavior](https://developers.cloudflare.com/cache/reference/range-requests/) and [Workers Cache limitations](https://developers.cloudflare.com/workers/cache/limitations/): Workers Cache does not store a Worker response that is already `206`, so do not force this endpoint to return a synthetic `200`.
+
+### LRC Lyrics
+
+When adding audio, enter a public HTTP(S) `.lrc` URL for synchronized lyrics. Enable **Bilingual lyrics** to add a second-language file. RP proxies both files to avoid CORS restrictions, highlights and scrolls the current line in real time, and places detected Chinese lyrics above the foreign-language line. If language detection is inconclusive, the other-language file appears above the default file. A single LRC containing two lines at the same timestamp is adapted automatically.
+
+### Automatic Language
+
+When no manual language preference has been saved, RP uses the free, keyless `api.country.is` service to determine the visitor country: `CN` selects Simplified Chinese, `JP` selects Japanese, and every other country selects English. Cloudflare's request country is used as a fallback when the lookup service is unavailable. A manual selection is stored in local storage and the `rp_l` cookie. Per-media `rp_p_*` cookies store every audio/video path and playback position on that device; completed media remains recorded at its full duration.
+
+## 📁 Directory Structure
+
+```
+RP-Re_Player
+├── src/                        # Source code
+│   ├── layouts/                # Page layouts
+│   ├── lib/                    # Business logic (pseudo-mounts, subtitles, lyrics, themes…)
+│   ├── pages/                  # Route pages
+│   │   ├── api/                # API endpoints
+│   │   │   ├── admin/          # Admin APIs
+│   │   │   └── public/         # Visitor/public APIs
+│   │   ├── Local/              # Visitor media library
+│   │   └── tree/               # Native player
+│   ├── styles/                 # Global and theme styles
+│   └── types/                  # Type definitions
+├── public/                     # Static assets (fonts, icon, poster)
+├── scripts/                    # Build and local-run scripts
+├── astro.config.mjs            # Astro configuration
+├── wrangler.toml               # Cloudflare configuration
+├── package.json                # Project dependencies
+└── LICENSE                     # MIT license
 ```
 
-`UH` and `UD` map to Umami's optional `data-host-url` and `data-domains` tracker settings.
+## 🙏 Acknowledgements
 
-## ASS Subtitles
-
-When adding a video, enter a public HTTP(S) URL to an `.ass` subtitle file. RP fetches that configured subtitle through its own public subtitle endpoint, which avoids ordinary browser CORS restrictions. The player requests small Noto Sans subsets for the characters used by each subtitle; locally hosted SC/JP files remain as a fallback when the font service is unavailable. The subtitle source must still be reachable from Cloudflare Workers.
-
-MKV files without an external subtitle use the first embedded ASS subtitle track. The management form includes an **Embedded multilingual subtitles** option, which is disabled by default. When enabled, the video is loaded through [playsvideo](https://github.com/kzahel/playsvideo); the subtitle selector can switch between all extracted embedded tracks, no subtitles, and an external ASS subtitle when configured. When disabled, the existing direct video path is used and only the first embedded ASS track is loaded. External ASS subtitles remain supported.
-
-## LRC Lyrics
-
-When adding audio, enter one public HTTP(S) `.lrc` URL for synchronized lyrics. Enable **Bilingual lyrics** to add a second language file. RP proxies both files to avoid ordinary browser CORS restrictions, highlights and scrolls the current line in real time, and places detected Chinese lyrics above the foreign-language line. If language detection is inconclusive, the other-language file appears above the default file. A single LRC containing two lines at the same timestamp is adapted automatically.
-
-## Automatic Language
-
-When no manual language preference has been saved, RP uses the free, keyless `api.country.is` service to determine the visitor country. `CN` selects Simplified Chinese, `JP` selects Japanese, and every other country selects English. Cloudflare's request country is used as a fallback when the lookup service is unavailable. A manual selection is stored in local storage and the `rp_l` cookie. Per-media `rp_p_*` cookies store every audio/video path and playback position on that device; completed media remains recorded at its full duration.
-
-## Deploy
-
-```bash
-You don't need to change Cloudflared's build command.
-
-If you want to run it locally,please run Local.cmd
-```
+- [Astro](https://astro.build) — Web framework
+- [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS subtitle rendering
+- [movi-player](https://www.npmjs.com/package/movi-player) — media player
+- [Umami](https://umami.is) — optional website analytics

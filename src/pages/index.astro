@@ -222,6 +222,7 @@ const introMaxSeconds = (() => {
 
           <div id="videoFrame" class="video-frame" tabindex="0" hidden>
             <video id="videoPlayer" playsinline preload="auto"></video>
+            <movi-player id="moviVideo" class="movi-video" playsinline preload="auto" fallback="native"></movi-player>
             <div id="videoControls" class="video-controls">
               <label class="video-seek">
                 <span class="sr-only" data-i18n="seek">Seek</span>
@@ -364,7 +365,8 @@ const introMaxSeconds = (() => {
 
   <script>
     import JASSUB from "jassub";
-    import { PlaysVideoEngine, type SubtitleTrackInfo } from "playsvideo";
+    import "movi-player/element";
+    import type { MoviElement, SubtitleTrack as MoviSubtitleTrack } from "movi-player/element";
     import { Decoder as EbmlDecoder } from "ebml/lib/ebml.esm.js";
     import { buildLyrics, type LyricCue, type LyricWord } from "../lib/lrc";
     import { publicCoverPath } from "../lib/pseudo";
@@ -567,9 +569,10 @@ const introMaxSeconds = (() => {
       current: MediaItem | null;
       lang: Lang;
       ass: JASSUB | null;
-      playsVideo: PlaysVideoEngine | null;
-      playsVideoTracks: SubtitleTrackInfo[];
-      playsVideoObserver: MutationObserver | null;
+      moviActive: boolean;
+      moviSubtitleTracks: MoviSubtitleTrack[];
+      moviExternalSubtitle: string | null;
+      moviExternalObjectUrl: string | null;
       subtitleSelection: SubtitleSelection;
       lyrics: LyricCue[];
       lyricIndex: number;
@@ -587,9 +590,10 @@ const introMaxSeconds = (() => {
       current: null,
       lang: "en",
       ass: null,
-      playsVideo: null,
-      playsVideoTracks: [],
-      playsVideoObserver: null,
+      moviActive: false,
+      moviSubtitleTracks: [],
+      moviExternalSubtitle: null,
+      moviExternalObjectUrl: null,
       subtitleSelection: "off",
       lyrics: [],
       lyricIndex: -1,
@@ -617,6 +621,7 @@ const introMaxSeconds = (() => {
       empty: document.querySelector<HTMLElement>("#emptyPlayer")!,
       videoFrame: document.querySelector<HTMLElement>("#videoFrame")!,
       video: document.querySelector<HTMLVideoElement>("#videoPlayer")!,
+      movi: document.querySelector<MoviElement>("#moviVideo")!,
       videoControls: document.querySelector<HTMLElement>("#videoControls")!,
       playToggle: document.querySelector<HTMLButtonElement>("#playToggle")!,
       playIcon: document.querySelector<HTMLElement>("#playIcon")!,
@@ -734,8 +739,14 @@ const introMaxSeconds = (() => {
       return legacy;
     }
 
-    function activeMedia() {
-      if (s.current?.kind === "video") return d.video;
+    type VideoMedia = HTMLVideoElement | MoviElement;
+
+    function activeVideo(): VideoMedia {
+      return s.moviActive ? d.movi : d.video;
+    }
+
+    function activeMedia(): VideoMedia | HTMLAudioElement | null {
+      if (s.current?.kind === "video") return activeVideo();
       if (s.current?.kind === "audio") return d.audio;
       return null;
     }
@@ -759,7 +770,7 @@ const introMaxSeconds = (() => {
       if (value.t > 0) markLibraryItemPlayed(s.current.path);
     }
 
-    function restoreProgress(media: HTMLMediaElement) {
+    function restoreProgress(media: VideoMedia | HTMLAudioElement) {
       if (!s.current) return;
       const saved = readProgress(s.current.path);
       if (!saved || saved.t <= 0) return;
@@ -1003,7 +1014,7 @@ const introMaxSeconds = (() => {
       return statTask;
     }
 
-    function recordProgress(media: HTMLMediaElement) {
+    function recordProgress(media: VideoMedia | HTMLAudioElement) {
       const duration = Number.isFinite(media.duration) && media.duration > 0 ? media.duration : 0;
       if (!duration || !s.current || !isProgressTracked(s.current)) return;
       const progress = media.currentTime / duration;
@@ -1101,26 +1112,29 @@ const introMaxSeconds = (() => {
     }
 
     function cycleVideoSpeed() {
-      const current = d.video.defaultPlaybackRate || d.video.playbackRate || 1;
+      const media = activeVideo();
+      const current = media.defaultPlaybackRate || media.playbackRate || 1;
       const index = VIDEO_RATES.findIndex((rate) => Math.abs(rate - current) < 0.01);
       const rate = VIDEO_RATES[(index + 1 + VIDEO_RATES.length) % VIDEO_RATES.length];
-      d.video.defaultPlaybackRate = rate;
-      d.video.playbackRate = rate;
+      media.defaultPlaybackRate = rate;
+      media.playbackRate = rate;
       updateVideoControls();
     }
 
     function skipVideo(seconds: number) {
-      if (!Number.isFinite(d.video.duration)) return;
-      d.video.currentTime = Math.max(0, Math.min(d.video.duration, d.video.currentTime + seconds));
+      const media = activeVideo();
+      if (!Number.isFinite(media.duration)) return;
+      media.currentTime = Math.max(0, Math.min(media.duration, media.currentTime + seconds));
       updateVideoControls();
     }
 
     function updateVideoControls() {
-      const paused = d.video.paused;
-      const muted = d.video.muted || d.video.volume === 0;
+      const media = activeVideo();
+      const paused = media.paused;
+      const muted = media.muted || media.volume === 0;
       const fullscreen = isVideoFullscreen();
-      const duration = Number.isFinite(d.video.duration) ? d.video.duration : 0;
-      const rate = d.video.playbackRate || 1;
+      const duration = Number.isFinite(media.duration) ? media.duration : 0;
+      const rate = media.playbackRate || 1;
       d.videoFrame.dataset.playing = paused ? "0" : "1";
       d.playIcon.hidden = !paused;
       d.pauseIcon.hidden = paused;
@@ -1136,9 +1150,9 @@ const introMaxSeconds = (() => {
       d.seek.ariaLabel = t("seek");
       d.volume.ariaLabel = t("volume");
       d.seek.max = String(duration);
-      if (!seeking) d.seek.value = String(Math.min(d.video.currentTime || 0, duration));
-      d.volume.value = String(muted ? 0 : d.video.volume);
-      d.time.value = `${formatTime(d.video.currentTime)} / ${formatTime(duration)}`;
+      if (!seeking) d.seek.value = String(Math.min(media.currentTime || 0, duration));
+      d.volume.value = String(muted ? 0 : media.volume);
+      d.time.value = `${formatTime(media.currentTime)} / ${formatTime(duration)}`;
       setRangeFill(d.seek, duration ? (Number(d.seek.value) / duration) * 100 : 0);
       setRangeFill(d.volume, Number(d.volume.value) * 100);
     }
@@ -1170,8 +1184,9 @@ const introMaxSeconds = (() => {
     }
 
     function togglePlay() {
-      if (d.video.paused) d.video.play().catch(() => undefined);
-      else d.video.pause();
+      const media = activeVideo();
+      if (media.paused) media.play().catch(() => undefined);
+      else media.pause();
     }
 
     function toggleAudioPlay() {
@@ -1504,13 +1519,15 @@ const introMaxSeconds = (() => {
       subtitleAbortController?.abort();
       subtitleAbortController = null;
       await destroyVideoSubtitle();
-      destroyPlaysVideo();
-      s.playsVideoTracks = [];
+      destroyMoviVideo();
+      s.moviSubtitleTracks = [];
       s.subtitleSelection = "off";
       d.subtitle.hidden = true;
       d.subtitleSelector.hidden = true;
       d.video.pause();
       d.video.autoplay = false;
+      d.video.hidden = true;
+      d.movi.hidden = true;
       d.audio.pause();
       d.video.removeAttribute("src");
       d.video.load();
@@ -1561,53 +1578,89 @@ const introMaxSeconds = (() => {
       if (ass) await ass.destroy().catch(() => undefined);
     }
 
-    function destroyPlaysVideo() {
-      s.playsVideoObserver?.disconnect();
-      s.playsVideoObserver = null;
-      const engine = s.playsVideo;
-      s.playsVideo = null;
-      if (engine) engine.destroy();
+    function destroyMoviVideo() {
+      d.movi.pause();
+      d.movi.src = null;
+      s.moviActive = false;
+      s.moviSubtitleTracks = [];
+      s.moviExternalSubtitle = null;
+      if (s.moviExternalObjectUrl) URL.revokeObjectURL(s.moviExternalObjectUrl);
+      s.moviExternalObjectUrl = null;
+      d.videoFrame.dataset.backend = "native";
     }
 
-    function subtitleTrackLabel(track: SubtitleTrackInfo, index: number) {
-      return track.name?.trim() || track.language?.trim() || `${t("subtitleTrack")} ${index + 1}`;
+    function subtitleTrackLabel(track: MoviSubtitleTrack, index: number) {
+      return track.label?.trim() || track.language?.trim() || `${t("subtitleTrack")} ${index + 1}`;
     }
 
     function embeddedSubtitleIndex(selection: SubtitleSelection) {
       if (!selection.startsWith("embedded:")) return -1;
-      const index = Number(selection.slice("embedded:".length));
-      return Number.isInteger(index) ? index : -1;
+      const id = Number(selection.slice("embedded:".length));
+      return Number.isInteger(id) ? id : -1;
     }
 
-    function disableNativeSubtitleTracks() {
-      for (const track of Array.from(d.video.textTracks)) track.mode = "disabled";
+    function assTimestampToSeconds(value: string) {
+      const match = value.trim().match(/^(\d+):(\d{1,2}):(\d{1,2})[.:](\d{1,2})$/);
+      if (!match) return 0;
+      return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]) + Number(match[4]) / 100;
     }
 
-    function activateNativeSubtitleTrack(index: number) {
-      const trackElement = d.video.querySelectorAll("track")[index] as HTMLTrackElement | undefined;
-      disableNativeSubtitleTracks();
-      if (!trackElement) return false;
-      trackElement.track.mode = "showing";
-      return true;
+    function vttTimestamp(seconds: number) {
+      const milliseconds = Math.max(0, Math.round(seconds * 1000));
+      const hours = Math.floor(milliseconds / 3600000);
+      const minutes = Math.floor((milliseconds % 3600000) / 60000);
+      const rest = milliseconds % 60000;
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(Math.floor(rest / 1000)).padStart(2, "0")}.${String(rest % 1000).padStart(3, "0")}`;
     }
 
-    async function applyPlaysVideoSubtitle(request: number, route: number, signal: AbortSignal) {
-      if (!isCurrentItemLoad(request, route, signal)) return false;
-      if (s.subtitleSelection === "external") {
-        disableNativeSubtitleTracks();
-        renderSubtitleOptions();
-        return Boolean(s.ass);
+    function assToWebVtt(content: string) {
+      if (/^\s*WEBVTT/i.test(content)) return content;
+      const cues: string[] = [];
+      for (const line of content.split(/\r?\n/)) {
+        const match = line.match(/^\s*Dialogue:\s*(.*)$/i);
+        if (!match) continue;
+        const fields = match[1].split(",");
+        if (fields.length < 10) continue;
+        const start = assTimestampToSeconds(fields[1]);
+        const end = assTimestampToSeconds(fields[2]);
+        const text = fields.slice(9).join(",")
+          .replace(/\{[^}]*\}/g, "")
+          .replace(/\\N/g, "\n")
+          .replace(/\\n/g, "\n")
+          .replace(/\\h/g, " ")
+          .trim();
+        if (!text || end <= start) continue;
+        cues.push(`${vttTimestamp(start)} --> ${vttTimestamp(end)}\n${text}`);
       }
+      if (cues.length) return `WEBVTT\n\n${cues.join("\n\n")}\n`;
+      return content;
+    }
+
+    async function applyMoviSubtitle(request: number, route: number, signal: AbortSignal) {
+      if (!isCurrentItemLoad(request, route, signal) || !s.moviActive) return false;
       await destroyVideoSubtitle();
+      const player = d.movi.player;
+      if (!player) return false;
       if (s.subtitleSelection === "off") {
-        disableNativeSubtitleTracks();
+        await player.selectSubtitleTrack(null);
+        if (s.moviExternalSubtitle) await player.selectSubtitleLang(null);
         renderSubtitleOptions();
         return true;
       }
-      const index = embeddedSubtitleIndex(s.subtitleSelection);
-      const active = index >= 0 && activateNativeSubtitleTrack(index);
+      if (s.subtitleSelection === "external") {
+        const selected = s.moviExternalSubtitle
+          ? await player.selectSubtitleLang(s.moviExternalSubtitle)
+          : false;
+        renderSubtitleOptions();
+        return selected;
+      }
+      const id = embeddedSubtitleIndex(s.subtitleSelection);
+      if (s.moviExternalSubtitle) await player.selectSubtitleLang(null);
+      const selected = id >= 0 && s.moviSubtitleTracks.some((track) => track.id === id)
+        ? await player.selectSubtitleTrack(id)
+        : false;
       renderSubtitleOptions();
-      return active;
+      return selected;
     }
 
     function renderSubtitleOptions() {
@@ -1619,15 +1672,15 @@ const introMaxSeconds = (() => {
       const options: Array<{ value: SubtitleSelection; label: string }> = [
         { value: "off", label: t("subtitleOff") }
       ];
-      if (current.sub) options.push({ value: "external", label: t("externalSubtitle") });
-      for (const [index, track] of s.playsVideoTracks.entries()) {
-        options.push({ value: `embedded:${track.index}`, label: subtitleTrackLabel(track, index) });
+      if (s.moviExternalSubtitle) options.push({ value: "external", label: t("externalSubtitle") });
+      for (const [index, track] of s.moviSubtitleTracks.entries()) {
+        options.push({ value: `embedded:${track.id}`, label: subtitleTrackLabel(track, index) });
       }
       if (!options.some((option) => option.value === s.subtitleSelection)) {
-        s.subtitleSelection = current.sub
+        s.subtitleSelection = s.moviExternalSubtitle
           ? "external"
-          : s.playsVideoTracks[0]
-            ? `embedded:${s.playsVideoTracks[0].index}`
+          : s.moviSubtitleTracks[0]
+            ? `embedded:${s.moviSubtitleTracks[0].id}`
             : "off";
       }
       d.subtitleSelect.replaceChildren(...options.map((option) => {
@@ -1638,14 +1691,12 @@ const introMaxSeconds = (() => {
       }));
       d.subtitleSelect.value = s.subtitleSelection;
       d.subtitle.hidden = s.subtitleSelection === "off";
-      const embeddedIndex = embeddedSubtitleIndex(s.subtitleSelection);
-      const embeddedTrack = embeddedIndex >= 0
-        ? s.playsVideoTracks.find((track) => track.index === embeddedIndex)
-        : undefined;
+      const embeddedId = embeddedSubtitleIndex(s.subtitleSelection);
+      const embeddedTrack = embeddedId >= 0 ? s.moviSubtitleTracks.find((track) => track.id === embeddedId) : undefined;
       d.subtitleText.textContent = s.subtitleSelection === "external"
         ? "ASS"
         : embeddedTrack
-          ? subtitleTrackLabel(embeddedTrack, s.playsVideoTracks.indexOf(embeddedTrack))
+          ? subtitleTrackLabel(embeddedTrack, s.moviSubtitleTracks.indexOf(embeddedTrack))
           : t("noSubtitle");
     }
 
@@ -1822,30 +1873,35 @@ const introMaxSeconds = (() => {
       return response.text();
     }
 
-    async function loadPlaysVideo(item: MediaItem, request: number, route: number, signal: AbortSignal) {
+    async function loadMoviExternalSubtitle(item: MediaItem, signal: AbortSignal) {
+      if (!item.sub || !d.movi.player) return false;
+      const raw = await loadExternalVideoSubtitle(item, signal);
+      if (!raw.trim()) return false;
+      const vtt = assToWebVtt(raw);
+      const url = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
+      if (s.moviExternalObjectUrl) URL.revokeObjectURL(s.moviExternalObjectUrl);
+      s.moviExternalObjectUrl = url;
+      s.moviExternalSubtitle = "external-ass";
+      d.movi.player.addSubtitleTrack({ url, lang: s.moviExternalSubtitle, label: t("externalSubtitle"), format: "vtt" });
+      return true;
+    }
+
+    async function loadMoviVideo(item: MediaItem, request: number, route: number, signal: AbortSignal) {
       if (!item.url) throw new Error(t("playFailed"));
-      const engine = new PlaysVideoEngine(d.video, { embeddedSubtitlePolicy: "auto" });
-      s.playsVideo = engine;
-      s.playsVideoTracks = [];
+      s.moviActive = true;
+      s.moviSubtitleTracks = [];
+      s.moviExternalSubtitle = null;
+      d.videoFrame.dataset.backend = "movi";
+      d.video.hidden = true;
+      d.movi.hidden = false;
+      d.movi.poster = item.poster || "/poster.svg";
 
-      const refreshTracks = () => {
-        if (s.playsVideo !== engine || !isCurrentItemLoad(request, route, signal)) return;
-        s.playsVideoTracks = engine.subtitleTracks.slice();
-        renderSubtitleOptions();
-        if (s.subtitleSelection.startsWith("embedded:")) {
-          queueMicrotask(() => applyPlaysVideoSubtitle(request, route, signal).catch(() => undefined));
-        }
-      };
-      engine.addEventListener("subtitle-status", refreshTracks);
-      const observer = new MutationObserver(refreshTracks);
-      s.playsVideoObserver = observer;
-      observer.observe(d.video, { childList: true });
-
-      const ready = new Promise<SubtitleTrackInfo[]>((resolve, reject) => {
+      const ready = new Promise<void>((resolve, reject) => {
         let settled = false;
         const cleanup = () => {
-          engine.removeEventListener("ready", onReady);
-          engine.removeEventListener("error", onError);
+          d.movi.removeEventListener("loadedmetadata", onReady);
+          d.movi.removeEventListener("canplay", onReady);
+          d.movi.removeEventListener("error", onError);
           signal.removeEventListener("abort", onAbort);
         };
         const finish = (callback: () => void) => {
@@ -1854,56 +1910,55 @@ const introMaxSeconds = (() => {
           cleanup();
           callback();
         };
-        const onReady: EventListener = (event) => {
-          const detail = (event as CustomEvent<{ subtitleTracks: SubtitleTrackInfo[] }>).detail;
-          finish(() => resolve(detail?.subtitleTracks || engine.subtitleTracks.slice()));
-        };
-        const onError: EventListener = (event) => {
-          const detail = (event as CustomEvent<{ message?: string }>).detail;
-          finish(() => reject(new Error(detail?.message || t("playFailed"))));
-        };
+        const onReady = () => finish(resolve);
+        const onError = () => finish(() => reject(new Error(t("playFailed"))));
         const onAbort = () => finish(() => reject(new DOMException("Video loading was aborted.", "AbortError")));
-        engine.addEventListener("ready", onReady);
-        engine.addEventListener("error", onError);
+        d.movi.addEventListener("loadedmetadata", onReady);
+        d.movi.addEventListener("canplay", onReady);
+        d.movi.addEventListener("error", onError);
         signal.addEventListener("abort", onAbort, { once: true });
         try {
-          d.video.autoplay = true;
-          engine.loadUrl(item.url!);
+          d.movi.src = item.url!;
+          void d.movi.load().catch(onError);
         } catch (error) {
           finish(() => reject(error));
         }
       });
+      await ready;
+      if (!isCurrentItemLoad(request, route, signal)) return false;
 
+      const player = d.movi.player;
+      if (!player) throw new Error(t("playFailed"));
+      s.moviSubtitleTracks = player.getSubtitleTracks().slice();
       try {
-        const tracks = await ready;
-        if (!isCurrentItemLoad(request, route, signal)) return false;
-        s.playsVideoTracks = tracks.slice();
-        if (!item.sub) {
-          s.subtitleSelection = tracks[0] ? `embedded:${tracks[0].index}` : "off";
-          renderSubtitleOptions();
-          await applyPlaysVideoSubtitle(request, route, signal);
-        } else {
-          let external = "";
-          try {
-            external = await loadExternalVideoSubtitle(item, signal);
-          } catch {
-            console.warn("Could not load external video subtitle.");
-          }
-          if (external.trim()) {
-            s.subtitleSelection = "external";
-            await installVideoSubtitle(external, request, route, signal);
-            await applyPlaysVideoSubtitle(request, route, signal);
-          } else {
-            s.subtitleSelection = tracks[0] ? `embedded:${tracks[0].index}` : "off";
-            renderSubtitleOptions();
-            await applyPlaysVideoSubtitle(request, route, signal);
-          }
-        }
-        return await startVideoPlayback(request, route, signal);
-      } finally {
-        d.video.autoplay = false;
+        if (item.sub) await loadMoviExternalSubtitle(item, signal);
+      } catch {
+        console.warn("Could not load external video subtitle into Movi Player.");
       }
+      if (!isCurrentItemLoad(request, route, signal)) return false;
+      if (s.moviExternalSubtitle) {
+        s.subtitleSelection = "external";
+      } else {
+        s.subtitleSelection = s.moviSubtitleTracks[0] ? `embedded:${s.moviSubtitleTracks[0].id}` : "off";
+      }
+      renderSubtitleOptions();
+      await applyMoviSubtitle(request, route, signal);
+      return await startVideoPlayback(request, route, signal);
     }
+
+    d.movi.addEventListener("trackschange", () => {
+      if (!s.moviActive || !s.current?.embeddedMulti || !d.movi.player) return;
+      const tracks = d.movi.player.getSubtitleTracks().slice();
+      const changed = tracks.length !== s.moviSubtitleTracks.length || tracks.some((track, index) => track.id !== s.moviSubtitleTracks[index]?.id);
+      if (!changed) return;
+      s.moviSubtitleTracks = tracks;
+      const shouldSelectFirst = s.subtitleSelection === "off" && !s.moviExternalSubtitle && tracks.length > 0;
+      if (shouldSelectFirst) s.subtitleSelection = `embedded:${tracks[0].id}`;
+      renderSubtitleOptions();
+      if (shouldSelectFirst && subtitleAbortController) {
+        applyMoviSubtitle(itemRequest, routeRequest, subtitleAbortController.signal).catch(() => undefined);
+      }
+    });
 
     async function changeVideoSubtitle(value: string) {
       if (!s.current?.embeddedMulti || s.current.kind !== "video") return;
@@ -1917,14 +1972,7 @@ const introMaxSeconds = (() => {
       s.subtitleSelection = selection;
       renderSubtitleOptions();
       try {
-        if (selection === "external") {
-          const raw = await loadExternalVideoSubtitle(s.current, signal);
-          if (!raw.trim()) throw new Error(t("subFailed"));
-          await installVideoSubtitle(raw, request, route, signal);
-          await applyPlaysVideoSubtitle(request, route, signal);
-        } else {
-          await applyPlaysVideoSubtitle(request, route, signal);
-        }
+        await applyMoviSubtitle(request, route, signal);
         if (isCurrentItemLoad(request, route, signal)) setStatus(d.playerStatus, t("playing"));
       } catch (error) {
         if (isCurrentItemLoad(request, route, signal)) {
@@ -1938,7 +1986,7 @@ const introMaxSeconds = (() => {
     async function startVideoPlayback(request: number, route: number, signal: AbortSignal) {
       if (!isCurrentItemLoad(request, route, signal)) return false;
       try {
-        await d.video.play();
+        await activeVideo().play();
         return true;
       } catch {
         if (isCurrentItemLoad(request, route, signal)) setStatus(d.playerStatus, t("playFailed"), "error");
@@ -1976,7 +2024,7 @@ const introMaxSeconds = (() => {
       s.subtitleSelection = item.embeddedMulti
         ? item.sub ? "external" : "off"
         : "off";
-      s.playsVideoTracks = [];
+      s.moviSubtitleTracks = [];
       resetStatSession(data.stat || { plays: 0, completions: 0, rate: 0 });
       if (item.kind === "audio" && !s.audioQueue.some((entry) => entry.path === item.path)) s.audioQueue = audioQueue;
       if (item.kind === "video" && !s.videoQueue.some((entry) => entry.path === item.path)) s.videoQueue = videoQueue;
@@ -2017,6 +2065,9 @@ const introMaxSeconds = (() => {
       } else {
         d.stage.dataset.mode = "video";
         d.videoFrame.hidden = false;
+        d.video.hidden = false;
+        d.movi.hidden = true;
+        d.videoFrame.dataset.backend = "native";
         d.video.poster = item.poster || "/poster.svg";
         d.video.preload = "auto";
         updateVideoControls();
@@ -2026,7 +2077,7 @@ const introMaxSeconds = (() => {
         subtitleAbortController = subtitleController;
         if (item.embeddedMulti) {
           try {
-            videoPlaybackStarted = await loadPlaysVideo(item, request, route, subtitleController.signal);
+            videoPlaybackStarted = await loadMoviVideo(item, request, route, subtitleController.signal);
           } catch (error) {
             if (isCurrentItemLoad(request, route, subtitleController.signal)) {
               setStatus(d.playerStatus, error instanceof Error ? error.message : t("playFailed"), "error");
@@ -2226,22 +2277,21 @@ const introMaxSeconds = (() => {
       changeVideoSubtitle(d.subtitleSelect.value).catch((error) => setStatus(d.playerStatus, error.message, "error"));
     });
     d.muteToggle.addEventListener("click", () => {
-      d.video.muted = !d.video.muted;
-      if (!d.video.muted && d.video.volume === 0) d.video.volume = 1;
+      const media = activeVideo();
+      media.muted = !media.muted;
+      if (!media.muted && media.volume === 0) media.volume = 1;
     });
     d.fullscreenToggle.addEventListener("click", () => toggleFullscreen().catch(() => undefined));
     d.videoFrame.addEventListener("click", (event) => {
       if (d.videoControls.contains(event.target as Node)) return;
       window.clearTimeout(videoClickTimer);
       if (event.detail === 2) {
-        const rect = d.video.getBoundingClientRect();
+        const media = activeVideo();
+        const rect = (media instanceof HTMLElement ? media : d.videoFrame).getBoundingClientRect();
         const ratio = (event.clientX - rect.left) / rect.width;
         if (ratio < 1 / 3) skipVideo(-10);
         else if (ratio > 2 / 3) skipVideo(10);
-        else {
-          togglePlay();
-          showControls();
-        }
+        else togglePlay();
         return;
       }
       if (event.detail !== 1) return;
@@ -2269,7 +2319,7 @@ const introMaxSeconds = (() => {
       showControls(true);
     });
     d.seek.addEventListener("input", () => {
-      d.video.currentTime = Number(d.seek.value);
+      activeVideo().currentTime = Number(d.seek.value);
       updateVideoControls();
     });
     window.addEventListener("pointerup", () => {
@@ -2283,44 +2333,66 @@ const introMaxSeconds = (() => {
       }
     });
     d.volume.addEventListener("input", () => {
-      d.video.muted = false;
-      d.video.volume = Number(d.volume.value);
+      const media = activeVideo();
+      media.muted = false;
+      media.volume = Number(d.volume.value);
     });
-    ["play", "pause", "ended", "timeupdate", "durationchange", "loadedmetadata", "volumechange", "ratechange"].forEach((event) => {
-      d.video.addEventListener(event, () => {
-        const controlsHidden = d.videoFrame.classList.contains("controls-hidden");
-        updateVideoControls();
-        if (event === "timeupdate") {
-          saveProgress();
-          recordProgress(d.video);
-        }
-        if (event === "play") {
-          scheduleControls();
-          recordPlay();
-        }
-        if (event === "ended") {
-          saveProgress(true, true);
-          recordStat("complete");
-        }
-        if (event === "pause") saveProgress(true);
-        if ((event === "pause" || event === "ended") && !controlsHidden) showControls();
-      });
-    });
-    d.video.addEventListener("loadedmetadata", () => restoreProgress(d.video));
-    ["waiting", "stalled"].forEach((event) => {
-      d.video.addEventListener(event, () => {
+
+    function handleVideoEvent(media: VideoMedia, event: string) {
+      if (activeVideo() !== media || s.current?.kind !== "video") return;
+      const controlsHidden = d.videoFrame.classList.contains("controls-hidden");
+      updateVideoControls();
+      if (event === "timeupdate") {
+        saveProgress();
+        recordProgress(media);
+      }
+      if (event === "play") {
+        scheduleControls();
+        recordPlay();
+      }
+      if (event === "ended") {
+        saveProgress(true, true);
+        recordStat("complete");
+      }
+      if (event === "pause") saveProgress(true);
+      if ((event === "pause" || event === "ended") && !controlsHidden) showControls();
+      if (event === "waiting" || event === "stalled") {
         d.stage.dataset.signal = "unstable";
         setStatus(d.playerStatus, t("buffering"));
-      });
-    });
-    ["canplay", "playing"].forEach((event) => {
-      d.video.addEventListener(event, () => {
+      }
+      if (event === "canplay" || event === "playing") {
         delete d.stage.dataset.signal;
-        if (s.current?.kind === "video") setStatus(d.playerStatus, t("playing"));
+        setStatus(d.playerStatus, t("playing"));
+      }
+      if (event === "error") d.stage.dataset.signal = "interrupted";
+    }
+
+    const videoEvents = ["play", "pause", "ended", "timeupdate", "durationchange", "loadedmetadata", "volumechange", "ratechange", "waiting", "stalled", "canplay", "playing", "error"];
+    for (const media of [d.video, d.movi] as VideoMedia[]) {
+      for (const event of videoEvents) media.addEventListener(event, () => {
+        if (event === "loadedmetadata") restoreProgress(media);
+        handleVideoEvent(media, event);
       });
-    });
-    d.video.addEventListener("error", () => {
-      d.stage.dataset.signal = "interrupted";
+    }
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && d.app.classList.contains("is-library-open")) {
+        setLibraryOpen(false);
+        return;
+      }
+      if (d.videoFrame.hidden) return;
+      const active = document.activeElement;
+      const controlsPlayer = isVideoFullscreen() || active === d.videoFrame || (active instanceof Node && d.videoFrame.contains(active));
+      if (!controlsPlayer || active instanceof HTMLInputElement) return;
+      const key = event.key.toLowerCase();
+      const media = activeVideo();
+      if (key === " " || key === "k") togglePlay();
+      else if (key === "f") toggleFullscreen().catch(() => undefined);
+      else if (key === "m") media.muted = !media.muted;
+      else if (key === "arrowleft") media.currentTime = Math.max(0, media.currentTime - 5);
+      else if (key === "arrowright") media.currentTime = Math.min(media.duration || Infinity, media.currentTime + 5);
+      else return;
+      event.preventDefault();
+      showControls();
     });
     document.addEventListener("fullscreenchange", () => {
       updateVideoControls();
@@ -2332,25 +2404,6 @@ const introMaxSeconds = (() => {
         updateVideoControls();
         s.ass?.resize(true).catch(() => undefined);
       });
-    });
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && d.app.classList.contains("is-library-open")) {
-        setLibraryOpen(false);
-        return;
-      }
-      if (d.videoFrame.hidden) return;
-      const active = document.activeElement;
-      const controlsPlayer = isVideoFullscreen() || active === d.videoFrame || (active instanceof Node && d.videoFrame.contains(active));
-      if (!controlsPlayer || active instanceof HTMLInputElement) return;
-      const key = event.key.toLowerCase();
-      if (key === " " || key === "k") togglePlay();
-      else if (key === "f") toggleFullscreen().catch(() => undefined);
-      else if (key === "m") d.video.muted = !d.video.muted;
-      else if (key === "arrowleft") d.video.currentTime = Math.max(0, d.video.currentTime - 5);
-      else if (key === "arrowright") d.video.currentTime = Math.min(d.video.duration || Infinity, d.video.currentTime + 5);
-      else return;
-      event.preventDefault();
-      showControls();
     });
     d.language.addEventListener("change", () => {
       s.lang = d.language.value as Lang;
