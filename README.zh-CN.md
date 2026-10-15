@@ -27,6 +27,8 @@ Re Player 是一个**基于链接的媒体库**：管理员在后台将外部视
 
 > [!NOTE]
 > 本项目基于 **MIT** 许可证开源，你可以自由使用、修改和分发。
+>
+> 项目包含 `movi-player` 0.4.1，该组件采用 Apache License 2.0，并同时包含其列出的第三方组件许可证。具体版权和许可证说明请查看 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 以及附带的 [movi-player 许可证原文](third-party-licenses/movi-player-0.4.1-LICENSE.txt)。
 
 ## 🚀 快速开始
 
@@ -170,3 +172,7 @@ RP-Re_Player
 - [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS 字幕渲染
 - [movi-player](https://github.com/MrUjjwalG/movi-player) — 媒体播放器
 - [Umami](https://umami.is) — 可选网站分析
+
+## ⚖️ 许可证说明
+
+Re Player 自有源代码采用 [MIT 许可证](LICENSE)。第三方依赖仍分别遵循各自许可证；其中 `movi-player` 0.4.1 采用 Apache License 2.0。重新分发构建产物前，请阅读 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。

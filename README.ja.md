@@ -27,6 +27,8 @@ Re Player は**リンク型メディアライブラリ**です。管理者が外
 
 > [!NOTE]
 > 本プロジェクトは **MIT** ライセンスで公開されています。自由に利用・変更・再配布できます。
+>
+> 本プロジェクトには Apache License 2.0 で提供される `movi-player` 0.4.1 と、そのライセンスに記載されたサードパーティコンポーネントが含まれます。詳しくは [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) と同梱の [movi-player ライセンス本文](third-party-licenses/movi-player-0.4.1-LICENSE.txt) を参照してください。
 
 ## 🚀 クイックスタート
 
@@ -170,3 +172,7 @@ RP-Re_Player
 - [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS 字幕描画
 - [movi-player](https://github.com/MrUjjwalG/movi-player) — メディアプレイヤー
 - [Umami](https://umami.is) — オプションのサイト分析
+
+## ⚖️ ライセンス
+
+Re Player 独自のソースコードは [MIT License](LICENSE) で提供されます。サードパーティ依存関係はそれぞれのライセンスに従います。`movi-player` 0.4.1 は Apache License 2.0 です。ビルド成果物を再配布する前に [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) を確認してください。

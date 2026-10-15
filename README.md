@@ -27,6 +27,8 @@ Re Player is a **link-based media library**. An administrator mounts external vi
 
 > [!NOTE]
 > This project is open-sourced under the **MIT** license. You are free to use, modify, and redistribute it.
+>
+> The project includes `movi-player` 0.4.1, which is distributed under the Apache License 2.0 together with its listed third-party components. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and the included [movi-player license text](third-party-licenses/movi-player-0.4.1-LICENSE.txt) for the applicable notices.
 
 ## 🚀 Quick Start
 
@@ -170,3 +172,7 @@ RP-Re_Player
 - [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS subtitle rendering
 - [movi-player](https://github.com/MrUjjwalG/movi-player) — media player
 - [Umami](https://umami.is) — optional website analytics
+
+## ⚖️ License
+
+The original Re Player source code is licensed under the [MIT License](LICENSE). Third-party dependencies retain their own licenses; in particular, `movi-player` 0.4.1 is licensed under Apache License 2.0. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) before redistributing a build.
