@@ -168,5 +168,5 @@ RP-Re_Player
 
 - [Astro](https://astro.build) — Web 框架
 - [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS 字幕渲染
-- [movi-player](https://www.npmjs.com/package/movi-player) — 媒体播放器
+- [movi-player](https://github.com/MrUjjwalG/movi-player) — 媒体播放器
 - [Umami](https://umami.is) — 可选网站分析

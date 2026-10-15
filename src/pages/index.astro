@@ -222,7 +222,15 @@ const introMaxSeconds = (() => {
 
           <div id="videoFrame" class="video-frame" tabindex="0" hidden>
             <video id="videoPlayer" playsinline preload="auto"></video>
-            <movi-player id="moviVideo" class="movi-video" playsinline preload="auto" fallback="native"></movi-player>
+            <movi-player
+              id="moviVideo"
+              class="movi-video"
+              playsinline
+              preload="auto"
+              controls
+              theme="light"
+              fallback="native"
+            ></movi-player>
             <div id="videoControls" class="video-controls">
               <label class="video-seek">
                 <span class="sr-only" data-i18n="seek">Seek</span>
@@ -680,6 +688,33 @@ const introMaxSeconds = (() => {
       playCount: document.querySelector<HTMLElement>("#playCount")!,
       completionRate: document.querySelector<HTMLElement>("#completionRate")!
     };
+
+    // Movi renders its captions inside its shadow root.  Keep the caption
+    // centred even when its renderer has measured a narrow line and added an
+    // inline left padding, and leave a little more room below the caption so
+    // it does not sit too high above the picture.
+    function installMoviSubtitleStyle() {
+      const shadow = d.movi.shadowRoot;
+      if (!shadow || shadow.querySelector("#rp-movi-subtitle-tuning")) return;
+      const style = document.createElement("style");
+      style.id = "rp-movi-subtitle-tuning";
+      style.textContent = `
+        .movi-subtitle-overlay {
+          --movi-sub-bottom: 7% !important;
+        }
+        .movi-subtitle-anchor {
+          width: 100% !important;
+          padding-left: 0 !important;
+          text-align: center !important;
+        }
+        .movi-subtitle-block,
+        .movi-subtitle-line {
+          text-align: center !important;
+        }
+      `;
+      shadow.appendChild(style);
+    }
+    installMoviSubtitleStyle();
     let controlTimer = 0;
     let listRequest = 0;
     let itemRequest = 0;
@@ -1091,18 +1126,24 @@ const introMaxSeconds = (() => {
 
     function scheduleControls(delay = 4200) {
       window.clearTimeout(controlTimer);
+      if (s.moviActive) return;
       if (seeking) return;
       controlTimer = window.setTimeout(() => d.videoFrame.classList.add("controls-hidden"), delay);
     }
 
     function showControls(lock = false) {
       window.clearTimeout(controlTimer);
+      if (s.moviActive) {
+        d.videoFrame.classList.add("controls-hidden");
+        return;
+      }
       d.videoFrame.classList.remove("controls-hidden");
       if (!lock) scheduleControls();
     }
 
     function hideControls() {
       window.clearTimeout(controlTimer);
+      if (s.moviActive) return;
       if (!seeking) d.videoFrame.classList.add("controls-hidden");
     }
 
@@ -1894,6 +1935,7 @@ const introMaxSeconds = (() => {
       d.videoFrame.dataset.backend = "movi";
       d.video.hidden = true;
       d.movi.hidden = false;
+      installMoviSubtitleStyle();
       d.movi.poster = item.poster || "/poster.svg";
 
       const ready = new Promise<void>((resolve, reject) => {
@@ -2282,8 +2324,13 @@ const introMaxSeconds = (() => {
       if (!media.muted && media.volume === 0) media.volume = 1;
     });
     d.fullscreenToggle.addEventListener("click", () => toggleFullscreen().catch(() => undefined));
+    const isMoviEventTarget = (target: EventTarget | null) => s.moviActive && (target === d.movi || (target instanceof Node && d.movi.contains(target)));
     d.videoFrame.addEventListener("click", (event) => {
-      if (d.videoControls.contains(event.target as Node)) return;
+      // Movi owns its controls for H5-difficult files. Events from its shadow
+      // tree are retargeted to the custom element, so do not let the page-level
+      // double-click handler turn a native player button click into a seek or
+      // play/pause action.
+      if (d.videoControls.contains(event.target as Node) || isMoviEventTarget(event.target)) return;
       window.clearTimeout(videoClickTimer);
       if (event.detail === 2) {
         const media = activeVideo();
@@ -2297,7 +2344,8 @@ const introMaxSeconds = (() => {
       if (event.detail !== 1) return;
       videoClickTimer = window.setTimeout(() => toggleVideoControls(), 250);
     });
-    d.videoFrame.addEventListener("pointerdown", () => {
+    d.videoFrame.addEventListener("pointerdown", (event) => {
+      if (isMoviEventTarget(event.target)) return;
       d.videoFrame.focus({ preventScroll: true });
     });
     d.videoFrame.addEventListener("pointermove", () => {
@@ -2307,7 +2355,7 @@ const introMaxSeconds = (() => {
       scheduleControls();
     });
     d.videoFrame.addEventListener("contextmenu", (event) => {
-      if (!d.videoControls.contains(event.target as Node)) event.preventDefault();
+      if (!d.videoControls.contains(event.target as Node) && !isMoviEventTarget(event.target)) event.preventDefault();
     });
     d.videoControls.addEventListener("pointerenter", () => showControls());
     d.videoControls.addEventListener("pointerleave", () => scheduleControls());
@@ -2380,6 +2428,9 @@ const introMaxSeconds = (() => {
         return;
       }
       if (d.videoFrame.hidden) return;
+      // Movi receives keyboard input for its own controls and timeline. Do not
+      // run the page-level shortcuts a second time for the same key event.
+      if (s.moviActive) return;
       const active = document.activeElement;
       const controlsPlayer = isVideoFullscreen() || active === d.videoFrame || (active instanceof Node && d.videoFrame.contains(active));
       if (!controlsPlayer || active instanceof HTMLInputElement) return;

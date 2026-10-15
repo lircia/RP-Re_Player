@@ -168,5 +168,5 @@ RP-Re_Player
 
 - [Astro](https://astro.build) — Web フレームワーク
 - [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS 字幕描画
-- [movi-player](https://www.npmjs.com/package/movi-player) — メディアプレイヤー
+- [movi-player](https://github.com/MrUjjwalG/movi-player) — メディアプレイヤー
 - [Umami](https://umami.is) — オプションのサイト分析

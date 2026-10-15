@@ -470,6 +470,7 @@ textarea:focus-visible {
   width: 100%;
   height: 100%;
   background: var(--player);
+  --movi-sub-bottom: 7%;
 }
 
 .video-frame[data-backend="movi"] video {
@@ -478,6 +479,13 @@ textarea:focus-visible {
 
 .video-frame[data-backend="movi"] .movi-video {
   display: block;
+}
+
+/* H5-difficult files use Movi's own controls. Its timeline is driven by the
+   same decoded clock as the canvas, so the page-level range input cannot drift
+   away from the picture while a file is being buffered or sought. */
+.video-frame[data-backend="movi"] .video-controls {
+  display: none;
 }
 
 .video-frame .JASSUB {
