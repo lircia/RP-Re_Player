@@ -1,6 +1,6 @@
 {
   "name": "rp",
-  "version": "0.1.0",
+  "version": "2.12.4.5",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -17,6 +17,7 @@
     "@astrojs/check": "0.9.12",
     "@astrojs/cloudflare": "14.4.6",
     "@lucide/astro": "^1.24.0",
+    "@vplayer/core": "^0.4.5",
     "@vplayer/react": "^0.4.5",
     "astro": "7.4.8",
     "ebml": "^3.0.0",

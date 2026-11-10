@@ -590,7 +590,14 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
     };
     type SubtitleSelection = "off" | "external" | `embedded:${number}`;
     type VideoBackend = "default" | "playsvideo" | "movi" | "vplayer";
-    type VideoSubtitleOption = { id: number; label: string; index: number };
+    type VideoSubtitleOption = { id: number; label: string; index: number; language?: string; isDefault?: boolean };
+    type VPlayerSubtitleRemote = {
+      setActiveSubtitle: (track: { id: string; label: string; lang: string; embedded: true } | null) => void;
+    };
+    type VPlayerSubtitleEngine = {
+      selectSubtitleTrack: (id: string | null) => void;
+      on: (event: string, handler: (detail: any) => void) => () => void;
+    };
     type MediaItem = {
       id?: string;
       name: string;
@@ -622,6 +629,10 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       playsVideoEngine: PlaysVideoEngine | null;
       videoBackend: VideoBackend;
       playsVideoTracks: VideoSubtitleOption[];
+      vplayerTracks: VideoSubtitleOption[];
+      vplayerEngine: VPlayerSubtitleEngine | null;
+      vplayerRemote: VPlayerSubtitleRemote | null;
+      vplayerUnsubscribe: { unsubscribe: () => void } | null;
       nativeEmbeddedSubtitle: EmbeddedSubtitle | null;
       vplayerRoot: { unmount: () => void } | null;
       vplayerVideo: HTMLVideoElement | null;
@@ -653,6 +664,10 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       playsVideoEngine: null,
       videoBackend: "default",
       playsVideoTracks: [],
+      vplayerTracks: [],
+      vplayerEngine: null,
+      vplayerRemote: null,
+      vplayerUnsubscribe: null,
       nativeEmbeddedSubtitle: null,
       vplayerRoot: null,
       vplayerVideo: null,
@@ -1717,6 +1732,11 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       const root = s.vplayerRoot;
       s.vplayerRoot = null;
       s.vplayerVideo = null;
+      s.vplayerEngine = null;
+      s.vplayerRemote = null;
+      s.vplayerUnsubscribe?.unsubscribe();
+      s.vplayerUnsubscribe = null;
+      s.vplayerTracks = [];
       root?.unmount();
       d.vplayerHost.replaceChildren();
       d.vplayerHost.hidden = true;
@@ -1835,15 +1855,27 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       return selected;
     }
 
-    function collectPlaysVideoTracks() {
+    function collectPlaysVideoTracks(trackInfo?: Array<{
+      index: number;
+      name?: string | null;
+      language?: string;
+      codec?: string;
+      disposition?: { default?: boolean };
+    }>) {
       const engine = s.playsVideoEngine;
       if (!engine) return;
-      const infos = (engine as any).subtitleTracks as Array<{ name?: string; language?: string; codec?: string }>;
-      s.playsVideoTracks = (infos || []).map((info, index) => ({
-        id: index,
-        index,
+      const infos = trackInfo || engine.subtitleTracks;
+      s.playsVideoTracks = infos.map((info, index) => ({
+        id: info.index,
+        index: info.index,
+        language: info.language,
+        isDefault: info.disposition?.default,
         label: [info.name, info.language, info.codec].filter(Boolean).join(" · ") || `${t("subtitleTrack")} ${index + 1}`
       }));
+      if (s.subtitleSelection === "off" && !s.externalSubtitleRaw) {
+        const selected = s.playsVideoTracks.find((track) => track.isDefault) || s.playsVideoTracks[0];
+        if (selected) s.subtitleSelection = `embedded:${selected.id}`;
+      }
     }
 
     async function applyPlaysVideoSubtitle(request: number, route: number, signal: AbortSignal) {
@@ -1862,9 +1894,38 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       const textTracks = Array.from(d.video.textTracks).filter((track) =>
         track.kind === "subtitles" || track.kind === "captions"
       );
-      const textTrack = option ? textTracks[option.index] : undefined;
+      const textTrack = option
+        ? textTracks.find((track) => track.label === option.label) ||
+          (textTracks[option.index]?.language === option.language ? textTracks[option.index] : undefined) ||
+          (option.language && textTracks.filter((track) => track.language === option.language).length === 1
+            ? textTracks.find((track) => track.language === option.language)
+            : undefined)
+        : undefined;
       if (!textTrack) return false;
       textTrack.mode = "showing";
+      return true;
+    }
+
+    async function applyVPlayerSubtitle(request: number, route: number, signal: AbortSignal) {
+      if (!isCurrentItemLoad(request, route, signal) || s.videoBackend !== "vplayer" || !s.vplayerEngine) return false;
+      const remote = s.vplayerRemote;
+      if (!remote) return false;
+      if (s.subtitleSelection === "off") {
+        remote.setActiveSubtitle(null);
+        await destroyVideoSubtitle();
+        return true;
+      }
+      if (s.subtitleSelection === "external") {
+        remote.setActiveSubtitle(null);
+        if (!s.externalSubtitleRaw?.trim()) return false;
+        await installVideoSubtitle(s.externalSubtitleRaw, request, route, signal);
+        return true;
+      }
+      const id = embeddedSubtitleIndex(s.subtitleSelection);
+      const track = s.vplayerTracks.find((candidate) => candidate.id === id);
+      if (!track) return false;
+      await destroyVideoSubtitle();
+      remote.setActiveSubtitle({ id: `embedded:${track.id}`, label: track.label, lang: track.language || "und", embedded: true });
       return true;
     }
 
@@ -1883,6 +1944,7 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
     async function applySelectedVideoSubtitle(request: number, route: number, signal: AbortSignal) {
       if (s.videoBackend === "playsvideo") return applyPlaysVideoSubtitle(request, route, signal);
       if (s.videoBackend === "default") return applyDefaultSubtitle(request, route, signal);
+      if (s.videoBackend === "vplayer") return applyVPlayerSubtitle(request, route, signal);
       return applyMoviSubtitle(request, route, signal);
     }
 
@@ -1892,7 +1954,7 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       const canChooseBackend = multi && current?.h5Player === "select";
       d.videoBackendSelector.hidden = !canChooseBackend;
       d.videoBackendSelect.value = s.videoBackend;
-      d.subtitleSelector.hidden = !multi || s.videoBackend === "vplayer";
+      d.subtitleSelector.hidden = !multi;
       if (!multi) return;
 
       const options: Array<{ value: SubtitleSelection; label: string }> = [
@@ -1907,6 +1969,8 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
         ? s.moviSubtitleTracks.map((track, index) => ({ id: track.id, index, label: subtitleTrackLabel(track, index) }))
         : s.videoBackend === "playsvideo"
           ? s.playsVideoTracks
+          : s.videoBackend === "vplayer"
+            ? s.vplayerTracks
           : s.videoBackend === "default" && s.nativeEmbeddedSubtitle
             ? [{ id: 0, index: 0, label: s.nativeEmbeddedSubtitle.label }]
             : [];
@@ -1914,10 +1978,11 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
         options.push({ value: `embedded:${track.id}`, label: track.label });
       }
       if (!options.some((option) => option.value === s.subtitleSelection)) {
-        s.subtitleSelection = s.moviExternalSubtitle
+        const firstTrack = tracks.find((track) => track.isDefault) || tracks[0];
+        s.subtitleSelection = s.moviExternalSubtitle || s.externalSubtitleRaw
           ? "external"
-          : s.moviSubtitleTracks[0]
-            ? `embedded:${s.moviSubtitleTracks[0].id}`
+          : firstTrack
+            ? `embedded:${firstTrack.id}`
             : "off";
       }
       d.subtitleSelect.replaceChildren(...options.map((option) => {
@@ -1940,13 +2005,15 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
     async function installVideoSubtitle(rawSubtitle: string, request: number, route: number, signal: AbortSignal) {
       if (!rawSubtitle.trim() || !isCurrentItemLoad(request, route, signal)) return;
       await destroyVideoSubtitle();
+      const media = activeVideo();
+      if (!(media instanceof HTMLVideoElement)) return;
       const subContent = normalizeAssFonts(rawSubtitle, "Noto Sans SC");
       let ass: JASSUB | null = null;
       try {
         const { default: JASSUBModule } = await import("jassub");
         if (!isCurrentItemLoad(request, route, signal)) return;
         ass = new JASSUBModule({
-          video: d.video,
+          video: media,
           subContent
         });
         if (!isCurrentItemLoad(request, route, signal)) {
@@ -2356,13 +2423,14 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
           callback();
         };
         const onAbort = () => finish(() => reject(new DOMException("Video loading was aborted.", "AbortError")));
-        engine.addEventListener("ready", () => finish(resolve), { once: true });
+        engine.addEventListener("ready", (event) => {
+          collectPlaysVideoTracks(event.detail.subtitleTracks);
+          finish(resolve);
+        }, { once: true });
         engine.addEventListener("error", (event) => finish(() => reject(new Error(event.detail.message))), { once: true });
         engine.addEventListener("subtitle-status", () => {
           if (!s.playsVideoActive) return;
-          collectPlaysVideoTracks();
           renderSubtitleOptions();
-          if (s.subtitleSelection.startsWith("embedded:")) applyPlaysVideoSubtitle(request, route, signal).catch(() => undefined);
         });
         signal.addEventListener("abort", onAbort, { once: true });
         try {
@@ -2374,9 +2442,6 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       await ready;
       if (!isCurrentItemLoad(request, route, signal)) return false;
       collectPlaysVideoTracks();
-      if (s.subtitleSelection === "off" && !s.externalSubtitleRaw && s.playsVideoTracks.length) {
-        s.subtitleSelection = `embedded:${s.playsVideoTracks[0].id}`;
-      }
       renderSubtitleOptions();
       await applySelectedVideoSubtitle(request, route, signal);
       return shouldPlay ? startVideoPlayback(request, route, signal) : true;
@@ -2447,12 +2512,13 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
 
     async function loadVPlayer(item: MediaItem, request: number, route: number, signal: AbortSignal, shouldPlay: boolean) {
       if (!item.url) throw new Error(t("playFailed"));
-      const [reactDom, react, playerModule] = await Promise.all([
+      const [reactDom, react, playerModule, coreModule] = await Promise.all([
         import("react-dom/client"),
         import("react"),
         import("@vplayer/react"),
+        import("@vplayer/core"),
         import("@vplayer/react/player.css")
-      ]).then(([dom, reactRuntime, player]) => [dom, reactRuntime, player] as const);
+      ]).then(([dom, reactRuntime, player, core]) => [dom, reactRuntime, player, core] as const);
       if (!isCurrentItemLoad(request, route, signal)) return false;
       s.videoBackend = "vplayer";
       s.moviActive = false;
@@ -2460,6 +2526,7 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       s.playsVideoTracks = [];
       s.moviSubtitleTracks = [];
       s.moviExternalSubtitle = null;
+      s.vplayerTracks = [];
       d.videoFrame.dataset.backend = "vplayer";
       d.video.hidden = true;
       d.movi.hidden = true;
@@ -2475,22 +2542,42 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
         }
       }
       if (!isCurrentItemLoad(request, route, signal)) return false;
-      const subtitles = subtitleRaw.trim() ? [{
-        id: "external-ass",
-        content: assToWebVtt(subtitleRaw),
-        lang: "zh",
-        label: t("externalSubtitle"),
-        format: "vtt",
-        default: true
-      }] : [];
-      const root = reactDom.createRoot(d.vplayerHost);
-      s.vplayerRoot = root;
-      root.render(react.createElement(playerModule.VideoPlayer as any, {
+      const options = {
         src: item.url,
         title: item.name,
         poster: item.poster || "/poster.svg",
-        subtitles,
+        subtitles: [],
         embeddedTracks: true,
+        persistPreferences: false,
+        engine: (video: HTMLVideoElement) => {
+          const engine = new coreModule.MatroskaMediaEngine(video, {
+            src: item.url!,
+            locale: s.lang === "zh" ? "zh-CN" : s.lang === "ja" ? "ja" : "en",
+            trackName: (index: number) => `${t("subtitleTrack")} ${index + 1}`
+          });
+          s.vplayerEngine = engine;
+          engine.on("tracks", (detail: { subtitleTracks?: Array<{ id: string; label: string; lang?: string; unsupported?: boolean }> }) => {
+            if (!isCurrentItemLoad(request, route, signal) || s.vplayerEngine !== engine) return;
+            s.vplayerTracks = (detail.subtitleTracks || []).filter((track) => !track.unsupported).flatMap((track, index) => {
+              const id = Number(track.id.replace(/^embedded:/, ""));
+              return Number.isInteger(id) ? [{ id, index, label: track.label, language: track.lang }] : [];
+            });
+            if (s.subtitleSelection === "off" && !s.externalSubtitleRaw) {
+              const first = s.vplayerTracks[0];
+              if (first) {
+                s.subtitleSelection = `embedded:${first.id}`;
+                s.vplayerRemote?.setActiveSubtitle({
+                  id: `embedded:${first.id}`,
+                  label: first.label,
+                  lang: first.language || "und",
+                  embedded: true
+                });
+              }
+            }
+            renderSubtitleOptions();
+          });
+          return engine;
+        },
         autoPlay: false,
         defaultHotkeys: false,
         captionSettingsMenu: false,
@@ -2509,7 +2596,35 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
           lineHeight: 1.2,
           delay: 0
         }
-      }));
+      };
+      function PlayerRemoteBridge() {
+        const { instance } = playerModule.usePlayerContext();
+        s.vplayerRemote = instance.remote;
+        s.vplayerUnsubscribe?.unsubscribe();
+        s.vplayerUnsubscribe = instance.store.subscribe(() => {
+          if (s.videoBackend !== "vplayer" || !s.current?.embeddedMulti) return;
+          const active = instance.store.state.activeSubtitle;
+          if (active?.embedded && active.id) {
+            const id = Number(active.id.replace(/^embedded:/, ""));
+            if (Number.isInteger(id) && s.vplayerTracks.some((track) => track.id === id)) {
+              s.subtitleSelection = `embedded:${id}`;
+            }
+          } else if (s.subtitleSelection.startsWith("embedded:")) {
+            s.subtitleSelection = "off";
+          }
+          renderSubtitleOptions();
+        });
+        return null;
+      }
+      const root = reactDom.createRoot(d.vplayerHost);
+      s.vplayerRoot = root;
+      root.render(react.createElement(playerModule.PlayerProvider as any, {
+        options,
+        captionSettingsMenu: false
+      }, react.createElement(react.Fragment, null,
+        react.createElement(PlayerRemoteBridge),
+        react.createElement(playerModule.DefaultVideoLayout)
+      )));
 
       const waitForElement = async () => {
         for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -2530,6 +2645,7 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
       s.moviExternalSubtitle = subtitleRaw.trim() ? "external-ass" : null;
       s.subtitleSelection = subtitleRaw.trim() ? "external" : "off";
       renderSubtitleOptions();
+      if (s.subtitleSelection === "external") await applyVPlayerSubtitle(request, route, signal);
       return shouldPlay ? startVideoPlayback(request, route, signal) : true;
     }
 
@@ -2667,7 +2783,7 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
     });
 
     async function changeVideoSubtitle(value: string) {
-      if (!s.current?.embeddedMulti || s.current.kind !== "video" || s.videoBackend !== "movi") return;
+      if (!s.current?.embeddedMulti || s.current.kind !== "video") return;
       const selection: SubtitleSelection = value === "external" || value === "off" || value.startsWith("embedded:")
         ? value as SubtitleSelection
         : "off";
