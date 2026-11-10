@@ -33,6 +33,11 @@ if (Astro.url.pathname === "/") return Astro.redirect("/Re", 302);
 const env = await getEnv(Astro);
 const visitorTheme = await getVisitorTheme(env);
 const siteName = env.N?.trim() || "Re-Player";
+const visitorBrandMode = ["0", "1", "1.5", "2"].includes(env.VA?.trim() || "")
+  ? env.VA!.trim()
+  : "2";
+const showVisitorBrandIcon = visitorBrandMode === "1" || visitorBrandMode === "2";
+const showVisitorBrandName = visitorBrandMode === "1.5" || visitorBrandMode === "2";
 const boundedEnvNumber = (input: string | undefined, fallback: number, min: number, max: number) => {
   if (!input?.trim()) return fallback;
   const value = Number(input);
@@ -167,10 +172,12 @@ const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
     <>
   <div class="media-app" data-theme={visitorTheme}>
     <header class="app-topbar">
-      <div class="app-brand" aria-label={siteName}>
-        <img class="app-brand-mark" src="/favicon.svg" alt="" aria-hidden="true" />
-        <strong>{siteName}</strong>
-      </div>
+      {(showVisitorBrandIcon || showVisitorBrandName) && (
+        <div class="app-brand" aria-label={siteName} data-brand-mode={visitorBrandMode}>
+          {showVisitorBrandIcon && <img class="app-brand-mark" data-site-brand-icon src="/favicon.svg" alt="" aria-hidden="true" />}
+          {showVisitorBrandName && <strong>{siteName}</strong>}
+        </div>
+      )}
 
       <button id="mobileLibraryToggle" class="icon-button mobile-library-toggle" type="button" title="Show library" aria-label="Show library" aria-controls="libraryPane" aria-expanded="false" hidden disabled>
         <ArrowLeft size={19} />

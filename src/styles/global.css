@@ -3876,12 +3876,14 @@ body:has(.login-screen)::before {
   }
 
   .media-app .app-topbar .language-box {
+    grid-column: 3;
     position: static;
     justify-self: end;
     margin-right: 0;
   }
 
   .media-app .mobile-library-toggle {
+    grid-column: 2;
     display: inline-grid;
     place-items: center;
     justify-self: end;
@@ -4213,6 +4215,55 @@ body:has(.login-screen)::before {
 .media-app.has-custom-background {
   position: relative;
   isolation: isolate;
+  background: transparent;
+}
+
+.admin-app.has-custom-background,
+.login-screen.has-custom-background {
+  background: transparent;
+}
+
+.media-app.has-custom-background .app-topbar {
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+}
+
+.media-app.has-custom-background .library-pane {
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+.media-app.has-custom-background .player-stage:has(.player-empty:not([hidden])),
+.media-app.has-custom-background .player-stage:has(.file-frame:not([hidden])) {
+  background: color-mix(in srgb, var(--page) 72%, transparent);
+}
+
+.admin-app.has-custom-background .admin-topbar,
+.admin-app.has-custom-background .admin-sidebar,
+.login-screen.has-custom-background .login-panel {
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+}
+
+.admin-app.has-custom-background .admin-main,
+.login-screen.has-custom-background {
+  background-color: transparent;
+}
+
+html:has(.admin-app),
+html:has(.login-screen),
+body:has(.admin-app),
+body:has(.login-screen) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  background: #f2f6f8;
+}
+
+.admin-app,
+.admin-app .admin-topbar,
+.admin-app .admin-shell,
+.login-screen {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .admin-app {
@@ -4489,6 +4540,31 @@ body:has(.login-screen)::before {
 }
 
 @media (max-width: 680px) {
+  html:has(.admin-app),
+  body:has(.admin-app),
+  html:has(.login-screen),
+  body:has(.login-screen) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    background: #f2f6f8;
+  }
+
+  .admin-app,
+  .login-screen,
+  .admin-app .admin-shell,
+  .admin-app .admin-main {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-app,
+  .login-screen {
+    overflow-x: clip;
+  }
+
   .admin-shell {
     grid-template-columns: minmax(0, 1fr);
   }

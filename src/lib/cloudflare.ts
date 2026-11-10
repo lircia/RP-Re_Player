@@ -6,6 +6,7 @@ export interface AppEnv {
   B?: string;
   C?: string;
   N?: string;
+  VA?: string;
   PI?: string;
   P?: string;
   T?: string;

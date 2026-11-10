@@ -119,8 +119,9 @@ The D1 binding name must remain `D1`. Also configure a KV namespace binding name
 | `A` | External media URL shown before the visitor page |
 | `B` | Maximum display/playback time for `A` and `C`, in seconds; default `4.2`. Empty, zero, negative, or invalid values skip the entry animation |
 | `C` | Optional external audio URL played together with `A`; mutes the `A` video when set |
-| `N` | Visitor brand text and browser title; defaults to `Re-Player`. The brand text stays rainbow-colored |
+| `N` | Visitor and admin brand text plus browser title; defaults to `Re-Player`. Visitor brand text stays rainbow-colored |
 | `PI` | Optional HTTP(S) favicon image URL; empty by default and falls back to `/favicon.svg` if it cannot load |
+| `VA` | Visitor top-left branding: `0` hides icon and text, `1` shows the icon, `1.5` shows the text, and `2` shows both; default `2`, invalid values use `2` |
 | `P` | Administrator password |
 | `T` | Enables/disables the China cloud-provider redirect behavior; enabled unless set to `0`, `false`, `off`, `no`, or `disabled` |
 | `RP_HTTP_PORT` | Local HTTP listener port; defaults to `12067` |

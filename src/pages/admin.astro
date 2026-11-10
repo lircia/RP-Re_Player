@@ -21,9 +21,10 @@ import { isAdmin } from "@lib/admin";
 
 const env = await getEnv(Astro);
 const loggedIn = await isAdmin(Astro.request, env);
+const siteName = env.N?.trim() || "Re-Player";
 ---
 
-<SiteShell title="Admin - Re Player" pageBackground="admin">
+<SiteShell title="Admin" pageBackground="admin">
   {
     !loggedIn ? (
       <main class="login-screen">
@@ -38,10 +39,10 @@ const loggedIn = await isAdmin(Astro.request, env);
         </label>
 
         <section class="login-panel">
-          <div class="login-brand" aria-label="Re Player">
+          <div class="login-brand" aria-label={siteName}>
             <span class="app-brand-mark">RP</span>
             <span>
-              <strong>Re Player</strong>
+              <strong>{siteName}</strong>
               <small data-i18n="console">Admin console</small>
             </span>
           </div>
@@ -60,10 +61,10 @@ const loggedIn = await isAdmin(Astro.request, env);
     ) : (
       <div class="admin-app">
         <header class="admin-topbar">
-          <div class="app-brand" aria-label="Re Player">
+          <div class="app-brand" aria-label={siteName}>
             <span class="app-brand-mark">RP</span>
             <span>
-              <strong>Re Player</strong>
+              <strong>{siteName}</strong>
               <small data-i18n="console">Admin console</small>
             </span>
           </div>

@@ -70,7 +70,11 @@ const backgroundOpacity = Number.isFinite(rawBackgroundOpacity) && rawBackground
         if (!value || !(link instanceof HTMLLinkElement)) return;
         const image = new Image();
         image.onload = () => {
-          if (image.naturalWidth && image.naturalHeight) link.href = value;
+          if (!image.naturalWidth || !image.naturalHeight) return;
+          link.href = value;
+          document.querySelectorAll("[data-site-brand-icon]").forEach((brandIcon) => {
+            if (brandIcon instanceof HTMLImageElement) brandIcon.src = value;
+          });
         };
         image.src = value;
       })();
