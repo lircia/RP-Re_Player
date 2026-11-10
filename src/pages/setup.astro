@@ -17,29 +17,59 @@ const pseudoDatabase = usesKvForPseudoAndTheme(env)
   : env.D1
     ? "D1"
     : "Memory";
-const rows = [
-  ["当前时间 (UTC)", new Date().toISOString()],
-  ["请求 IP", requestIp],
-  ["当前访问域名", Astro.url.host],
-  ["当前访客主题", theme],
-  ["伪挂载数据库", pseudoDatabase]
-];
+const hasD1 = Boolean(env.D1);
 ---
 
 <SiteShell title="运行状态 | Re Player">
   <main class="setup-page">
     <h1>运行状态</h1>
     <ul>
-      {rows.map(([label, value]) => <li>{label}：{value}</li>)}
+      <li>当前时间：<time id="setupClock">{new Date().toLocaleString("zh-CN", { hour12: false })}</time></li>
+      <li>请求 IP：{requestIp}</li>
+      <li>当前访问域名：{Astro.url.host}</li>
+      <li>当前访客主题：{theme}</li>
+      <li>伪挂载数据库：{pseudoDatabase}</li>
+      <li>运行状态：<span class={hasD1 ? "setup-running" : "setup-unknown"}>{hasD1 ? "Runing" : "Unknow"}</span></li>
+      <li><span id="setupColo"></span></li>
     </ul>
   </main>
+  <script is:inline>
+    (() => {
+      const clock = document.querySelector("#setupClock");
+      const colo = document.querySelector("#setupColo");
+      const updateClock = () => {
+        if (clock) clock.textContent = new Date().toLocaleString("zh-CN", { hour12: false });
+      };
+      updateClock();
+      window.setInterval(updateClock, 1000);
+
+      fetch("/cdn-cgi/trace", { cache: "no-store" })
+        .then((response) => response.ok ? response.text() : "")
+        .then((trace) => {
+          const value = trace.split(/\r?\n/).find((line) => line.startsWith("colo=")) || "";
+          if (colo) colo.textContent = value;
+        })
+        .catch(() => {
+          if (colo) colo.textContent = "";
+        });
+    })();
+  </script>
 </SiteShell>
 
 <style>
+  :global(html:has(.setup-page)),
+  :global(body:has(.setup-page)) {
+    min-height: 100%;
+    background: #ffffff !important;
+  }
+
   .setup-page {
     width: min(100% - 32px, 760px);
+    min-height: 100vh;
     margin: 0 auto;
     padding: clamp(32px, 8vh, 88px) 0;
+    background: #ffffff;
+    color: #263b4c;
   }
 
   h1 {
@@ -67,5 +97,17 @@ const rows = [
     font-size: 1rem;
     line-height: 1.7;
     -webkit-background-clip: text;
+  }
+
+  .setup-running {
+    background: linear-gradient(90deg, #d74358, #d18a22, #3c984e, #1685a0, #456dd2, #a34caf, #d74358);
+    background-clip: text;
+    color: transparent;
+    -webkit-background-clip: text;
+  }
+
+  .setup-unknown {
+    color: #c62828;
+    font-weight: 700;
   }
 </style>

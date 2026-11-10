@@ -14,11 +14,11 @@
     "cf:deploy": "npm run build && wrangler deploy --config dist/server/wrangler.json"
   },
   "dependencies": {
-    "@astrojs/check": "latest",
-    "@astrojs/cloudflare": "latest",
+    "@astrojs/check": "0.9.12",
+    "@astrojs/cloudflare": "14.4.6",
     "@lucide/astro": "^1.24.0",
     "@vplayer/react": "^0.4.5",
-    "astro": "latest",
+    "astro": "7.4.8",
     "ebml": "^3.0.0",
     "jassub": "^2.5.7",
     "mediabunny": "1.61.4",
@@ -37,6 +37,6 @@
     "@cloudflare/workers-types": "latest",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "wrangler": "latest"
+    "wrangler": "4.159.0"
   }
 }

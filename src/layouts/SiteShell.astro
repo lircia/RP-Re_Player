@@ -5,14 +5,33 @@ import { getEnv } from "@lib/cloudflare";
 
 interface Props {
   title: string;
+  pageBackground?: "visitor" | "admin";
 }
 
-const { title } = Astro.props;
+const { title, pageBackground } = Astro.props;
 const env = await getEnv(Astro);
+const siteName = env.N?.trim() || "Re-Player";
+const documentTitle = pageBackground === "visitor"
+  ? siteName
+  : `${title.replace(/\s*[|·-]\s*(?:Re-? ?Player)$/i, "").trim() || title} | ${siteName}`;
+const faviconUrl = (() => {
+  try {
+    const url = new URL(env.PI?.trim() || "");
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
+})();
 const umamiSrc = env.US;
 const umamiWebsiteId = env.UI;
 const umamiHostUrl = env.UH;
 const umamiDomains = env.UD;
+const backgroundSource = pageBackground === "visitor" ? env.VP : pageBackground === "admin" ? env.AP : "";
+const configuredOpacity = pageBackground === "visitor" ? env.VPS : env.APS;
+const rawBackgroundOpacity = configuredOpacity?.trim() ? Number(configuredOpacity) : 100;
+const backgroundOpacity = Number.isFinite(rawBackgroundOpacity) && rawBackgroundOpacity >= 0 && rawBackgroundOpacity <= 100
+  ? rawBackgroundOpacity
+  : 100;
 ---
 
 <!doctype html>
@@ -21,8 +40,8 @@ const umamiDomains = env.UD;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Re Player link-based media library." />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>{title}</title>
+    <link id="siteFavicon" rel="icon" href="/favicon.svg" />
+    <title>{documentTitle}</title>
     {
       umamiSrc && umamiWebsiteId && (
         <script
@@ -36,7 +55,58 @@ const umamiDomains = env.UD;
       )
     }
   </head>
-  <body>
+  <body
+    data-background-kind={pageBackground || undefined}
+    data-background-source={backgroundSource?.trim() || undefined}
+    data-background-opacity={backgroundOpacity}
+    data-background-local={env.RP_LOCAL_BG === "1" ? "true" : undefined}
+    data-favicon-url={faviconUrl || undefined}
+  >
     <slot />
+    <script is:inline>
+      (() => {
+        const value = document.body.dataset.faviconUrl;
+        const link = document.querySelector("#siteFavicon");
+        if (!value || !(link instanceof HTMLLinkElement)) return;
+        const image = new Image();
+        image.onload = () => {
+          if (image.naturalWidth && image.naturalHeight) link.href = value;
+        };
+        image.src = value;
+      })();
+    </script>
+    <script is:inline>
+      (() => {
+        const body = document.body;
+        const kind = body.dataset.backgroundKind;
+        const value = body.dataset.backgroundSource?.trim();
+        if (!value || (kind !== "visitor" && kind !== "admin")) return;
+        const target = kind === "visitor"
+          ? document.querySelector(".media-app")
+          : document.querySelector(".admin-app, .login-screen");
+        if (!target) return;
+
+        let imageUrl = "";
+        if (/^https?:\/\//i.test(value)) {
+          try {
+            const parsed = new URL(value);
+            if (parsed.protocol === "http:" || parsed.protocol === "https:") imageUrl = parsed.href;
+          } catch {}
+        } else if (body.dataset.backgroundLocal === "true" && /^(?:[a-z]:[\\/]|\\\\|\/)/i.test(value)) {
+          imageUrl = `http://127.0.0.1:12068/${kind}`;
+        }
+        if (!imageUrl) return;
+
+        const image = new Image();
+        image.onload = () => {
+          if (!image.naturalWidth || !image.naturalHeight) return;
+          const opacity = Number(body.dataset.backgroundOpacity);
+          target.style.setProperty("--custom-background-image", `url("${imageUrl}")`);
+          target.style.setProperty("--custom-background-opacity", String(Number.isFinite(opacity) ? opacity / 100 : 1));
+          target.classList.add("has-custom-background");
+        };
+        image.src = imageUrl;
+      })();
+    </script>
   </body>
 </html>

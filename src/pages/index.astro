@@ -32,6 +32,7 @@ if (Astro.url.pathname === "/") return Astro.redirect("/Re", 302);
 
 const env = await getEnv(Astro);
 const visitorTheme = await getVisitorTheme(env);
+const siteName = env.N?.trim() || "Re-Player";
 const boundedEnvNumber = (input: string | undefined, fallback: number, min: number, max: number) => {
   if (!input?.trim()) return fallback;
   const value = Number(input);
@@ -53,14 +54,18 @@ const introSource = externalUrl(env.A);
 const introAudioSource = externalUrl(env.C);
 const introIsVideo = /\.(?:mp4|webm|ogv|ogg|m4v|mov)(?:$|[?#])/i.test(introSource);
 const introMaxSeconds = (() => {
-  const value = Number(env.B ?? "4.2");
-  return Number.isFinite(value) && value > 0 ? Math.min(value, 86400) : 4.2;
+  if (env.B === undefined) return 4.2;
+  const raw = env.B.trim();
+  if (!raw) return 0;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? Math.min(value, 86400) : 0;
 })();
+const showIntro = isEntry && Boolean(introSource) && introMaxSeconds > 0;
 ---
 
-<SiteShell title="Re-Player">
+<SiteShell title={siteName} pageBackground="visitor">
   {
-    isEntry && introSource && (
+    showIntro && (
       <div id="externalIntro" class="external-intro" data-max-seconds={introMaxSeconds || undefined}>
         {introIsVideo ? (
           <video class="external-intro-media" src={introSource} autoplay muted={Boolean(introAudioSource)} playsinline preload="auto" />
@@ -162,9 +167,9 @@ const introMaxSeconds = (() => {
     <>
   <div class="media-app" data-theme={visitorTheme}>
     <header class="app-topbar">
-      <div class="app-brand" aria-label="Re-Player">
+      <div class="app-brand" aria-label={siteName}>
         <img class="app-brand-mark" src="/favicon.svg" alt="" aria-hidden="true" />
-        <strong>Re-Player</strong>
+        <strong>{siteName}</strong>
       </div>
 
       <button id="mobileLibraryToggle" class="icon-button mobile-library-toggle" type="button" title="Show library" aria-label="Show library" aria-controls="libraryPane" aria-expanded="false" hidden disabled>

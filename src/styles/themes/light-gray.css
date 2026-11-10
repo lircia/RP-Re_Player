@@ -81,9 +81,7 @@ body:has(.media-app[data-theme="gray"]) {
 }
 
 .media-app[data-theme="gray"] .player-pane {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.32) 25%, transparent 25%) 0 0 / 18px 18px,
-    #e8ebed;
+  background: #e8ebed;
 }
 
 .media-app[data-theme="gray"] .player-stage {

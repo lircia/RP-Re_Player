@@ -3027,6 +3027,45 @@ body:has(.login-screen)::before {
   backdrop-filter: blur(18px);
 }
 
+.admin-app .app-brand strong,
+.login-screen .login-brand strong {
+  color: #4f7487;
+  font-family: inherit;
+  font-weight: 650;
+  text-transform: none;
+}
+
+.admin-app .app-brand small,
+.login-screen .login-brand small {
+  color: #7b8b94;
+}
+
+.admin-app .app-brand-mark,
+.login-screen .app-brand-mark {
+  border: 1px solid #d8e1e5;
+  border-radius: 7px;
+  background: #ffffff;
+  box-shadow: 0 5px 15px rgba(54, 75, 87, 0.1);
+  color: #5f7e8d;
+}
+
+.admin-app .language-box,
+.login-screen .language-box {
+  border: 1px solid #dfe6e9;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #71818a;
+  padding: 0 8px;
+}
+
+.admin-app .language-box select,
+.login-screen .language-box select {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #344854;
+}
+
 .media-app .app-topbar .app-brand::after {
   display: none;
 }
@@ -4120,5 +4159,346 @@ body:has(.login-screen)::before {
 
   .admin-theme-toggle span {
     display: none;
+  }
+}
+
+/* Calm admin workspace. Keep these rules scoped so the standalone table stays white. */
+.admin-app,
+.login-screen {
+  --page: #f2f6f8;
+  --surface: #ffffff;
+  --surface-soft: #f7fafb;
+  --surface-hover: #edf5f8;
+  --ink: #283946;
+  --muted: #71828c;
+  --line: #dfe7eb;
+  --line-strong: #c5d4dc;
+  --accent: #b9deef;
+  --accent-dark: #638ca2;
+  --accent-soft: #e9f4f8;
+  --danger: #bf5964;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+body:has(.admin-app)::before,
+body:has(.login-screen)::before {
+  display: none !important;
+  background-image: none !important;
+}
+
+.admin-app,
+.login-screen {
+  position: relative;
+  isolation: isolate;
+  background: #f2f6f8;
+  color: var(--ink);
+}
+
+.admin-app.has-custom-background::before,
+.media-app.has-custom-background::before,
+.login-screen.has-custom-background::after {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  display: block;
+  background-image: var(--custom-background-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  content: "";
+  opacity: var(--custom-background-opacity, 1);
+  pointer-events: none;
+}
+
+.media-app.has-custom-background {
+  position: relative;
+  isolation: isolate;
+}
+
+.admin-app {
+  min-height: 100vh;
+  background-image: none;
+}
+
+.admin-topbar {
+  height: 68px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 26px rgba(54, 77, 91, 0.07);
+  backdrop-filter: blur(18px);
+}
+
+.admin-shell {
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.admin-sidebar {
+  border-right: 1px solid #dfe6e9;
+  background: rgba(237, 242, 244, 0.92);
+  color: var(--ink);
+  box-shadow: 10px 0 28px rgba(54, 73, 85, 0.04);
+  backdrop-filter: blur(14px);
+}
+
+.admin-nav-label {
+  color: #82939d;
+  letter-spacing: 0.08em;
+}
+
+.admin-nav-item {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+  color: #5f727e;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item:focus-visible {
+  border-color: #d9e9f0;
+  background: #f7fbfc;
+  color: #54798d;
+}
+
+.admin-nav-item.is-active,
+.admin-nav-item[aria-current="page"] {
+  border-color: #d2e5ee;
+  background: #e6f2f7;
+  box-shadow: inset 3px 0 #9bc9dd;
+  color: #4f788e;
+}
+
+.admin-main {
+  min-width: 0;
+  background: transparent;
+  padding: clamp(18px, 3vw, 36px);
+}
+
+.admin-page-heading {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+}
+
+.admin-page-heading h1 {
+  color: #263642;
+  font-family: inherit;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.admin-page-heading p {
+  color: var(--muted);
+}
+
+.admin-app .table-surface {
+  border: 1px solid #dfe6e9;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 42px rgba(50, 69, 81, 0.08);
+  animation: none;
+}
+
+.admin-app .table-toolbar {
+  min-height: 60px;
+  border-bottom: 1px solid #e7edef;
+  background: rgba(248, 250, 251, 0.96);
+}
+
+.admin-app .table-toolbar strong {
+  color: #344854;
+}
+
+.admin-app .mount-table th,
+.admin-app .mount-table td {
+  border-bottom-color: #e9eef0;
+}
+
+.admin-app .mount-table th {
+  border-right: 0;
+  background: #f2f6f7;
+  color: #71818a;
+  text-transform: none;
+}
+
+.admin-app .mount-table td {
+  color: #3b4d58;
+}
+
+.admin-app .mount-table tbody tr:hover {
+  background: #f1f8fa;
+  box-shadow: inset 3px 0 #a7d2e3;
+}
+
+.admin-app .url-cell {
+  color: #72848e;
+}
+
+.admin-app .type-chip {
+  border: 1px solid #d4e5eb;
+  border-radius: 4px;
+  background: #edf5f8;
+  color: #5c7d8e;
+}
+
+.admin-app .table-file {
+  font-weight: 650;
+}
+
+.admin-app .primary-button,
+.admin-app .secondary-button,
+.admin-app .danger-button,
+.login-screen .primary-button {
+  min-height: 38px;
+  border: 1px solid #c7dce5;
+  border-radius: 6px;
+  background: #e6f2f7;
+  box-shadow: 0 3px 9px rgba(63, 101, 121, 0.08);
+  color: #4f788d;
+  font-weight: 650;
+  text-transform: none;
+}
+
+.admin-app .primary-button:hover,
+.admin-app .secondary-button:hover,
+.login-screen .primary-button:hover {
+  border-color: #abcddd;
+  background: #d9ebf3;
+  color: #416d83;
+}
+
+.admin-app .danger-button {
+  border-color: #ebcfd2;
+  background: #fff8f8;
+  color: #a94e59;
+}
+
+.admin-app .icon-button {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #73858f;
+  box-shadow: none;
+}
+
+.admin-app .icon-button:hover:not(:disabled) {
+  border-color: #dbe9ef;
+  background: #edf5f8;
+  color: #557f95;
+}
+
+.admin-theme-toggle,
+.admin-topbar .admin-theme-toggle {
+  border: 1px solid #c9dfe8;
+  border-left: 3px solid #a5ccdd;
+  border-radius: 7px;
+  background: #f5fafc;
+  box-shadow: 0 5px 14px rgba(65, 101, 119, 0.08);
+  color: #62879a;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.admin-theme-toggle:hover:not(:disabled),
+.admin-theme-toggle:focus-visible {
+  border-color: #adcfde;
+  background: #eaf4f8;
+  color: #4c7489;
+}
+
+.admin-tree-item {
+  border-radius: 6px;
+  color: #586d79;
+}
+
+.admin-tree-item:hover,
+.admin-tree-item:focus-visible {
+  border-color: #d8e7ed;
+  background: #f4f9fb;
+}
+
+.admin-tree-item.is-active {
+  border-color: #d0e3eb;
+  background: #e7f2f6;
+  box-shadow: inset 3px 0 #9dc9dc;
+  color: #426a80;
+}
+
+.admin-tree-icon {
+  color: #7da7bb;
+}
+
+.admin-tree-caret {
+  color: #8798a1;
+}
+
+.admin-app .form-dialog,
+.login-screen .login-panel {
+  border: 1px solid #dce5e9;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 22px 58px rgba(37, 58, 71, 0.18);
+  color: var(--ink);
+}
+
+.admin-app .form-dialog input,
+.admin-app .form-dialog textarea,
+.admin-app .form-dialog select,
+.login-screen .login-form input {
+  border-color: #d5e0e5;
+  border-radius: 5px;
+  background: #fbfcfd;
+  color: #334853;
+}
+
+.admin-app .form-dialog input:focus,
+.admin-app .form-dialog textarea:focus,
+.admin-app .form-dialog select:focus,
+.login-screen .login-form input:focus {
+  border-color: #9fc9db;
+  box-shadow: 0 0 0 3px rgba(158, 201, 219, 0.2);
+}
+
+.admin-app .dialog-heading,
+.admin-app .dialog-actions {
+  border-color: #e1e8eb;
+  background: #f6f9fa;
+}
+
+.admin-app .dialog-heading h2,
+.login-screen .login-panel h1 {
+  color: #30434e;
+  font-family: inherit;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.login-screen {
+  min-height: 100vh;
+  background-image: none;
+}
+
+.login-screen::before,
+.login-screen:not(.has-custom-background)::after {
+  content: none;
+}
+
+.login-screen .login-panel {
+  box-shadow: 0 20px 52px rgba(44, 68, 81, 0.13);
+}
+
+@media (max-width: 680px) {
+  .admin-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-app .admin-sidebar {
+    background: rgba(237, 242, 244, 0.98);
+    box-shadow: 14px 0 32px rgba(48, 69, 81, 0.12);
+  }
+
+  .admin-main {
+    padding: 16px 10px;
   }
 }

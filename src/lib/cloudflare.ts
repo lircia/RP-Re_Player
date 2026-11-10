@@ -6,8 +6,14 @@ export interface AppEnv {
   B?: string;
   C?: string;
   N?: string;
+  PI?: string;
   P?: string;
   T?: string;
+  AP?: string;
+  VP?: string;
+  APS?: string;
+  VPS?: string;
+  RP_LOCAL_BG?: string;
   WM?: string;
   PBN?: string;
   US?: string;
@@ -19,7 +25,7 @@ export interface AppEnv {
   KV?: KVNamespace;
 }
 
-const persistedKeys = ["A", "B", "C", "N", "P", "US", "UI", "UH", "UD"] as const;
+const persistedKeys = ["A", "C", "P", "US", "UI", "UH", "UD"] as const;
 type PersistedKey = (typeof persistedKeys)[number];
 const settingsCache = new WeakMap<object, Partial<Record<PersistedKey, string>>>();
 

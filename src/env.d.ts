@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly B?: string;
   readonly C?: string;
   readonly N?: string;
+  readonly PI?: string;
   readonly P?: string;
   readonly T?: string;
   readonly US?: string;

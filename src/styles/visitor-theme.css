@@ -1,5 +1,16 @@
 @import "./themes/default.css";
-@import "./themes/retro.css";
-@import "./themes/azure.css";
-@import "./themes/new-blue.css";
 @import "./themes/light-gray.css";
+
+.media-app .app-topbar .app-brand strong {
+  border: 0;
+  background: linear-gradient(90deg, #d74358 0%, #d98924 17%, #c0a52b 33%, #32985b 50%, #2385aa 67%, #5268cb 83%, #a347a8 100%);
+  background-clip: text;
+  color: transparent;
+  -webkit-background-clip: text;
+}
+
+.media-app[data-theme="gray"] .app-topbar .app-brand strong {
+  border: 1px solid #ffffff;
+  border-radius: 4px;
+  padding: 3px 6px;
+}

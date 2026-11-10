@@ -1,20 +1,24 @@
 import type { AppEnv } from "./cloudflare";
 import { THEME_KV_KEY, usesKvForPseudoAndTheme } from "./storage";
 
-export const visitorThemes = ["blue", "retro", "future", "tech", "gray"] as const;
+export const visitorThemes = ["default", "gray"] as const;
 export type VisitorTheme = (typeof visitorThemes)[number];
 
 const legacyThemes: Record<string, VisitorTheme> = {
-  default: "blue",
-  azure: "future",
-  newblue: "tech",
-  lightgray: "gray"
+  blue: "default",
+  retro: "default",
+  future: "default",
+  azure: "default",
+  tech: "default",
+  newblue: "default",
+  lightgray: "gray",
+  "light-gray": "gray"
 };
 
 export function normalizeVisitorTheme(value: unknown): VisitorTheme {
   const theme = String(value || "").toLowerCase();
   if (visitorThemes.includes(theme as VisitorTheme)) return theme as VisitorTheme;
-  return legacyThemes[theme] || "blue";
+  return legacyThemes[theme] || "default";
 }
 
 async function ensureThemeTable(env: AppEnv) {
@@ -29,7 +33,7 @@ async function ensureThemeTable(env: AppEnv) {
 }
 
 export async function getVisitorThemeFromD1(env: AppEnv): Promise<VisitorTheme> {
-  if (!(await ensureThemeTable(env))) return "blue";
+  if (!(await ensureThemeTable(env))) return "default";
   const row = await env.D1!.prepare("SELECT value FROM rp_visitor_theme WHERE id = 1")
     .first<{ value: string }>();
   if (row?.value) return normalizeVisitorTheme(row.value);

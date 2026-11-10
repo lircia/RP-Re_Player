@@ -117,22 +117,30 @@ The D1 binding name must remain `D1`. Also configure a KV namespace binding name
 | Variable | Purpose |
 | --- | --- |
 | `A` | External media URL shown before the visitor page |
-| `B` | Maximum display/playback time for `A` and `C`, in seconds; default `4.2` |
+| `B` | Maximum display/playback time for `A` and `C`, in seconds; default `4.2`. Empty, zero, negative, or invalid values skip the entry animation |
 | `C` | Optional external audio URL played together with `A`; mutes the `A` video when set |
-| `N` | Site name |
+| `N` | Visitor brand text and browser title; defaults to `Re-Player`. The brand text stays rainbow-colored |
+| `PI` | Optional HTTP(S) favicon image URL; empty by default and falls back to `/favicon.svg` if it cannot load |
 | `P` | Administrator password |
+| `T` | Enables/disables the China cloud-provider redirect behavior; enabled unless set to `0`, `false`, `off`, `no`, or `disabled` |
+| `RP_HTTP_PORT` | Local HTTP listener port; defaults to `12067` |
+| `VP` | Visitor page background image: an HTTP(S) URL, or an absolute local file path with `Local.cmd` |
+| `AP` | Admin page background image: an HTTP(S) URL, or an absolute local file path with `Local.cmd` |
+| `VPS` | Visitor background image opacity in percent; default `100` |
+| `APS` | Admin background image opacity in percent; default `100` |
 | `WM` | Movi subtitle size multiplier; default `0.78` (accepted range `0.1`–`3`) |
 | `PBN` | Video control bar glass background opacity; default `0.12` (`0` transparent, `1` opaque) |
 | `DB` | Storage selection for pseudo-mounts and visitor theme: `d1` or `kv`; defaults to `d1` |
-| `D1` | D1 binding; playback stats, visitor events, settings, and KV backups remain in D1 |
+| `D1` | Optional D1 binding; required for analytics and the D1 backup of KV data |
+| `KV` | Optional KV namespace binding; used for pseudo-mounts and visitor theme only when `DB=kv` and the binding exists |
 | `US` | Umami script URL |
 | `UI` | Umami website ID |
 | `UH` | Optional Umami host URL |
 | `UD` | Optional Umami domain list |
 
-When D1 is available, RP seeds `rp_settings` from non-empty `A`, `B`, `C`, `N`, `P`, `US`, `UI`, `UH`, and `UD` bindings when their `env:VARIABLE` keys are missing; stored values take priority on later deployments. `WM` and `PBN` are read directly from the runtime environment and are not stored in D1, so they can be adjusted there without changing saved settings. `keep_vars = true` also prevents Wrangler from deleting variables configured in the Cloudflare dashboard.
+When D1 is available, RP seeds `rp_settings` from non-empty `A`, `C`, `P`, `US`, `UI`, `UH`, and `UD` bindings when their `env:VARIABLE` keys are missing; stored values take priority on later deployments. `B`, `N`, `PI`, `T`, `RP_HTTP_PORT`, `WM`, `PBN`, `VP`, `AP`, `VPS`, and `APS` are read directly at runtime and are not persisted in D1. Background image opacity is applied only after the image loads; a failed image falls back to the page's solid background. Cloudflare deployments must use an HTTP(S) image URL. Absolute local paths are supported only by the incomplete `Local.cmd` runner, which reads variables from `.env` and serves configured files through a helper bound to `127.0.0.1`; on Windows, forward-slash paths such as `S:/Images/background.jpg` avoid escaping issues. `keep_vars = true` also prevents Wrangler from deleting variables configured in the Cloudflare dashboard.
 
-Pseudo-mount links and the visitor theme use KV only when `DB` is set to `kv` and the `KV` binding exists; without that binding, or for any other `DB` value, they automatically use D1. Playback progress, analytics, visitor events, settings, and migration state always remain in D1. In KV mode, admin mount changes and theme switches are the only operations that write KV. D1 backups are read from KV after those changes and updated only when the stored content differs; normal reads never write KV or restore D1 data into KV. The `/setup` page shows the current time, request IP, hostname, visitor theme, and actual pseudo-mount storage type, without exposing credentials or binding IDs.
+Pseudo-mount links and the visitor theme use KV only when `DB` is set to `kv` and the `KV` binding exists; otherwise they fall back to D1 when bound, or in-memory storage when neither binding is available. Playback progress, analytics, visitor events, settings, and migration state remain in D1 when it is bound. In KV mode, admin mount changes and theme switches are the only operations that write KV. D1 backups are read from KV after those changes and updated only when the stored content differs; normal reads never write KV or restore D1 data into KV. The `/setup` page shows a live clock, request IP, hostname, visitor theme, pseudo-mount storage, runtime status, and Cloudflare `colo` when available, without exposing credentials or binding IDs. The status displays `Unknow` in red when D1 is not bound.
 
 ## 📖 Details
 
@@ -160,19 +168,35 @@ RP-Re_Player
 │   ├── layouts/                # Page layouts
 │   ├── lib/                    # Business logic (pseudo-mounts, subtitles, lyrics, themes…)
 │   ├── pages/                  # Route pages
+│   │   ├── 404.astro
+│   │   ├── Loading.astro
+│   │   ├── Re.astro
+│   │   ├── admin.astro
+│   │   ├── index.astro
+│   │   ├── setup.astro
+│   │   ├── table.astro
 │   │   ├── api/                # API endpoints
 │   │   │   ├── admin/          # Admin APIs
 │   │   │   └── public/         # Visitor/public APIs
-│   │   ├── Local/              # Visitor media library
-│   │   └── tree/               # Native player
+│   │   ├── Local/              # Visitor media library route
+│   │   └── tree/               # Native player route
 │   ├── styles/                 # Global and theme styles
+│   │   └── themes/             # Default and light-gray visitor themes
 │   └── types/                  # Type definitions
 ├── public/                     # Static assets (fonts, icon, poster)
 ├── scripts/                    # Build and local-run scripts
+├── third-party-licenses/       # Third-party license texts
+├── .env.example                # Example runtime variables
+├── .gitignore
+├── LICENSE                     # Main project license (MIT)
+├── Local.cmd                   # Local-only launcher
+├── THIRD-PARTY-NOTICES         # Third-party attribution and notices
+├── README.md                   # English documentation
+├── README.zh-CN.md             # Chinese documentation
+├── README.ja.md                # Japanese documentation
 ├── astro.config.mjs            # Astro configuration
 ├── wrangler.toml               # Cloudflare configuration
-├── package.json                # Project dependencies
-└── LICENSE                     # MIT license
+└── package.json                # Project dependencies
 ```
 
 ## 🙏 Acknowledgements

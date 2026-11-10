@@ -23,7 +23,7 @@ const env = await getEnv(Astro);
 const loggedIn = await isAdmin(Astro.request, env);
 ---
 
-<SiteShell title="Admin - Re Player">
+<SiteShell title="Admin - Re Player" pageBackground="admin">
   {
     !loggedIn ? (
       <main class="login-screen">
@@ -281,16 +281,16 @@ const loggedIn = await isAdmin(Astro.request, env);
 
     type Lang = keyof typeof c;
     type Item = { id: string; name: string; path: string; url: string; kind: "video" | "audio" | "image" | "file"; description?: string; poster?: string; sub?: string; embeddedMulti?: boolean; h5Player?: "playsvideo" | "movi" | "vplayer" | "select"; lrc?: string; lrc2?: string };
-    type VisitorTheme = "blue" | "retro" | "future" | "tech" | "gray";
+    type VisitorTheme = "default" | "gray";
     let lang: Lang = "en";
     let items: Item[] = [];
     let currentFolder = "/root";
-    let visitorTheme: VisitorTheme = "blue";
+    let visitorTheme: VisitorTheme = "default";
     const expandedFolders = new Set<string>(["/root"]);
     const themeNames: Record<Lang, Record<VisitorTheme, string>> = {
-      en: { blue: "Default", retro: "Retro", future: "Azure", tech: "New Blue", gray: "Light Gray" },
-      zh: { blue: "默认", retro: "复古", future: "蔚蓝", tech: "新蓝", gray: "浅灰" },
-      ja: { blue: "デフォルト", retro: "レトロ", future: "アズール", tech: "ニューブルー", gray: "ライトグレー" }
+      en: { default: "Default", gray: "Light Gray" },
+      zh: { default: "默认", gray: "浅灰" },
+      ja: { default: "デフォルト", gray: "ライトグレー" }
     };
     const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
