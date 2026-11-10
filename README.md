@@ -42,7 +42,7 @@ Re Player is a **link-based media library**. An administrator mounts external vi
 ### Run Locally
 
 > [!NOTE]
-> Local running through `Local.cmd` in the main repository is incomplete and can only be accessed from the same computer. To access the service from other devices on your LAN, download the release package and read its bundled README.
+> Local running through `Local.cmd` in the main repository is incomplete and can only be accessed from the same computer. For access from other devices on your LAN, use this repository's `Local` branch, which is intended for LAN use.
 
 ```bash
 npm install
@@ -86,6 +86,7 @@ No change to Cloudflare's build command is required.
 | `/Tree/...` | Native player page for media mounted at `/root/tree` |
 | `/table` | Visitor analytics page (requires the admin password) |
 | `/admin` | Admin console (pseudo-mounts, themes, settings) |
+| `/302` | Redirect mount manager; available when `R302=1` |
 
 `Tree` sits at the same level as `Local` but is not shown in the regular Local listing; register a folder as `/tree` in the admin console.
 
@@ -105,6 +106,7 @@ RP creates and upgrades the following tables automatically:
 | Table | Purpose |
 | --- | --- |
 | `rp_pseudo_links` | Pseudo-mount information |
+| `rp_redirect_mounts` | Optional 302 redirect rules |
 | `rp_media_visitors` | Per-visitor media progress and completion stats |
 | `rp_visitor_events` | Visit, directory, media, and play events |
 | `rp_settings` | Persisted environment variables |
@@ -123,6 +125,7 @@ The D1 binding name must remain `D1`. Also configure a KV namespace binding name
 | `PI` | Optional HTTP(S) favicon image URL; empty by default and falls back to `/favicon.svg` if it cannot load |
 | `VA` | Visitor top-left branding: `0` hides icon and text, `1` shows the icon, `1.5` shows the text, and `2` shows both; default `2`, invalid values use `2` |
 | `P` | Administrator password |
+| `R302` | Redirect mount feature and `/302` manager: `1` enables it; `0` or empty disables it (default `0`) |
 | `T` | Enables/disables the China cloud-provider redirect behavior; enabled unless set to `0`, `false`, `off`, `no`, or `disabled` |
 | `RP_HTTP_PORT` | Local HTTP listener port; defaults to `12067` |
 | `VP` | Visitor page background image: an HTTP(S) URL, or an absolute local file path with `Local.cmd` |

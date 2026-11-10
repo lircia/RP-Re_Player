@@ -1,0 +1,142 @@
+---
+import SiteShell from "../layouts/SiteShell.astro";
+import { getEnv } from "@lib/cloudflare";
+import { isAdmin } from "@lib/admin";
+
+const env = await getEnv(Astro);
+const loggedIn = await isAdmin(Astro.request, env);
+---
+
+<SiteShell title="Redirect mounts">
+  <main id="redirectPage" data-lang="en">
+    {!loggedIn ? (
+      <section class="login-panel">
+        <p class="eyebrow">RE-PLAYER / 302</p>
+        <h1 data-copy="title">Redirect mounts</h1>
+        <p data-copy="loginCopy">Sign in to manage URL redirects.</p>
+        <form id="loginForm">
+          <label><span data-copy="password">Password</span><input name="password" type="password" autocomplete="current-password" required autofocus /></label>
+          <button type="submit" data-copy="signIn">Sign in</button>
+          <output id="loginStatus" role="status"></output>
+        </form>
+      </section>
+    ) : (
+      <>
+        <header class="page-header">
+          <div><p class="eyebrow">RE-PLAYER / 302</p><h1 data-copy="title">Redirect mounts</h1><p data-copy="description">Redirect visitors from one mounted path to another.</p></div>
+          <a href="/admin" data-copy="admin">Admin</a>
+        </header>
+        <section class="panel">
+          <form id="redirectForm" class="redirect-form">
+            <label><span data-copy="source">Source path</span><input name="sourcePath" placeholder="/root/old.mp4" required /></label>
+            <span class="arrow" aria-hidden="true">→</span>
+            <label><span data-copy="target">Target path</span><input name="targetPath" placeholder="/root/tree/new.mp4" required /></label>
+            <button type="submit" data-copy="save">Add / update</button>
+          </form>
+          <p class="hint" data-copy="pathHint">Enter internal paths under /root. Tree paths use /root/tree/...</p>
+          <output id="formStatus" role="status"></output>
+        </section>
+        <section class="panel">
+          <div class="list-heading"><h2 data-copy="configured">Configured redirects</h2><button id="refreshButton" type="button" data-copy="refresh">Refresh</button></div>
+          <div class="table-wrap"><table><thead><tr><th data-copy="source">Source path</th><th data-copy="publicUrl">Public URL</th><th data-copy="target">Target path</th><th data-copy="publicUrl">Public URL</th><th><span class="sr-only" data-copy="actions">Actions</span></th></tr></thead><tbody id="redirectRows"><tr><td colspan="5" data-copy="loading">Loading...</td></tr></tbody></table></div>
+        </section>
+      </>
+    )}
+  </main>
+
+  <script is:inline>
+    (() => {
+      const messages = {
+        en: { title: "Redirect mounts", loginCopy: "Sign in to manage URL redirects.", password: "Administrator password", signIn: "Sign in", description: "Redirect visitors from one mounted path to another.", admin: "Admin", source: "Source path", target: "Target path", save: "Add / update", pathHint: "Enter internal paths under /root. Tree paths use /root/tree/...", configured: "Configured redirects", refresh: "Refresh", publicUrl: "Public URL", actions: "Actions", loading: "Loading...", empty: "No redirect mounts yet.", saved: "Saved.", delete: "Delete", deleteConfirm: "Delete this redirect?", loginFailed: "Sign-in failed.", saveFailed: "Save failed.", loadFailed: "Load failed.", deleteFailed: "Delete failed." },
+        zh: { title: "跳转挂载", loginCopy: "登录后管理 URL 跳转。", password: "管理员密码", signIn: "登录", description: "将访客从一个挂载路径跳转到另一个路径。", admin: "管理后台", source: "源路径", target: "目标路径", save: "添加 / 更新", pathHint: "请输入 /root 下的内部路径。Tree 路径使用 /root/tree/...", configured: "已配置的跳转", refresh: "刷新", publicUrl: "公开 URL", actions: "操作", loading: "正在加载...", empty: "暂无跳转挂载。", saved: "已保存。", delete: "删除", deleteConfirm: "删除此跳转？", loginFailed: "登录失败。", saveFailed: "保存失败。", loadFailed: "加载失败。", deleteFailed: "删除失败。" },
+        ja: { title: "転送マウント", loginCopy: "ログインして URL 転送を管理します。", password: "管理者パスワード", signIn: "ログイン", description: "マウントしたパスから別のパスへ訪問者を転送します。", admin: "管理画面", source: "転送元パス", target: "転送先パス", save: "追加 / 更新", pathHint: "/root 以下の内部パスを入力してください。Tree は /root/tree/... を使用します。", configured: "設定済み転送", refresh: "更新", publicUrl: "公開 URL", actions: "操作", loading: "読み込み中...", empty: "転送マウントはありません。", saved: "保存しました。", delete: "削除", deleteConfirm: "この転送を削除しますか？", loginFailed: "ログインに失敗しました。", saveFailed: "保存に失敗しました。", loadFailed: "読み込めませんでした。", deleteFailed: "削除に失敗しました。" }
+      };
+      const cookie = document.cookie.split("; ").find((part) => part.startsWith("rp_l="))?.slice(5) || "";
+      const browser = (navigator.language || "").toLowerCase();
+      const lang = cookie === "zh" || cookie === "ja" || cookie === "en" ? cookie : browser.startsWith("zh") ? "zh" : browser.startsWith("ja") ? "ja" : "en";
+      document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
+      document.querySelectorAll("[data-copy]").forEach((element) => { element.textContent = messages[lang][element.dataset.copy] || messages.en[element.dataset.copy] || element.textContent; });
+      const t = (key) => messages[lang][key] || messages.en[key] || key;
+      const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+      const normalize = (value) => {
+        const parts = String(value || "").trim().replace(/\\/g, "/").split("/").filter(Boolean);
+        if (parts[0]?.toLowerCase() === "root") parts.shift();
+        if (!parts.length || parts.some((part) => part === "." || part === ".." || /[\u0000-\u001f\u007f]/.test(part))) throw new Error("Invalid mounted path.");
+        if (parts[0]?.toLowerCase() === "tree") parts[0] = "tree";
+        return `/root/${parts.join("/")}`;
+      };
+      const request = async (url, init) => {
+        const response = await fetch(url, init);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.details || data.error || "Request failed.");
+        return data;
+      };
+      const loginForm = document.querySelector("#loginForm");
+      loginForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const status = document.querySelector("#loginStatus");
+        const password = new FormData(loginForm).get("password");
+        try { await request("/api/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) }); location.reload(); }
+        catch { status.textContent = t("loginFailed"); }
+      });
+      const rows = document.querySelector("#redirectRows");
+      const form = document.querySelector("#redirectForm");
+      const status = document.querySelector("#formStatus");
+      async function load() {
+        if (!rows) return;
+        try {
+          const data = await request("/api/admin/redirects");
+          rows.innerHTML = data.items.length ? data.items.map((item) => `<tr><td><code>${escapeHtml(item.sourcePath)}</code></td><td><a href="${escapeHtml(item.sourceUrl)}">${escapeHtml(item.sourceUrl)}</a></td><td><code>${escapeHtml(item.targetPath)}</code></td><td><a href="${escapeHtml(item.targetUrl)}">${escapeHtml(item.targetUrl)}</a></td><td><button type="button" data-delete="${escapeHtml(item.id)}">${escapeHtml(t("delete"))}</button></td></tr>`).join("") : `<tr><td colspan="5">${escapeHtml(t("empty"))}</td></tr>`;
+        } catch (error) { rows.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message || t("loadFailed"))}</td></tr>`; }
+      }
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+          const values = Object.fromEntries(new FormData(form).entries());
+          values.sourcePath = normalize(values.sourcePath);
+          values.targetPath = normalize(values.targetPath);
+          await request("/api/admin/redirects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(values) });
+          form.reset(); status.textContent = t("saved"); await load();
+        } catch (error) { status.textContent = error.message || t("saveFailed"); }
+      });
+      rows?.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-delete]");
+        if (!button || !confirm(t("deleteConfirm"))) return;
+        try { await request("/api/admin/redirects/delete", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: button.dataset.delete }) }); await load(); }
+        catch (error) { status.textContent = error.message || t("deleteFailed"); }
+      });
+      document.querySelector("#refreshButton")?.addEventListener("click", () => void load());
+      void load();
+    })();
+  </script>
+
+  <style>
+    :global(html), :global(body) { margin: 0; min-height: 100%; background: #f3f7fa; color: #17374f; font-family: Inter, system-ui, sans-serif; }
+    #redirectPage { min-height: 100vh; box-sizing: border-box; padding: clamp(20px, 5vw, 56px); }
+    .page-header, .panel { width: min(1180px, 100%); margin: 0 auto 20px; }
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+    .eyebrow { margin: 0 0 8px; color: #2783bb; font: 600 11px Consolas, monospace; }
+    h1 { margin: 0 0 8px; font-size: clamp(26px, 4vw, 40px); font-weight: 600; }
+    h2 { margin: 0; font-size: 18px; }
+    p { color: #678195; line-height: 1.5; }
+    a { color: #1675ac; }
+    .panel, .login-panel { box-sizing: border-box; border: 1px solid #cedde8; background: #fff; padding: 18px; }
+    .login-panel { width: min(440px, calc(100% - 32px)); margin: 12vh auto 0; padding: 28px; }
+    .redirect-form { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto; align-items: end; gap: 12px; }
+    label { display: grid; gap: 7px; color: #31546d; font-size: 13px; }
+    input { min-width: 0; box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #b5cbd9; background: #fff; color: #17374f; font: 13px Consolas, monospace; }
+    button { min-height: 38px; padding: 8px 13px; border: 1px solid #7eb2d0; background: #e6f3fa; color: #145887; cursor: pointer; }
+    button:hover { background: #d7edf8; }
+    .arrow { padding-bottom: 7px; color: #2783bb; font-size: 20px; }
+    .hint { margin: 14px 0 0; font-size: 12px; }
+    output { display: block; margin-top: 10px; color: #276b91; }
+    .list-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; min-width: 780px; border-collapse: collapse; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid #e1e9ef; text-align: left; font-size: 12px; }
+    th { color: #607b8d; font-weight: 600; }
+    code { color: #145887; overflow-wrap: anywhere; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    @media (max-width: 760px) { .page-header { display: block; } .page-header > a { display: inline-block; margin: 6px 0 12px; } .redirect-form { grid-template-columns: 1fr; } .arrow { display: none; } }
+  </style>
+</SiteShell>

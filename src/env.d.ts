@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   readonly PI?: string;
   readonly P?: string;
   readonly T?: string;
+  readonly R302?: string;
   readonly US?: string;
   readonly UI?: string;
   readonly UH?: string;

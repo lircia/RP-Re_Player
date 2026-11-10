@@ -17,6 +17,7 @@ export interface AppEnv {
   RP_LOCAL_BG?: string;
   WM?: string;
   PBN?: string;
+  R302?: string;
   US?: string;
   UI?: string;
   UH?: string;

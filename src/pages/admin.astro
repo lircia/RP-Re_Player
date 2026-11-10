@@ -1,6 +1,7 @@
 ---
 import {
   ChevronDown,
+  ArrowLeftRight,
   File,
   FileImage,
   Film,
@@ -70,6 +71,7 @@ const siteName = env.N?.trim() || "Re-Player";
           </div>
           <div class="admin-topbar-actions">
             <button id="mobileAdminTreeToggle" class="icon-button mobile-admin-tree-toggle" type="button" aria-label="Open storage" aria-controls="adminSidebar" aria-expanded="false"><Folder size={18} /></button>
+            {env.R302?.trim() === "1" && <a class="icon-button" href="/302" title="302 redirects" data-i18n-title="redirectMounts" aria-label="302 redirects"><ArrowLeftRight size={18} /><span class="sr-only" data-i18n="redirectMounts">302 redirects</span></a>}
             <button id="visitorThemeBtn" class="admin-theme-toggle" type="button" title="Visitor theme">
               <Palette size={16} aria-hidden="true" />
               <span id="visitorThemeLabel">Visitor theme: Default</span>
@@ -250,7 +252,7 @@ const siteName = env.N?.trim() || "Re-Player";
         wrongPassword: "Incorrect password.", signingIn: "Signing in...", loadFailed: "Could not load pseudo mounts.",
         createFailed: "Could not create the pseudo mount.", created: "Pseudo mount created.", delete: "Delete",
         deleteConfirm: "Delete this pseudo mount?", deleteFailed: "Could not delete the pseudo mount.",
-        visitorTheme: "Visitor theme", themeChanged: "Visitor theme switched", themeFailed: "Could not switch visitor theme."
+        visitorTheme: "Visitor theme", themeChanged: "Visitor theme switched", themeFailed: "Could not switch visitor theme.", redirectMounts: "302 redirects"
       },
       zh: {
         language: "语言", console: "管理后台", signIn: "登录", signInCopy: "请输入管理员密码以继续。", password: "密码",
@@ -262,7 +264,7 @@ const siteName = env.N?.trim() || "Re-Player";
         cancel: "取消", create: "创建", empty: "暂无伪挂载", item: "项", items: "项",
         wrongPassword: "密码错误。", signingIn: "正在登录...", loadFailed: "无法读取伪挂载。",
         createFailed: "无法创建伪挂载。", created: "伪挂载已创建。", delete: "删除", deleteConfirm: "删除此伪挂载？",
-        deleteFailed: "无法删除此伪挂载。", visitorTheme: "访客主题", themeChanged: "访客主题已切换", themeFailed: "无法切换访客主题。"
+        deleteFailed: "无法删除此伪挂载。", visitorTheme: "访客主题", themeChanged: "访客主题已切换", themeFailed: "无法切换访客主题。", redirectMounts: "302 跳转"
       },
       ja: {
         language: "言語", console: "管理コンソール", signIn: "ログイン", signInCopy: "管理者パスワードを入力してください。",
@@ -276,7 +278,7 @@ const siteName = env.N?.trim() || "Re-Player";
         items: "件", wrongPassword: "パスワードが正しくありません。", signingIn: "ログイン中...",
         loadFailed: "疑似マウントを読み込めませんでした。", createFailed: "疑似マウントを作成できませんでした。",
         created: "疑似マウントを作成しました。", delete: "削除", deleteConfirm: "この疑似マウントを削除しますか？",
-        deleteFailed: "疑似マウントを削除できませんでした。", visitorTheme: "ビジターテーマ", themeChanged: "ビジターテーマを切り替えました", themeFailed: "ビジターテーマを切り替えられませんでした。"
+        deleteFailed: "疑似マウントを削除できませんでした。", visitorTheme: "ビジターテーマ", themeChanged: "ビジターテーマを切り替えました", themeFailed: "ビジターテーマを切り替えられませんでした。", redirectMounts: "302 転送"
       }
     } as const;
 
