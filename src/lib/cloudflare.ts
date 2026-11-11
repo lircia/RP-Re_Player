@@ -15,6 +15,8 @@ export interface AppEnv {
   APS?: string;
   VPS?: string;
   RP_LOCAL_BG?: string;
+  RP_LOCAL_MEDIA_TOKEN?: string;
+  RP_LOCAL_REQUIRE_D1?: string;
   WM?: string;
   PBN?: string;
   R302?: string;

@@ -33,6 +33,11 @@ export interface PublicNode {
   updatedAt?: string;
 }
 
+export interface LocalFolderFile {
+  relativePath: string;
+  url: string;
+}
+
 type MemoryState = {
   items: PseudoItem[];
 };
@@ -120,6 +125,30 @@ function webUrl(input: string, label: string) {
   return url.href;
 }
 
+function mediaUrl(input: string, allowLocalFiles: boolean) {
+  const value = String(input || "").trim();
+  if (!value) return undefined;
+  const windowsPath = /^[a-z]:[\\/]/i.test(value);
+  const posixPath = value.startsWith("/") && !value.startsWith("//");
+  if (windowsPath || posixPath || /^file:/i.test(value)) {
+    if (!allowLocalFiles) throw new Error("Local file paths are available only in the Local version.");
+    try {
+      const normalizedPath = value.replace(/\\/g, "/");
+      const encodedPath = (windowsPath || posixPath)
+        ? windowsPath
+          ? `${normalizedPath.slice(0, 2)}/${normalizedPath.slice(3).split("/").map(encodeURIComponent).join("/")}`
+          : normalizedPath.slice(1).split("/").filter(Boolean).map(encodeURIComponent).join("/")
+        : "";
+      const url = new URL(windowsPath || posixPath ? `file:///${encodedPath}` : value);
+      if (url.protocol !== "file:" || url.host || !url.pathname) throw new Error();
+      return url.href;
+    } catch {
+      throw new Error("Media URL must be HTTP(S) or an absolute local file path.");
+    }
+  }
+  return webUrl(value, "Media URL");
+}
+
 function parentPath(path: string) {
   const parts = normalizeRootPath(path).split("/").filter(Boolean);
   parts.pop();
@@ -134,7 +163,12 @@ function pathConflict(items: PseudoItem[], path: string) {
 }
 
 async function ensureDb(env: AppEnv) {
-  if (!env.D1) return false;
+  if (!env.D1) {
+    if (env.RP_LOCAL_REQUIRE_D1 === "1") {
+      throw new Error("Local D1 is not available. Restart from Local.cmd and keep the .local-data folder.");
+    }
+    return false;
+  }
   await env.D1.prepare(
     `
       CREATE TABLE IF NOT EXISTS rp_pseudo_links (
@@ -475,7 +509,9 @@ export async function createItem(
     id: crypto.randomUUID(),
     name,
     path,
-    url: webUrl(input.url, "Media URL") || "",
+    // This branch is the only one that accepts file paths; media-proxy still
+    // requires the Local runner's private token before reading any local file.
+    url: mediaUrl(input.url, true) || "",
     kind: input.kind === "file" || input.kind === "image" || input.kind === "audio" ? input.kind : "video",
     description: input.kind === "file" ? String(input.description || "").trim() : undefined,
     poster: input.kind === "file" ? undefined : webUrl(input.poster || "", "Poster URL"),
@@ -568,6 +604,114 @@ export async function createItem(
   }
 
   return item;
+}
+
+function kindFromFileName(name: string): PseudoKind {
+  const extension = name.toLowerCase().split(".").pop() || "";
+  if (["mp4", "m4v", "mov", "webm", "mkv", "avi", "mpeg", "mpg", "m2ts", "ts", "wmv"].includes(extension)) return "video";
+  if (["mp3", "m4a", "aac", "flac", "ogg", "opus", "wav", "wma", "mka"].includes(extension)) return "audio";
+  if (["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp", "svg"].includes(extension)) return "image";
+  return "file";
+}
+
+export async function createLocalFolderItems(env: AppEnv, targetFolder: string, files: LocalFolderFile[]) {
+  if (!files.length) throw new Error("No files were found in the selected folder.");
+  if (files.length > 10000) throw new Error("A folder mount is limited to 10,000 files.");
+  if (usesKvForPseudoAndTheme(env)) throw new Error("Local folder mounts require D1 storage.");
+  if (!(await ensureDb(env))) throw new Error("Local folder mounts require a persistent D1 database.");
+
+  const base = normalizeRootPath(targetFolder);
+  assertRoutableFolder(base);
+  const now = new Date().toISOString();
+  const imported = files.map((file): PseudoItem => {
+    const relativeParts = String(file.relativePath || "").replace(/\\/g, "/").split("/");
+    if (!relativeParts.length || relativeParts.some((part) => !part || part === "." || part === "..")) {
+      throw new Error("The folder scan returned an invalid file path.");
+    }
+    const safeParts = relativeParts.map((part) => {
+      const safe = safeFileName(part);
+      assertRoutableSegment(safe, "File name");
+      return safe;
+    });
+    const name = safeParts[safeParts.length - 1];
+    const itemPath = normalizeRootPath(`${base}/${safeParts.join("/")}`);
+    assertRoutableFolder(parentPath(itemPath));
+    const url = mediaUrl(file.url, true);
+    if (!url) throw new Error(`Could not create a local URL for ${name}.`);
+    return {
+      id: crypto.randomUUID(),
+      name,
+      path: itemPath,
+      url,
+      kind: kindFromFileName(name),
+      createdAt: now,
+      updatedAt: now
+    };
+  });
+
+  const importedPaths = new Set<string>();
+  for (const item of imported) {
+    if (importedPaths.has(item.path)) throw new Error(`Multiple local files map to ${item.path}. Rename the conflicting files and retry.`);
+    importedPaths.add(item.path);
+  }
+  const importedFolders = new Set<string>();
+  for (const item of imported) {
+    let folder = parentPath(item.path);
+    while (folder === base || folder.startsWith(`${base}/`)) {
+      if (importedPaths.has(folder)) throw new Error(`${folder} maps to both a file and a folder.`);
+      importedFolders.add(folder);
+      if (folder === base) break;
+      folder = parentPath(folder);
+    }
+  }
+  for (const item of imported) {
+    if (importedFolders.has(item.path)) throw new Error(`${item.path} maps to both a file and a folder.`);
+  }
+
+  const existing = await allItemsFromD1(env);
+  const existingItems = new Set(existing.map((item) => item.path));
+  const existingFolders = new Set<string>();
+  for (const item of existing) {
+    let folder = parentPath(item.path);
+    while (folder === "/root" || folder.startsWith("/root/")) {
+      existingFolders.add(folder);
+      if (folder === "/root") break;
+      folder = parentPath(folder);
+    }
+  }
+  for (const item of imported) {
+    if (existingFolders.has(item.path)) throw new Error(`${item.path} is already used as a folder.`);
+    let folder = parentPath(item.path);
+    while (folder === "/root" || folder.startsWith("/root/")) {
+      if (existingItems.has(folder)) throw new Error(`${folder} is already used by a mounted file.`);
+      if (folder === "/root") break;
+      folder = parentPath(folder);
+    }
+  }
+
+  const statement = (item: PseudoItem) => env.D1!.prepare(`
+    INSERT INTO rp_pseudo_links (id, name, path, url, kind, description, poster, sub, embedded_multi, embedded_player, lrc, lrc2, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(path) DO UPDATE SET
+      name = excluded.name,
+      url = excluded.url,
+      kind = excluded.kind,
+      description = excluded.description,
+      poster = excluded.poster,
+      sub = excluded.sub,
+      embedded_multi = excluded.embedded_multi,
+      embedded_player = excluded.embedded_player,
+      lrc = excluded.lrc,
+      lrc2 = excluded.lrc2,
+      updated_at = excluded.updated_at
+  `).bind(
+    item.id, item.name, item.path, item.url, item.kind, null, null, null, 0, null, null, null, item.createdAt, item.updatedAt
+  );
+
+  for (let index = 0; index < imported.length; index += 50) {
+    await env.D1!.batch(imported.slice(index, index + 50).map(statement));
+  }
+  return imported;
 }
 
 export async function deleteItem(env: AppEnv, pathOrId: string) {

@@ -158,11 +158,11 @@ const siteName = env.N?.trim() || "Re-Player";
                 <input name="folder" type="text" value="/" autocomplete="off" required />
               </label>
               <label class="field">
-                <span data-i18n="name">Name</span>
+                <span id="mountNameLabel" data-i18n="name">Name</span>
                 <input name="name" type="text" placeholder="movie.mp4" autocomplete="off" required />
               </label>
             </div>
-            <div class="form-row">
+            <div id="typeRow" class="form-row">
               <label class="field">
                 <span data-i18n="type">Type</span>
                 <select id="kindSelect" name="kind">
@@ -179,8 +179,20 @@ const siteName = env.N?.trim() || "Re-Player";
             </div>
             <label class="field">
               <span id="urlLabel" data-i18n="mediaUrl">Media URL</span>
-              <textarea name="url" required placeholder="https://example.com/video.mp4"></textarea>
+              <textarea name="url" required data-i18n-placeholder="mediaUrlHint" placeholder="https://example.com/video.mp4 or S:\Media\video.mp4"></textarea>
             </label>
+            <div class="h5-player-field">
+              <label class="h5-player-enable">
+                <input id="mountLocalFolder" type="checkbox" value="1" />
+                <span data-i18n="mountLocalFolder">Mount local folder</span>
+              </label>
+              <div id="localFolderOptions" class="h5-player-options" hidden>
+                <label>
+                  <input id="includeSubdirectories" type="checkbox" value="1" />
+                  <span data-i18n="includeSubdirectories">Include subdirectories</span>
+                </label>
+              </div>
+            </div>
             <label id="descriptionField" class="field" hidden>
               <span data-i18n="description">Description</span>
               <textarea name="description" class="large-textarea" data-i18n-placeholder="descriptionHint" placeholder="Markdown is supported. Use ##ffffff: for a line color."></textarea>
@@ -244,9 +256,9 @@ const siteName = env.N?.trim() || "Re-Player";
         language: "Language", console: "Admin console", signIn: "Sign in", signInCopy: "Enter the administrator password to continue.",
         password: "Password", signOut: "Sign out", storage: "Storage", rootDirectory: "Root directory", mediaFiles: "Media files", pseudoMounts: "Pseudo mounts",
         pageCopy: "Manage public media links, subtitles, and lyrics.", addFile: "Add file", refresh: "Refresh",
-        name: "Name", path: "Path", type: "Type", subtitle: "Subtitles / Lyrics", source: "Source", actions: "Actions",
+        name: "Name", mountName: "Folder name", mountLocalFolder: "Mount local folder", includeSubdirectories: "Include subdirectories", folderCreated: "Imported {count} files.", path: "Path", type: "Type", subtitle: "Subtitles / Lyrics", source: "Source", actions: "Actions",
         loading: "Loading...", addMount: "Add pseudo mount", close: "Close", folder: "Folder", video: "Video",
-        audio: "Audio", image: "Image", file: "File", posterUrl: "Poster URL", mediaUrl: "Media URL", url: "URL", assUrl: "ASS subtitle URL",
+        audio: "Audio", image: "Image", file: "File", posterUrl: "Poster URL", mediaUrl: "Media URL", mediaUrlHint: "HTTP(S) URL or an absolute local path such as S:\\Media\\video.mp4", url: "URL", assUrl: "ASS subtitle URL",
         lrcUrl: "Lyrics URL", bilingual: "Bilingual lyrics", otherLrcUrl: "Other-language lyrics URL", embeddedMultiSubtitles: "H5 difficult playback", playsVideo: "PlaysVideo", moviPlayer: "Movi Player", vplayer: "VPlayer", selfSelect: "Self-select", description: "Description", descriptionHint: "Markdown supported. Start a line with ##ffffff: or ##rgb(255,255,255): to set its color.",
         cancel: "Cancel", create: "Create", empty: "No pseudo mounts yet", item: "item", items: "items",
         wrongPassword: "Incorrect password.", signingIn: "Signing in...", loadFailed: "Could not load pseudo mounts.",
@@ -257,9 +269,9 @@ const siteName = env.N?.trim() || "Re-Player";
       zh: {
         language: "语言", console: "管理后台", signIn: "登录", signInCopy: "请输入管理员密码以继续。", password: "密码",
         signOut: "退出登录", storage: "存储", rootDirectory: "根目录", mediaFiles: "媒体文件", pseudoMounts: "伪挂载", pageCopy: "管理公开媒体链接、字幕及歌词。",
-        addFile: "添加文件", refresh: "刷新", name: "文件名", path: "路径", type: "类型", subtitle: "字幕 / 歌词",
+        addFile: "添加文件", refresh: "刷新", name: "文件名", mountName: "挂载目录名", mountLocalFolder: "挂载本地文件夹", includeSubdirectories: "下级目录访问", folderCreated: "已导入 {count} 个文件。", path: "路径", type: "类型", subtitle: "字幕 / 歌词",
         source: "源链接", actions: "操作", loading: "正在加载...", addMount: "添加伪挂载", close: "关闭",
-        folder: "目录", video: "视频", audio: "音频", image: "图片", file: "文件", posterUrl: "封面链接", mediaUrl: "媒体链接", url: "链接",
+        folder: "目录", video: "视频", audio: "音频", image: "图片", file: "文件", posterUrl: "封面链接", mediaUrl: "媒体链接", mediaUrlHint: "HTTP(S) 链接或本机绝对路径，例如 S:\\Media\\video.mp4", url: "链接",
         assUrl: "ASS 字幕链接", lrcUrl: "歌词链接", bilingual: "是否双语", otherLrcUrl: "另一语言歌词链接", embeddedMultiSubtitles: "H5 难以播放", playsVideo: "PlaysVideo", moviPlayer: "Movi Player", vplayer: "VPlayer", selfSelect: "自择", description: "说明", descriptionHint: "支持 Markdown。行首使用 ##ffffff: 或 ##rgb(255,255,255): 设置该行文字颜色。",
         cancel: "取消", create: "创建", empty: "暂无伪挂载", item: "项", items: "项",
         wrongPassword: "密码错误。", signingIn: "正在登录...", loadFailed: "无法读取伪挂载。",
@@ -270,9 +282,9 @@ const siteName = env.N?.trim() || "Re-Player";
         language: "言語", console: "管理コンソール", signIn: "ログイン", signInCopy: "管理者パスワードを入力してください。",
         password: "パスワード", signOut: "ログアウト", storage: "ストレージ", rootDirectory: "ルートディレクトリ", mediaFiles: "メディアファイル", pseudoMounts: "疑似マウント",
         pageCopy: "公開メディアリンク、字幕、歌詞を管理します。", addFile: "ファイルを追加", refresh: "更新",
-        name: "名前", path: "パス", type: "種類", subtitle: "字幕 / 歌詞", source: "元リンク", actions: "操作",
+        name: "名前", mountName: "マウント先フォルダー名", mountLocalFolder: "ローカルフォルダーをマウント", includeSubdirectories: "下位フォルダーも含める", folderCreated: "{count} 個のファイルを登録しました。", path: "パス", type: "種類", subtitle: "字幕 / 歌詞", source: "元リンク", actions: "操作",
         loading: "読み込み中...", addMount: "疑似マウントを追加", close: "閉じる", folder: "フォルダー",
-        video: "動画", audio: "音声", image: "画像", file: "ファイル", posterUrl: "ポスターURL", mediaUrl: "メディアURL", url: "リンク",
+        video: "動画", audio: "音声", image: "画像", file: "ファイル", posterUrl: "ポスターURL", mediaUrl: "メディアURL", mediaUrlHint: "HTTP(S) URL または S:\\Media\\video.mp4 のようなローカル絶対パス", url: "リンク",
         assUrl: "ASS字幕URL", lrcUrl: "歌詞URL", bilingual: "二言語歌詞", otherLrcUrl: "別言語の歌詞URL", embeddedMultiSubtitles: "H5 で再生困難", playsVideo: "PlaysVideo", moviPlayer: "Movi Player", vplayer: "VPlayer", selfSelect: "プレーヤー選択", description: "説明", descriptionHint: "Markdown 対応。行頭に ##ffffff: または ##rgb(255,255,255): で色を指定します。",
         cancel: "キャンセル", create: "作成", empty: "疑似マウントはありません", item: "件",
         items: "件", wrongPassword: "パスワードが正しくありません。", signingIn: "ログイン中...",
@@ -298,6 +310,16 @@ const siteName = env.N?.trim() || "Re-Player";
     const e: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
     const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (x) => e[x]);
     const displayPath = (path: string) => path.replace(/^\/root(?=\/|$)/, "") || "/";
+    const displaySource = (source: string) => {
+      try {
+        const url = new URL(source);
+        if (url.protocol !== "file:") return source;
+        const decoded = decodeURIComponent(url.pathname);
+        return /^[a-z]:\//i.test(decoded.slice(1)) ? decoded.slice(1).replace(/\//g, "\\") : decoded;
+      } catch {
+        return source;
+      }
+    };
     const t = (k: keyof (typeof c)["en"]) => c[lang][k];
     const folderOf = (path: string) => path.slice(0, path.lastIndexOf("/")) || "/root";
     const folderName = (path: string) => path.split("/").filter(Boolean).pop() || "root";
@@ -339,6 +361,12 @@ const siteName = env.N?.trim() || "Re-Player";
         if (key && c[lang][key]) el.placeholder = t(key);
       });
       document.querySelectorAll(".language-select").forEach((el) => ((el as unknown as HTMLSelectElement).value = lang));
+      const mountAsFolder = document.querySelector<HTMLInputElement>("#mountLocalFolder")?.checked;
+      const mountNameLabel = document.querySelector<HTMLElement>("#mountNameLabel");
+      if (mountNameLabel) {
+        mountNameLabel.dataset.i18n = mountAsFolder ? "mountName" : "name";
+        mountNameLabel.textContent = t(mountAsFolder ? "mountName" : "name");
+      }
       renderTree();
       renderRows();
       renderThemeControl();
@@ -415,7 +443,9 @@ const siteName = env.N?.trim() || "Re-Player";
           <td><a class="url-cell path-cell" href="${esc(visitorUrl(item.path))}" title="${esc(displayPath(item.path))}" target="_blank" rel="noreferrer">${esc(displayPath(item.path))}</a></td>
           <td><span class="type-chip">${esc(t(item.kind))}</span></td>
           <td>${item.kind === "file" ? '<span class="url-cell">-</span>' : item.kind === "video" ? `<span class="type-chip">${item.sub ? "ASS" : "-"}${item.embeddedMulti ? ` + ${item.h5Player === "playsvideo" ? "PlaysVideo" : item.h5Player === "vplayer" ? "VPlayer" : item.h5Player === "select" ? t("selfSelect") : "Movi"}` : ""}</span>` : item.lrc ? `<span class="type-chip">LRC${item.lrc2 ? " x2" : ""}</span>` : '<span class="url-cell">-</span>'}</td>
-          <td><a class="url-cell source-cell" href="${esc(item.url)}" title="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.url)}</a></td>
+          <td>${item.url.startsWith("file:")
+            ? `<span class="url-cell source-cell" title="${esc(displaySource(item.url))}">${esc(displaySource(item.url))}</span>`
+            : `<a class="url-cell source-cell" href="${esc(item.url)}" title="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.url)}</a>`}</td>
           <td><span class="row-actions"><button class="icon-button danger-button" type="button" data-delete="${esc(item.id)}" title="${esc(t("delete"))}">${trash}<span class="sr-only">${esc(t("delete"))}</span></button></span></td>
         </tr>
       `).join("");
@@ -508,16 +538,27 @@ const siteName = env.N?.trim() || "Re-Player";
     const bilingual = document.querySelector<HTMLInputElement>("#bilingualToggle");
     const lrc2Field = document.querySelector<HTMLElement>("#lrc2Field");
     const folderInput = form?.querySelector<HTMLInputElement>('[name="folder"]');
+    const mountLocalFolder = document.querySelector<HTMLInputElement>("#mountLocalFolder");
+    const localFolderOptions = document.querySelector<HTMLElement>("#localFolderOptions");
+    const typeRow = document.querySelector<HTMLElement>("#typeRow");
+    const mountNameLabel = document.querySelector<HTMLElement>("#mountNameLabel");
     const toggleFields = () => {
       if (!kind || !urlLabel || !posterField || !subField || !embeddedMultiField || !embeddedMulti || !lrcFields || !descriptionField || !bilingual || !lrc2Field) return;
+      const folderMount = Boolean(mountLocalFolder?.checked);
       const file = kind.value === "file";
+      if (typeRow) typeRow.hidden = folderMount;
+      if (mountNameLabel) {
+        mountNameLabel.dataset.i18n = folderMount ? "mountName" : "name";
+        mountNameLabel.textContent = t(folderMount ? "mountName" : "name");
+      }
+      if (localFolderOptions) localFolderOptions.hidden = !folderMount;
       urlLabel.dataset.i18n = file ? "url" : "mediaUrl";
       urlLabel.textContent = file ? t("url") : t("mediaUrl");
-      posterField.hidden = file;
-      subField.hidden = kind.value !== "video";
-      embeddedMultiField.hidden = kind.value !== "video";
-      lrcFields.hidden = kind.value !== "audio";
-      descriptionField.hidden = !file;
+      posterField.hidden = folderMount || file;
+      subField.hidden = folderMount || kind.value !== "video";
+      embeddedMultiField.hidden = folderMount || kind.value !== "video";
+      lrcFields.hidden = folderMount || kind.value !== "audio";
+      descriptionField.hidden = folderMount || !file;
       if (file) posterField.querySelector<HTMLInputElement>("input")!.value = "";
       if (kind.value !== "video") subField.querySelector<HTMLInputElement>("input")!.value = "";
       if (kind.value !== "video") {
@@ -566,6 +607,7 @@ const siteName = env.N?.trim() || "Re-Player";
     });
     document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => dialog?.close()));
     kind?.addEventListener("change", toggleFields);
+    mountLocalFolder?.addEventListener("change", toggleFields);
     bilingual?.addEventListener("change", toggleFields);
     embeddedMulti?.addEventListener("change", () => syncH5PlayerChoices(embeddedMulti));
     h5PlayerChoices.forEach((choice) => choice.addEventListener("change", () => syncH5PlayerChoices(choice)));
@@ -575,11 +617,13 @@ const siteName = env.N?.trim() || "Re-Player";
       event.preventDefault();
       const status = document.querySelector<HTMLElement>("#formStatus");
       set(status, t("loading"));
-      const response = await fetch("/api/admin/links", {
+      const folderMount = Boolean(mountLocalFolder?.checked);
+      const response = await fetch(folderMount ? "/api/admin/local-folder" : "/api/admin/links", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...Object.fromEntries(new FormData(form).entries()),
+          recursive: Boolean(document.querySelector<HTMLInputElement>("#includeSubdirectories")?.checked),
           embeddedMulti: Boolean(embeddedMulti?.checked),
           h5Player: h5PlayerChoices.find((choice) => choice.checked)?.value || ""
         })
@@ -589,7 +633,7 @@ const siteName = env.N?.trim() || "Re-Player";
       form.reset();
       if (folderInput) folderInput.value = displayPath(currentFolder);
       toggleFields();
-      set(status, t("created"), "ok");
+      set(status, folderMount ? t("folderCreated").replace("{count}", String(data.count || 0)) : t("created"), "ok");
       await loadLinks();
       setTimeout(() => dialog?.close(), 350);
     });

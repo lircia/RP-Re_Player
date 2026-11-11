@@ -97,7 +97,7 @@ const backgroundOpacity = Number.isFinite(rawBackgroundOpacity) && rawBackground
             if (parsed.protocol === "http:" || parsed.protocol === "https:") imageUrl = parsed.href;
           } catch {}
         } else if (body.dataset.backgroundLocal === "true" && /^(?:[a-z]:[\\/]|\\\\|\/)/i.test(value)) {
-          imageUrl = `http://127.0.0.1:12068/${kind}`;
+          imageUrl = `http://${window.location.hostname}:12068/${kind}`;
         }
         if (!imageUrl) return;
 

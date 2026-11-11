@@ -82,7 +82,8 @@ export async function serveMedia(
     return new Response("Media proxy loop detected.", { status: 508 });
   }
 
-  const item = await getItem(await getEnv(context), path);
+  const env = await getEnv(context);
+  const item = await getItem(env, path);
   if (!item) return new Response("Not found.", { status: 404 });
   if (options.kind && item.kind !== options.kind) return new Response("Not found.", { status: 404 });
   if (!options.kind && item.kind === "file") return new Response("Not found.", { status: 404 });
@@ -100,6 +101,16 @@ export async function serveMedia(
     if (value) requestHeaders.set(name, value);
   }
   requestHeaders.set("x-rp-media-depth", String(proxyDepth + 1));
+
+  if (source.protocol === "file:") {
+    if (env.RP_LOCAL_BG !== "1" || !env.RP_LOCAL_MEDIA_TOKEN || source.host) {
+      return new Response("Local media is available only in the Local version.", { status: 502 });
+    }
+    const localSource = new URL("http://127.0.0.1:12068/media");
+    localSource.searchParams.set("source", source.href);
+    source = localSource;
+    requestHeaders.set("x-rp-local-token", env.RP_LOCAL_MEDIA_TOKEN);
+  }
 
   let upstream: Response | undefined;
   let currentSource = source;

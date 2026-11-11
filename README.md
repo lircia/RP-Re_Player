@@ -1,217 +1,53 @@
-<p align="center">
-  <img src="public/favicon.svg" width="120" alt="Re Player logo" />
-</p>
+# Re Player Local
 
-<div align="center">
+LAN-oriented local version of Re Player. It runs over HTTP and keeps Cloudflare deployment instructions out of this branch.
 
-# 🎬 Re Player (RP)
+## Requirements
 
-**A link-based media library built with Astro, running on Cloudflare Workers**
+- Node.js 22 or newer
+- npm
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md)
-
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Astro](https://img.shields.io/badge/Astro-7-orange)](https://astro.build)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
-
-</div>
-
----
-
-## 📝 About
-
-Re Player is a **link-based media library**. An administrator mounts external videos, audio, and images under a virtual `/root` directory, and visitors browse the tree on the left while playing media in the browser player on the right. No storage provider is mounted directly. The project runs on **Astro + Cloudflare Workers**, with no dedicated server required.
-
-**Repository**: [github.com/lircia/RP-Re_Player](https://github.com/lircia/RP-Re_Player)
-
-> [!NOTE]
-> Re Player's original source code is licensed under **MIT**. Third-party components retain their own licenses and notices.
->
-> The project includes `movi-player` 0.4.1, which is distributed under the Apache License 2.0 together with its listed third-party components. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and the included [movi-player license text](THIRD-PARTY-NOTICES) for the applicable notices.
->
-> The optional H5-difficult playback backends also include `playsvideo` 0.4.7 (MIT) and `@vplayer/react` 0.4.5. The VPlayer repository/package currently has no declared license; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) before distributing a build that contains it.
-
-## 🚀 Quick Start
-
-### Requirements
-
-- **Node.js ≥ 22** (required by Astro 7)
-- **npm** or **pnpm**
-
-### Run Locally
-
-> [!NOTE]
-> Local running through `Local.cmd` in the main repository is incomplete and can only be accessed from the same computer. For access from other devices on your LAN, use this repository's `Local` branch, which is intended for LAN use.
+## Start
 
 ```bash
 npm install
+```
+
+On Windows, run `Local.cmd`. On Linux, run:
+
+```bash
 npm run local
 ```
 
-By default the service listens at `http://127.0.0.1:12067` over HTTP. Override the port with `RP_HTTP_PORT` if needed. On Debian/Linux, Wrangler's interactive dev UI is disabled.
+By default, the service listens at `http://127.0.0.1:12067`. The default admin password is `masteradmin`; open `/admin` to sign in. Set `P` in `.env` to change it.
 
-The default administrator password is `masteradmin`. Open `/admin` manually to sign in; set the environment variable `P` to change the password.
+## LAN Access
 
-### Deploy to Cloudflare Workers
+On Windows, set the computer's LAN IPv4 address in `Local.cmd` by changing:
+
+```bat
+set "IP=127.0.0.1"
+```
+
+For example, use `set "IP=192.168.1.20"`, replacing the example with the computer's actual LAN address. Run `Local.cmd`, then open `http://192.168.1.20:12067` from another device on the same network.
+
+On Linux, build and pass the LAN address to the runner:
 
 ```bash
-npm run cf:deploy
+npm run build
+node scripts/local.mjs 192.168.1.20
 ```
 
-No change to Cloudflare's build command is required.
+Replace the example with the computer's actual LAN address. Allow Node.js through the computer's firewall for private networks. Local media files and local `VP`/`AP` background images use TCP port `12068`, which must also be allowed.
 
-## ✨ Features
+Use an IPv4 address assigned to this computer. The address must remain the same while the service is running. The service uses HTTP without a self-signed certificate.
 
-- **🎞️ Multi-format playback** — video, audio, and image in one player
-- **🗂️ Link pseudo-mounts** — mount any external media URL under the fixed `/root` path
-- **📝 ASS subtitles** — rendered in-browser with JASSUB/libass plus bundled SC/JP font fallbacks
-- **🎤 LRC lyrics** — real-time synced highlighting with optional bilingual tracks
-- **🌍 Auto language** — IP-based English / 简体中文 / 日本語 selection with manual override
-- **📊 Visitor analytics** — `/table` shows visit, directory, media, and play events
-- **🌗 Five themes** — Default, Retro, Azure, New Blue, Light Gray, switched from one admin button
-- **🔒 Password protected** — both `/admin` and `/table` require the administrator password
-- **💾 D1 persistence** — falls back to in-memory storage when D1 is unavailable
-- **📈 Umami analytics** — optional [Umami](https://umami.is) integration
+## Configuration
 
-## 🌐 Public Routes
+In Admin, mount a file by entering its absolute path in the media URL field, for example `S:\RP-Local\media\rein.mp4`. Local paths are read from the computer running Re Player and streamed with byte-range support; the source computer must remain on and the file must remain available. This works only in the Local version. HTTP(S) media links continue to work as usual.
 
-| Route | Purpose |
-| --- | --- |
-| `/` | Entry animation; mobile devices go to `/Local` |
-| `/Re` | Entry animation page (external intro media, then `/Loading`) |
-| `/Loading` | Choose language, then `Start` to enter the visitor page |
-| `/Local` | Regular visitor media library |
-| `/Local/Pash/...` | Regular pseudo-mount display URLs |
-| `/Tree/...` | Native player page for media mounted at `/root/tree` |
-| `/table` | Visitor analytics page (requires the admin password) |
-| `/admin` | Admin console (pseudo-mounts, themes, settings) |
-| `/302` | Redirect mount manager; available when `R302=1` |
+To mount a local folder, enable **Mount local folder**, enter its absolute path in the media URL field, and choose the folder name shown in the library. **Include subdirectories** is unchecked by default; enable it to recursively import files while preserving their directory structure. File types are detected from extensions. Mount data is stored in `.local-data/wrangler` inside the project; keep this directory. Stop the Local service before copying it for backup.
 
-`Tree` sits at the same level as `Local` but is not shown in the regular Local listing; register a folder as `/tree` in the admin console.
+Copy `.env.example` to `.env` and set only the variables you need. `RP_HTTP_PORT` changes the web port from `12067`. `VP` and `AP` accept image URLs or absolute local paths; `VPS` and `APS` control image opacity. The local helper serves configured local background files to LAN clients.
 
-## ☁️ Cloudflare D1
-
-The project already has an active D1 binding in `wrangler.toml`. When deploying to another Cloudflare account, create a D1 database and replace `database_name` and `database_id`:
-
-```toml
-[[d1_databases]]
-binding = "D1"
-database_name = "your-database-name"
-database_id = "your-cloudflare-d1-database-id"
-```
-
-RP creates and upgrades the following tables automatically:
-
-| Table | Purpose |
-| --- | --- |
-| `rp_pseudo_links` | Pseudo-mount information |
-| `rp_redirect_mounts` | Optional 302 redirect rules |
-| `rp_media_visitors` | Per-visitor media progress and completion stats |
-| `rp_visitor_events` | Visit, directory, media, and play events |
-| `rp_settings` | Persisted environment variables |
-| `rp_visitor_theme` | Public-page visitor theme |
-
-The D1 binding name must remain `D1`. Also configure a KV namespace binding named `KV` in the Cloudflare environment; do not commit an empty KV namespace ID to this repository.
-
-## 🔧 Environment Variables
-
-| Variable | Purpose |
-| --- | --- |
-| `A` | External media URL shown before the visitor page |
-| `B` | Maximum display/playback time for `A` and `C`, in seconds; default `4.2`. Empty, zero, negative, or invalid values skip the entry animation |
-| `C` | Optional external audio URL played together with `A`; mutes the `A` video when set |
-| `N` | Visitor and admin brand text plus browser title; defaults to `Re-Player`. Visitor brand text stays rainbow-colored |
-| `PI` | Optional HTTP(S) favicon image URL; empty by default and falls back to `/favicon.svg` if it cannot load |
-| `VA` | Visitor top-left branding: `0` hides icon and text, `1` shows the icon, `1.5` shows the text, and `2` shows both; default `2`, invalid values use `2` |
-| `P` | Administrator password |
-| `R302` | Redirect mount feature and `/302` manager: `1` enables it; `0` or empty disables it (default `0`) |
-| `T` | Enables/disables the China cloud-provider redirect behavior; enabled unless set to `0`, `false`, `off`, `no`, or `disabled` |
-| `RP_HTTP_PORT` | Local HTTP listener port; defaults to `12067` |
-| `VP` | Visitor page background image: an HTTP(S) URL, or an absolute local file path with `Local.cmd` |
-| `AP` | Admin page background image: an HTTP(S) URL, or an absolute local file path with `Local.cmd` |
-| `VPS` | Visitor background image opacity in percent; default `100` |
-| `APS` | Admin background image opacity in percent; default `100` |
-| `WM` | Movi subtitle size multiplier; default `0.78` (accepted range `0.1`–`3`) |
-| `PBN` | Video control bar glass background opacity; default `0.12` (`0` transparent, `1` opaque) |
-| `DB` | Storage selection for pseudo-mounts and visitor theme: `d1` or `kv`; defaults to `d1` |
-| `D1` | Optional D1 binding; required for analytics and the D1 backup of KV data |
-| `KV` | Optional KV namespace binding; used for pseudo-mounts and visitor theme only when `DB=kv` and the binding exists |
-| `US` | Umami script URL |
-| `UI` | Umami website ID |
-| `UH` | Optional Umami host URL |
-| `UD` | Optional Umami domain list |
-
-When D1 is available, RP seeds `rp_settings` from non-empty `A`, `C`, `P`, `US`, `UI`, `UH`, and `UD` bindings when their `env:VARIABLE` keys are missing; stored values take priority on later deployments. `B`, `N`, `PI`, `T`, `RP_HTTP_PORT`, `WM`, `PBN`, `VP`, `AP`, `VPS`, and `APS` are read directly at runtime and are not persisted in D1. Background image opacity is applied only after the image loads; a failed image falls back to the page's solid background. Cloudflare deployments must use an HTTP(S) image URL. Absolute local paths are supported only by the incomplete `Local.cmd` runner, which reads variables from `.env` and serves configured files through a helper bound to `127.0.0.1`; on Windows, forward-slash paths such as `S:/Images/background.jpg` avoid escaping issues. `keep_vars = true` also prevents Wrangler from deleting variables configured in the Cloudflare dashboard.
-
-Pseudo-mount links and the visitor theme use KV only when `DB` is set to `kv` and the `KV` binding exists; otherwise they fall back to D1 when bound, or in-memory storage when neither binding is available. Playback progress, analytics, visitor events, settings, and migration state remain in D1 when it is bound. In KV mode, admin mount changes and theme switches are the only operations that write KV. D1 backups are read from KV after those changes and updated only when the stored content differs; normal reads never write KV or restore D1 data into KV. The `/setup` page shows a live clock, request IP, hostname, visitor theme, pseudo-mount storage, runtime status, and Cloudflare `colo` when available, without exposing credentials or binding IDs. The status displays `Unknow` in red when D1 is not bound.
-
-## 📖 Details
-
-### ASS Subtitles
-
-When adding a video, enter a public HTTP(S) URL to an `.ass` subtitle file. RP fetches the configured subtitle through its own public subtitle endpoint, avoiding ordinary browser CORS restrictions. The player requests small Noto Sans subsets for the characters used by each subtitle; bundled SC/JP fonts remain as a fallback when the font service is unavailable. The subtitle source must still be reachable from Cloudflare Workers.
-
-MKV files without an external subtitle use the first embedded ASS track by default. Enabling **H5 difficult playback** in the admin console switches only that video to [movi-player](https://github.com/MrUjjwalG/movi-player), which reads the Matroska tracks in the browser and provides a subtitle selector for all embedded tracks. Videos with the option disabled continue using the existing native HTML5/JASSUB path. External ASS subtitles in the Movi path are converted to browser-compatible WebVTT; full ASS styling remains available on the native path. Movi uses HTTP Range requests for progressive loading, so the media proxy preserves upstream `206 Partial Content` responses and disables caching for the media endpoint. See Cloudflare's [Range request behavior](https://developers.cloudflare.com/cache/reference/range-requests/) and [Workers Cache limitations](https://developers.cloudflare.com/workers/cache/limitations/): Workers Cache does not store a Worker response that is already `206`, so do not force this endpoint to return a synthetic `200`.
-
-Set `WM` to change the Movi subtitle size multiplier (default `0.78`, accepted range `0.1`–`3`). Set `PBN` to change the video control bar's glass background opacity (default `0.12`; `0` is transparent and `1` is opaque).
-
-### LRC Lyrics
-
-When adding audio, enter a public HTTP(S) `.lrc` URL for synchronized lyrics. Enable **Bilingual lyrics** to add a second-language file. RP proxies both files to avoid CORS restrictions, highlights and scrolls the current line in real time, and places detected Chinese lyrics above the foreign-language line. If language detection is inconclusive, the other-language file appears above the default file. A single LRC containing two lines at the same timestamp is adapted automatically.
-
-### Automatic Language
-
-When no manual language preference has been saved, RP uses the free, keyless `api.country.is` service to determine the visitor country: `CN` selects Simplified Chinese, `JP` selects Japanese, and every other country selects English. Cloudflare's request country is used as a fallback when the lookup service is unavailable. A manual selection is stored in local storage and the `rp_l` cookie. Per-media `rp_p_*` cookies store every audio/video path and playback position on that device; completed media remains recorded at its full duration.
-
-## 📁 Directory Structure
-
-```
-RP-Re_Player
-├── src/                        # Source code
-│   ├── layouts/                # Page layouts
-│   ├── lib/                    # Business logic (pseudo-mounts, subtitles, lyrics, themes…)
-│   ├── pages/                  # Route pages
-│   │   ├── 404.astro
-│   │   ├── Loading.astro
-│   │   ├── Re.astro
-│   │   ├── admin.astro
-│   │   ├── index.astro
-│   │   ├── setup.astro
-│   │   ├── table.astro
-│   │   ├── api/                # API endpoints
-│   │   │   ├── admin/          # Admin APIs
-│   │   │   └── public/         # Visitor/public APIs
-│   │   ├── Local/              # Visitor media library route
-│   │   └── tree/               # Native player route
-│   ├── styles/                 # Global and theme styles
-│   │   └── themes/             # Default and light-gray visitor themes
-│   └── types/                  # Type definitions
-├── public/                     # Static assets (fonts, icon, poster)
-├── scripts/                    # Build and local-run scripts
-├── third-party-licenses/       # Third-party license texts
-├── .env.example                # Example runtime variables
-├── .gitignore
-├── LICENSE                     # Main project license (MIT)
-├── Local.cmd                   # Local-only launcher
-├── THIRD-PARTY-NOTICES         # Third-party attribution and notices
-├── README.md                   # English documentation
-├── README.zh-CN.md             # Chinese documentation
-├── README.ja.md                # Japanese documentation
-├── astro.config.mjs            # Astro configuration
-├── wrangler.toml               # Cloudflare configuration
-└── package.json                # Project dependencies
-```
-
-## 🙏 Acknowledgements
-
-- [Astro](https://astro.build) — Web framework
-- [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS subtitle rendering
-- [movi-player](https://github.com/MrUjjwalG/movi-player) — media player
-- [PlaysVideo](https://github.com/kzahel/playsvideo) — optional H5-difficult playback
-- [VPlayer](https://github.com/tgdrive/vplayer) — optional React player for H5-difficult playback
-- [Umami](https://umami.is) — optional website analytics
-
-## ⚖️ License
-
-The original Re Player source code is licensed under the [MIT License](LICENSE). Third-party dependencies retain their own licenses. `movi-player` 0.4.1 is licensed under Apache License 2.0 and `playsvideo` 0.4.7 under MIT. The upstream VPlayer repository and npm package currently declare no license, so permission to redistribute VPlayer or a build containing it has not been verified. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) before redistributing a build.
+Source code is MIT licensed. Third-party components retain their own licenses; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

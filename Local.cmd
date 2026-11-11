@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-if not defined IP set "IP=127.0.0.1"
+set "IP=192.168.0.104"
 if not exist node_modules (
   call npm.cmd install --no-audit --no-fund
   if errorlevel 1 goto :fail

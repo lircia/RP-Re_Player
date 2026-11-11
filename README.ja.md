@@ -1,217 +1,53 @@
-<p align="center">
-  <img src="public/favicon.svg" width="120" alt="Re Player logo" />
-</p>
+# Re Player Local
 
-<div align="center">
+LAN アクセス向けのローカル版です。HTTP で動作し、このブランチには Cloudflare へのデプロイ手順を含みません。
 
-# 🎬 Re Player (RP)
+## 必要環境
 
-**Astro + Cloudflare Workers で作られたリンク型メディアライブラリ**
+- Node.js 22 以降
+- npm
 
-[English](README.md) · [简体中文](README.zh-CN.md) · 日本語
-
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Astro](https://img.shields.io/badge/Astro-7-orange)](https://astro.build)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-f38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers/)
-
-</div>
-
----
-
-## 📝 プロジェクト概要
-
-Re Player は**リンク型メディアライブラリ**です。管理者が外部の動画・音声・画像を仮想 `/root` ディレクトリにマウントし、訪問者は左側でツリーを閲覧しながら、右側のブラウザプレイヤーで再生します。外部ストレージを直接マウントする必要はありません。プロジェクトは **Astro + Cloudflare Workers** 上で動作し、専用サーバーは不要です。
-
-**リポジトリ**: [github.com/lircia/RP-Re_Player](https://github.com/lircia/RP-Re_Player)
-
-> [!NOTE]
-> Re Player 独自のソースコードは **MIT** ライセンスです。サードパーティコンポーネントは各自のライセンスと通知に従います。
->
-> 本プロジェクトには Apache License 2.0 で提供される `movi-player` 0.4.1 と、そのライセンスに記載されたサードパーティコンポーネントが含まれます。詳しくは [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) と同梱の [movi-player ライセンス本文](THIRD-PARTY-NOTICES) を参照してください。
->
-> H5 再生困難モードには `playsvideo` 0.4.7（MIT）と `@vplayer/react` 0.4.5 も含まれます。現在、VPlayer のリポジトリと npm パッケージにライセンス宣言がありません。VPlayer を含むビルドを再配布する前に許諾を確認してください。詳しくは [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) を参照してください。
-
-## 🚀 クイックスタート
-
-### 必要環境
-
-- **Node.js ≥ 22**（Astro 7 の要件）
-- **npm** または **pnpm**
-
-### ローカル実行
-
-> [!NOTE]
-> メインリポジトリの `Local.cmd` によるローカル実行機能は不完全で、実行しているコンピューターからのみアクセスできます。LAN 内の別のデバイスからアクセスする場合は、LAN 利用に適したこのリポジトリの `Local` ブランチを使用してください。
+## 起動
 
 ```bash
 npm install
+```
+
+Windows では `Local.cmd` を実行します。Linux では次を実行します。
+
+```bash
 npm run local
 ```
 
-デフォルトでは HTTP を使用し、`http://127.0.0.1:12067` で待ち受けます。必要に応じて `RP_HTTP_PORT` でポートを変更できます。Debian/Linux では Wrangler の対話型開発 UI を無効にします。
+既定の待受先は `http://127.0.0.1:12067` です。管理者パスワードの既定値は `masteradmin` です。`/admin` を開いてログインしてください。`.env` の `P` で変更できます。
 
-既定の管理者パスワードは `masteradmin` です。`/admin` を手動で開いてログインしてください。環境変数 `P` を設定するとパスワードを変更できます。
+## LAN アクセス
 
-### Cloudflare Workers へのデプロイ
+Windows では `Local.cmd` の待受アドレスを編集します。
+
+```bat
+set "IP=127.0.0.1"
+```
+
+たとえば `set "IP=192.168.1.20"` に変更し、例の値を実際の LAN IPv4 アドレスに置き換えます。起動後、同じネットワーク上の端末から `http://192.168.1.20:12067` にアクセスします。
+
+Linux ではビルド後、LAN アドレスを起動スクリプトに渡します。
 
 ```bash
-npm run cf:deploy
+npm run build
+node scripts/local.mjs 192.168.1.20
 ```
 
-Cloudflare のビルドコマンドを変更する必要はありません。
+例のアドレスを実際の LAN アドレスに置き換えてください。プライベートネットワークで Node.js の通信をファイアウォールに許可してください。ローカルメディアと `VP`/`AP` のローカル背景画像は TCP ポート `12068` を共用するため、このポートも許可してください。
 
-## ✨ 主な機能
+このコンピューターに割り当てられた IPv4 アドレスを使用し、実行中はアドレスを変更しないでください。HTTP を使用し、自己署名証明書は使いません。
 
-- **🎞️ マルチフォーマット再生** — 動画・音声・画像をひとつのプレイヤーで
-- **🗂️ リンク型疑似マウント** — 固定 `/root` 配下に任意の外部メディア URL をマウント
-- **📝 ASS 字幕** — JASSUB/libass によるブラウザ内描画、SC/JP フォントのフォールバック付き
-- **🎤 LRC 歌詞** — リアルタイム同期・ハイライト、二言語歌詞に対応
-- **🌍 自動言語** — IP に基づく英語・中国語・日本語の自動選択と手動変更
-- **📊 訪問者統計** — `/table` で訪問・ディレクトリ・メディア・再生イベントを確認
-- **🌗 5 つのテーマ** — デフォルト・レトロ・アズール・ニューブルー・ライトグレーを一括切替
-- **🔒 パスワード保護** — `/admin` と `/table` はどちらも管理者パスワードが必要
-- **💾 D1 永続化** — D1 がない場合はメモリ内フォールバック
-- **📈 Umami 分析** — オプションの [Umami](https://umami.is) 統合
+## 設定
 
-## 🌐 公開ルート
+管理画面でファイルをマウントするとき、メディア URL 欄に `S:\RP-Local\media\rein.mp4` のようなローカル絶対パスを入力できます。ファイルは Re Player を実行しているコンピューターから読み取り、バイト範囲リクエストでストリーミングします。再生中はコンピューターとファイルを利用可能な状態にしてください。この機能は Local 版のみ対応し、HTTP(S) のメディアリンクも引き続き使用できます。
 
-| ルート | 説明 |
-| --- | --- |
-| `/` | 入場アニメーション。モバイル端末では `/Local` へ移動 |
-| `/Re` | 入場アニメーションページ（外部 intro メディア後、`/Loading` へ） |
-| `/Loading` | 言語を選択して `Start` で訪問者ページへ |
-| `/Local` | 通常の訪問者メディアライブラリ |
-| `/Local/Pash/...` | 通常の疑似マウント表示 URL |
-| `/Tree/...` | `/root/tree` にマウントされたメディアのネイティブプレイヤー |
-| `/table` | 訪問者統計ページ（管理者パスワードが必要） |
-| `/admin` | 管理コンソール（疑似マウント・テーマ・設定） |
-| `/302` | 302 転送管理ページ。`R302=1` の場合に利用可能 |
+ローカルフォルダーをマウントするには、**ローカルフォルダーをマウント**を有効にして、メディア URL 欄に絶対パスを入力し、ライブラリに表示するフォルダー名を指定します。**下位フォルダーも含める**は既定で無効です。有効にすると、下位フォルダー内のファイルも再帰的に登録し、フォルダー構成を維持します。ファイルの種類は拡張子から自動判定します。マウント情報はプロジェクト内の `.local-data/wrangler` に保存されます。このフォルダーを削除しないでください。バックアップ時は Local サービスを停止してからコピーしてください。
 
-`Tree` は `Local` と同じ階層にありますが、通常の Local リストには表示されません。管理コンソールでフォルダーを `/tree` として登録してください。
+`.env.example` を `.env` にコピーし、必要な変数を設定します。`RP_HTTP_PORT` で既定の Web ポート `12067` を変更できます。`VP` と `AP` は画像 URL またはローカルの絶対パスに対応し、`VPS` と `APS` で画像の不透明度を指定します。ローカル補助サービスは指定されたローカル背景画像を LAN クライアントに配信します。
 
-## ☁️ Cloudflare D1
-
-プロジェクトはすでに `wrangler.toml` で D1 バインディングを有効にしています。別の Cloudflare アカウントへ移行する場合は、D1 データベースを作成し、`database_name` と `database_id` を置き換えてください。
-
-```toml
-[[d1_databases]]
-binding = "D1"
-database_name = "your-database-name"
-database_id = "your-cloudflare-d1-database-id"
-```
-
-RP は以下のテーブルを自動的に作成・更新します。
-
-| テーブル | 用途 |
-| --- | --- |
-| `rp_pseudo_links` | 疑似マウント情報 |
-| `rp_redirect_mounts` | 任意の 302 転送ルール |
-| `rp_media_visitors` | 訪問者ごとの再生進捗と完走統計 |
-| `rp_visitor_events` | 訪問・ディレクトリ・メディア・再生イベント |
-| `rp_settings` | 保存された環境変数 |
-| `rp_visitor_theme` | 公開ページの訪問者テーマ |
-
-D1 バインディング名は `D1` のままでなければなりません。また、Cloudflare 環境で `KV` という名前の KV Namespace バインディングを設定してください。空の KV ID はリポジトリに追加しないでください。
-
-## 🔧 環境変数
-
-| 変数 | 用途 |
-| --- | --- |
-| `A` | 訪問者ページの前に表示する外部メディア URL |
-| `B` | `A` と `C` の最大表示・再生時間（秒）。既定値は `4.2`。空、0、負数、無効値の場合は入場アニメーションを省略 |
-| `C` | `A` と同時に再生する任意の外部音声 URL。設定すると `A` の動画はミュート |
-| `N` | 訪問者/管理ページのブランド名とブラウザータイトル。既定値は `Re-Player`。訪問者ブランド文字は常に虹色 |
-| `PI` | 任意の HTTP(S) ファビコン URL。既定値は空。読み込み失敗時は `/favicon.svg` にフォールバック |
-| `VA` | 訪問者ページ左上のブランド表示。`0` はアイコンと文字を非表示、`1` はアイコンのみ、`1.5` は文字のみ、`2` は両方を表示。既定値は `2`。無効値も `2` として扱う |
-| `P` | 管理者パスワード |
-| `R302` | 転送マウント機能と `/302` 管理ページを制御。`1` で有効、`0` または空欄で無効（既定値 `0`） |
-| `T` | 中国のクラウド事業者へのリダイレクトを制御。`0`、`false`、`off`、`no`、`disabled` 以外では有効 |
-| `RP_HTTP_PORT` | ローカル HTTP 待受ポート。既定値は `12067` |
-| `VP` | 訪問者ページの背景画像。HTTP(S) URL、または `Local.cmd` 実行時のローカル絶対パス |
-| `AP` | 管理ページの背景画像。HTTP(S) URL、または `Local.cmd` 実行時のローカル絶対パス |
-| `VPS` | 訪問者背景画像の不透明度（%）。既定値 `100` |
-| `APS` | 管理背景画像の不透明度（%）。既定値 `100` |
-| `WM` | Movi 字幕のサイズ倍率。既定値 `0.78`（有効範囲 `0.1`～`3`） |
-| `PBN` | 動画コントロールバーのガラス背景の不透明度。既定値 `0.12`（`0` は透明、`1` は不透明） |
-| `DB` | 疑似マウントと訪問者テーマの保存先。`d1` または `kv`。既定値は `d1` |
-| `D1` | 任意の D1 バインディング。分析データと KV データの D1 バックアップに使用 |
-| `KV` | 任意の KV Namespace バインディング。`DB=kv` かつバインディングが存在するとき、疑似マウントと訪問者テーマに使用 |
-| `US` | Umami スクリプト URL |
-| `UI` | Umami ウェブサイト ID |
-| `UH` | 任意の Umami ホスト URL |
-| `UD` | 任意の Umami ドメイン一覧 |
-
-D1 が利用できる場合、RP は `env:変数名` キーがまだないときに、空でない `A`、`C`、`P`、`US`、`UI`、`UH`、`UD` の各バインディングを `rp_settings` に保存します。以降のデプロイでは保存値が優先されます。`B`、`N`、`PI`、`T`、`RP_HTTP_PORT`、`WM`、`PBN`、`VP`、`AP`、`VPS`、`APS` は実行環境から直接読み取り、D1 には保存しません。背景画像の読み込みに成功した場合だけ不透明度を適用し、失敗時はページの単色背景に戻ります。Cloudflare では HTTP(S) 画像 URL を使用してください。ローカル絶対パスは不完全な `Local.cmd` のみ対応し、`.env` を読み込んだうえで `127.0.0.1` に限定した補助サービスからファイルを配信します。Windows では `S:/Images/background.jpg` のように `/` を使うとエスケープ問題を避けられます。`keep_vars = true` は Cloudflare ダッシュボードで設定した変数が Wrangler に削除されるのを防ぎます。
-
-`DB` が `kv` で、`KV` バインディングが存在する場合に限り、疑似マウントリンクと訪問者テーマに KV を使用します。それ以外では、D1 がバインドされていれば D1、どちらもなければメモリ内ストレージにフォールバックします。D1 がバインドされている場合、再生進捗、統計、訪問記録、設定、移行状態は D1 に保存されます。KV モードでは、管理画面でのマウント変更とテーマ切り替えだけが KV に書き込みます。その後、KV から読み取ったデータと差がある場合だけ D1 のバックアップを更新します。通常の読み取りでは KV に書き込まず、D1 から KV への復元も行いません。`/setup` ではリアルタイム時計、リクエスト IP、ホスト名、訪問者テーマ、疑似マウントの実際の保存先、実行状態、取得可能な Cloudflare `colo` を表示し、資格情報やバインディング ID は表示しません。D1 が未バインドの場合、状態は赤色の `Unknow` になります。
-
-## 📖 詳細
-
-### ASS 字幕
-
-動画を追加するときに、公開 HTTP(S) の `.ass` 字幕 URL を指定できます。RP はサイト内の字幕エンドポイント経由で字幕を取得し、通常のブラウザ CORS 制限を回避します。プレイヤーは字幕が実際に使う文字に対応した小さな Noto Sans サブセットを要求し、フォントサービスが利用できない場合は同梱の SC/JP フォントをフォールバックします。字幕の取得元は Cloudflare Workers から到達可能である必要があります。
-
-外部字幕のない MKV 動画は、既定では最初の埋め込み ASS トラックだけを読み込みます。管理コンソールの項目は **H5 で再生困難** に変更され、有効にした動画だけ [movi-player](https://github.com/MrUjjwalG/movi-player) でブラウザ内処理します。Matroska の埋め込み字幕トラックを選択でき、無効の動画は従来の HTML5/JASSUB 処理を使います。Movi 側の外部 ASS はブラウザ互換の WebVTT に変換され、完全な ASS スタイルは従来の分岐で利用できます。Movi は HTTP Range による段階読み込みを使うため、メディアプロキシは上流の `206 Partial Content` をそのまま返し、メディアエンドポイントのキャッシュを無効にします。詳しくは Cloudflare の [Range リクエスト動作](https://developers.cloudflare.com/cache/reference/range-requests/) と [Workers Cache の制限](https://developers.cloudflare.com/workers/cache/limitations/) を参照してください。Workers Cache は Worker が直接返す `206` を保存しないため、キャッシュ目的で `200` に強制変換しないでください。
-
-`WM` で Movi 字幕のサイズ倍率を変更できます（既定値 `0.78`、有効範囲 `0.1`～`3`）。`PBN` では動画コントロールバーのガラス背景の不透明度を変更できます（既定値 `0.12`。`0` は透明、`1` は不透明）。
-
-### LRC 歌詞
-
-音声を追加するときに、同期歌詞用の公開 HTTP(S) `.lrc` URL を指定できます。**二言語歌詞** を有効にすると、別言語の歌詞ファイルも追加できます。RP は両ファイルをサイト内プロキシ経由で取得して CORS 制限を回避し、現在行をリアルタイムにハイライト・スクロールします。中国語の歌詞を検出した場合は中国語が上、外国語が下に表示されます。言語判定ができない場合は、別言語のファイルが既定ファイルの上に表示されます。同じタイムスタンプに 2 行含まれる単一 LRC は自動的に調整されます。
-
-### 自動言語
-
-手動の言語設定が保存されていない場合、RP は無料で鍵不要の `api.country.is` サービスで訪問者の国を判定します。`CN` は簡体字中国語、`JP` は日本語、それ以外は英語になります。サービスが利用できない場合は Cloudflare のリクエスト国情報をフォールバックとして使用します。手動選択はローカルストレージと `rp_l` Cookie に保存されます。メディアごとの `rp_p_*` Cookie は、そのデバイスのすべての音声/動画パスと再生位置を保存し、完走したメディアは完全な長さで記録されます。
-
-## 📁 ディレクトリ構造
-
-```
-RP-Re_Player
-├── src/                        # ソースコード
-│   ├── layouts/                # ページレイアウト
-│   ├── lib/                    # ビジネスロジック（疑似マウント・字幕・歌詞・テーマ等）
-│   ├── pages/                  # ルートページ
-│   │   ├── 404.astro
-│   │   ├── Loading.astro
-│   │   ├── Re.astro
-│   │   ├── admin.astro
-│   │   ├── index.astro
-│   │   ├── setup.astro
-│   │   ├── table.astro
-│   │   ├── api/                # API エンドポイント
-│   │   │   ├── admin/          # 管理 API
-│   │   │   └── public/         # 訪問者向け公開 API
-│   │   ├── Local/              # 訪問者ライブラリのルート
-│   │   └── tree/               # ネイティブプレイヤーのルート
-│   ├── styles/                 # グローバル・テーマスタイル
-│   │   └── themes/             # 既定・ライトグレーの訪問者テーマ
-│   └── types/                  # 型定義
-├── public/                     # 静的アセット（フォント・アイコン・ポスター）
-├── scripts/                    # ビルド・ローカル実行スクリプト
-├── third-party-licenses/       # サードパーティのライセンス文書
-├── .env.example                # 環境変数の例
-├── .gitignore
-├── LICENSE                     # メインプロジェクトのライセンス（MIT）
-├── Local.cmd                   # ローカル専用起動スクリプト
-├── THIRD-PARTY-NOTICES         # サードパーティに関する表示
-├── README.md                   # 英語ドキュメント
-├── README.zh-CN.md             # 中国語ドキュメント
-├── README.ja.md                # 日本語ドキュメント
-├── astro.config.mjs            # Astro 設定
-├── wrangler.toml               # Cloudflare 設定
-└── package.json                # 依存関係
-```
-
-## 🙏 謝辞
-
-- [Astro](https://astro.build) — Web フレームワーク
-- [JASSUB](https://github.com/ThaUnknown/jassub) / [libass](https://github.com/libass/libass) — ASS 字幕描画
-- [movi-player](https://github.com/MrUjjwalG/movi-player) — メディアプレイヤー
-- [PlaysVideo](https://github.com/kzahel/playsvideo) — H5 で再生困難な動画向けのオプション処理
-- [VPlayer](https://github.com/tgdrive/vplayer) — オプションの React 動画プレイヤー
-- [Umami](https://umami.is) — オプションのサイト分析
-
-## ⚖️ ライセンス
-
-Re Player 独自のソースコードは [MIT License](LICENSE) で提供されます。サードパーティ依存関係はそれぞれのライセンスに従い、`movi-player` 0.4.1 は Apache License 2.0、`playsvideo` 0.4.7 は MIT です。現在、VPlayer の上流リポジトリと npm パッケージにはライセンス宣言がなく、VPlayer を含むビルドの再配布許可は確認できていません。再配布前に [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) を確認してください。
+プロジェクト独自のソースコードは MIT ライセンスです。サードパーティコンポーネントは各自のライセンスに従います。詳しくは [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) を参照してください。
